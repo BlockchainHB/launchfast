@@ -1,0 +1,385 @@
+import axios from 'axios'
+import { cache, CACHE_TTL, cacheHelpers } from './cache'
+import type { 
+  ProductData, 
+  SalesPrediction, 
+  KeywordData, 
+  OpportunityData,
+  SearchParams,
+  SellerSpriteProductResponse,
+  SellerSpriteSalesResponse,
+  SellerSpriteKeywordResponse
+} from '@/types'
+
+export class SellerSpriteClient {
+  private baseURL = 'https://api.sellersprite.com'
+  private apiKey: string
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey
+  }
+
+  // Product Research - Primary discovery endpoint
+  async productResearch(params: SearchParams): Promise<ProductData[]> {
+    const cacheKey = cache.generateKey('product_research', params)
+    const cached = await cache.get<ProductData[]>(cacheKey)
+    if (cached) return cached
+
+    try {
+      const requestPayload: any = {
+        keyword: params.keyword,
+        marketplace: 'US',
+        page: 1,
+        size: params.limit || 5
+      }
+
+      // Apply restrictive filters to get quality products from the start
+      if (params.filters) {
+        // Primary filter: Limit reviews (maxReviews -> maxRatings in SellerSprite API)
+        if (params.filters.maxReviews) {
+          requestPayload.maxRatings = params.filters.maxReviews
+        }
+        
+        // Secondary filter: Ensure good sales volume
+        if (params.filters.minUnits) {
+          requestPayload.minUnits = params.filters.minUnits
+        }
+        
+        // Optional filters (available for future frontend use)
+        if (params.filters.minPrice) requestPayload.minPrice = params.filters.minPrice
+        if (params.filters.maxPrice) requestPayload.maxPrice = params.filters.maxPrice
+        if (params.filters.minRating) requestPayload.minRating = params.filters.minRating
+        if (params.filters.maxRating) requestPayload.maxRating = params.filters.maxRating
+        if (params.filters.minRevenue) requestPayload.minRevenue = params.filters.minRevenue
+        if (params.filters.maxRevenue) requestPayload.maxRevenue = params.filters.maxRevenue
+      }
+
+      // Add default restrictive filters to reduce API response size
+      if (!requestPayload.maxRatings && !params.filters?.maxReviews) {
+        requestPayload.maxRatings = 1000 // Default max reviews
+      }
+      if (!requestPayload.minUnits && !params.filters?.minUnits) {
+        requestPayload.minUnits = 5 // Lower minimum for niche products
+      }
+      if (!requestPayload.maxUnits && !params.filters?.maxUnits) {
+        requestPayload.maxUnits = 1000 // Max units to avoid super competitive products
+      }
+      if (!requestPayload.minRating && !params.filters?.minRating) {
+        requestPayload.minRating = 3.0 // Lower rating threshold for niche products
+      }
+      if (!requestPayload.maxSellers && !params.filters?.maxSellers) {
+        requestPayload.maxSellers = 50 // Limit competition level
+      }
+      
+      // Add ordering to find less competitive products
+      if (!requestPayload.order) {
+        requestPayload.order = {
+          field: "units",
+          desc: false // Sort by lowest sales first to find opportunities
+        }
+      }
+      
+      const response = await axios.post(`${this.baseURL}/v1/product/research`, requestPayload, {
+        timeout: 45000,
+        headers: {
+          'secret-key': this.apiKey,
+          'Content-Type': 'application/json;charset=utf-8',
+          'User-Agent': 'SellerSprite-Dashboard/1.0'
+        }
+      })
+
+
+      // SellerSprite API returns data in response.data.data.items format
+      const items = response.data.data.items || []
+      
+      // Check if results are relevant to the search keyword (temporarily disabled for debugging)
+      // if (items.length > 0 && !this.isSearchRelevant(params.keyword, items)) {
+      //   console.warn('⚠️  SellerSprite API returned irrelevant results for keyword:', params.keyword)
+      //   console.warn('⚠️  This is a limitation of SellerSprite\'s search algorithm for niche keywords')
+      //   // Return empty results if search is not relevant
+      //   return []
+      // }
+      
+      const products = items.map((item: any): ProductData => ({
+        asin: item.asin,
+        title: item.title,
+        brand: item.brand,
+        price: item.price,
+        bsr: item.bsr,
+        reviews: item.ratings,
+        rating: item.rating,
+        category: item.nodeLabelPath,
+        imageUrl: item.imageUrl,
+        // Include sales data from product research response
+        monthlyUnits: item.units || 0,
+        monthlyRevenue: item.revenue || 0,
+        monthlyProfit: item.profit || 0,
+        createdAt: new Date().toISOString()
+      }))
+
+      await cache.set(cacheKey, products, CACHE_TTL.PRODUCT_RESEARCH)
+      return products
+      
+    } catch (error) {
+      console.error('SellerSprite Product Research API error:', error)
+      throw new Error('Failed to fetch product research data')
+    }
+  }
+
+  // Sales Prediction - Profit calculation endpoint
+  async salesPrediction(asin: string): Promise<SalesPrediction> {
+    const cached = await cacheHelpers.getSalesData(asin)
+    if (cached) return cached as SalesPrediction
+
+    try {
+      const response = await axios.get(`${this.baseURL}/v1/sales/prediction/asin`, {
+        params: {
+          asin,
+          marketplace: 'US'
+        },
+        timeout: 45000,
+        headers: {
+          'secret-key': this.apiKey,
+          'User-Agent': 'SellerSprite-Dashboard/1.0'
+        }
+      })
+
+      console.log('SellerSprite Sales Response:', JSON.stringify(response.data, null, 2))
+      
+      if (response.data.code !== 'OK') {
+        // Log the error but don't throw - some ASINs may not have prediction data
+        console.warn(`SellerSprite Sales Prediction unavailable for ASIN ${asin}:`, response.data.message)
+        return null // Return null to indicate no prediction available
+      }
+      
+      const data = response.data.data
+      const dailyItems = data.dailyItemList || []
+      
+      // Calculate monthly averages from daily data
+      const recentDays = dailyItems.slice(-30) // Last 30 days
+      const validDays = recentDays.filter(day => day.sales > 0)
+      
+      const totalSales = validDays.reduce((sum, day) => sum + day.sales, 0)
+      const totalRevenue = validDays.reduce((sum, day) => sum + day.amount, 0)
+      const avgPrice = validDays.length > 0 ? totalRevenue / totalSales : data.asinDetail?.price || 0
+      
+      // Estimate monthly values
+      const monthlySales = Math.round(totalSales * (30 / Math.max(validDays.length, 1)))
+      const monthlyRevenue = Math.round(totalRevenue * (30 / Math.max(validDays.length, 1)))
+      
+      // Basic margin estimation (this would need more sophisticated calculation)
+      const estimatedCOGS = avgPrice * 0.4 // Assume 40% COGS
+      const estimatedFBA = avgPrice * 0.15 // Assume 15% FBA fees
+      const margin = avgPrice > 0 ? (avgPrice - estimatedCOGS - estimatedFBA) / avgPrice : 0
+      const monthlyProfit = monthlyRevenue * Math.max(margin, 0)
+      
+      const salesData: SalesPrediction = {
+        monthlyProfit: Math.round(monthlyProfit),
+        monthlyRevenue: monthlyRevenue,
+        monthlySales: monthlySales,
+        margin: Math.round(margin * 100) / 100,
+        ppu: avgPrice > 0 ? Math.round((margin * avgPrice * 100)) / 100 : 0,
+        fbaCost: Math.round(estimatedFBA * 100) / 100,
+        cogs: Math.round(estimatedCOGS * 100) / 100
+      }
+
+      await cacheHelpers.setSalesData(asin, salesData)
+      return salesData
+      
+    } catch (error) {
+      console.error('SellerSprite Sales Prediction API error:', error)
+      throw new Error('Failed to fetch sales prediction data')
+    }
+  }
+
+  // Reverse ASIN - Keyword intelligence endpoint
+  async reverseASIN(asin: string, page: number = 1, size: number = 200): Promise<KeywordData[]> {
+    const cacheKey = cache.generateKey('reverse_asin', { asin, page, size })
+    const cached = await cache.get<KeywordData[]>(cacheKey)
+    if (cached) return cached
+
+    try {
+      const response = await axios.post(`${this.baseURL}/v1/traffic/keyword`, {
+        asin,
+        marketplace: 'US',
+        page,
+        size
+      }, {
+        timeout: 45000,
+        headers: {
+          'secret-key': this.apiKey,
+          'Content-Type': 'application/json;charset=utf-8',
+          'User-Agent': 'SellerSprite-Dashboard/1.0'
+        }
+      })
+
+      // SellerSprite API returns data in response.data.data.items format
+      const items = response.data.data.items || []
+      const keywords = items.map((item: any): KeywordData => ({
+        keyword: item.keyword,
+        searchVolume: item.searches,
+        rankingPosition: item.rankPosition?.position || 0,
+        trafficPercentage: item.purchaseRate * 100, // Convert to percentage
+        cpc: item.bid,
+        competitionScore: 0 // Will be calculated based on other factors
+      }))
+
+      await cache.set(cacheKey, keywords, CACHE_TTL.REVERSE_ASIN)
+      return keywords
+      
+    } catch (error) {
+      console.error('SellerSprite Reverse ASIN API error:', error)
+      throw new Error('Failed to fetch keyword data')
+    }
+  }
+
+  // Keyword Mining - Market opportunity endpoint
+  async keywordMining(keyword: string, options: {
+    minSearch?: number
+    maxSupplyDemandRatio?: number
+    page?: number
+    size?: number
+  } = {}): Promise<OpportunityData[]> {
+    const params = {
+      keyword,
+      minSearch: options.minSearch || 1000,
+      maxSupplyDemandRatio: options.maxSupplyDemandRatio || 10,
+      page: options.page || 1,
+      size: options.size || 50,
+      marketplace: 'US',
+      amazonChoice: false
+    }
+
+    const cacheKey = cache.generateKey('keyword_mining', params)
+    const cached = await cache.get<OpportunityData[]>(cacheKey)
+    if (cached) return cached
+
+    try {
+      const response = await axios.post(`${this.baseURL}/v1/keyword/miner`, params, {
+        timeout: 45000,
+        headers: {
+          'secret-key': this.apiKey,
+          'Content-Type': 'application/json;charset=utf-8',
+          'User-Agent': 'SellerSprite-Dashboard/1.0'
+        }
+      })
+
+      console.log('SellerSprite Keyword Mining Response:', response.data)
+      
+      // SellerSprite API returns data in response.data.data.items format
+      const items = response.data.data.items || []
+      if (!Array.isArray(items)) {
+        console.error('Keyword mining response items is not an array:', items)
+        return []
+      }
+
+      const opportunities = items.map((item: any): OpportunityData => ({
+        keyword: item.keyword,
+        searchVolume: item.searches,
+        competitionScore: item.competitionScore || 0,
+        supplyDemandRatio: item.supplyDemandRatio,
+        avgCpc: item.avgCpc,
+        growthTrend: item.growthTrend || 'stable'
+      }))
+
+      await cache.set(cacheKey, opportunities, CACHE_TTL.KEYWORD_MINING)
+      return opportunities
+      
+    } catch (error) {
+      console.error('SellerSprite Keyword Mining API error:', error)
+      throw new Error('Failed to fetch keyword opportunities')
+    }
+  }
+
+  // Utility method to get comprehensive product data
+  async getProductAnalysis(asin: string): Promise<{
+    product: ProductData | null
+    sales: SalesPrediction | null
+    keywords: KeywordData[]
+    opportunities: OpportunityData[]
+  }> {
+    try {
+      // Get cached product data first
+      const cachedProduct = await cacheHelpers.getProductData(asin)
+      const cachedSales = await cacheHelpers.getSalesData(asin)
+      const cachedKeywords = await cacheHelpers.getKeywordsData(asin)
+
+      // Fetch missing data in parallel
+      const [salesData, keywordData] = await Promise.all([
+        cachedSales || this.salesPrediction(asin),
+        cachedKeywords || this.reverseASIN(asin)
+      ])
+
+      // Get opportunities based on top keywords
+      const topKeywords = (keywordData as KeywordData[]).slice(0, 5)
+      const opportunities = await Promise.all(
+        topKeywords.map(kw => this.keywordMining(kw.keyword, { minSearches: 500 }))
+      )
+
+      return {
+        product: cachedProduct as ProductData | null,
+        sales: salesData as SalesPrediction | null,
+        keywords: keywordData as KeywordData[],
+        opportunities: opportunities.flat()
+      }
+      
+    } catch (error) {
+      console.error('Error fetching comprehensive product analysis:', error)
+      throw new Error('Failed to analyze product')
+    }
+  }
+
+  // Rate limiting helper
+  private async rateLimitedRequest<T>(
+    requestFn: () => Promise<T>,
+    retries: number = 3
+  ): Promise<T> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await requestFn()
+      } catch (error: any) {
+        if (error.response?.status === 429 && i < retries - 1) {
+          // Rate limited, wait and retry
+          const delay = Math.pow(2, i) * 1000 // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        throw error
+      }
+    }
+    throw new Error('Max retries exceeded')
+  }
+}
+
+// Export singleton instance
+export const sellerSpriteClient = new SellerSpriteClient(
+  process.env.SELLERSPRITE_API_KEY || ''
+)
+
+// Export utility functions
+export const sellerSpriteUtils = {
+  // Calculate average CPC from keyword data
+  calculateAvgCPC: (keywords: KeywordData[]): number => {
+    if (!keywords.length) return 0
+    const totalCPC = keywords.reduce((sum, kw) => sum + kw.cpc, 0)
+    return totalCPC / keywords.length
+  },
+
+  // Get top traffic keywords
+  getTopTrafficKeywords: (keywords: KeywordData[], limit: number = 10): KeywordData[] => {
+    return keywords
+      .sort((a, b) => (b.trafficPercentage || 0) - (a.trafficPercentage || 0))
+      .slice(0, limit)
+  },
+
+  // Calculate competition score
+  calculateCompetitionScore: (keywords: KeywordData[]): number => {
+    if (!keywords.length) return 0
+    
+    const avgCPC = sellerSpriteUtils.calculateAvgCPC(keywords)
+    const avgSearchVolume = keywords.reduce((sum, kw) => sum + kw.searchVolume, 0) / keywords.length
+    
+    // Higher CPC and search volume = higher competition
+    return Math.min(10, (avgCPC * 2) + (avgSearchVolume / 10000))
+  }
+}
