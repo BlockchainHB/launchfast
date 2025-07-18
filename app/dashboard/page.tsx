@@ -37,6 +37,8 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Update document title
+    document.title = "Dashboard - LaunchFast"
     fetchProducts()
   }, [])
 

@@ -1,6 +1,12 @@
 import { Sparkles } from "lucide-react"
 import Link from "next/link"
 import { LoginForm } from "@/components/login-form"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Login - LaunchFast",
+  description: "Sign in to your LaunchFast account - Amazon Product Intelligence Dashboard"
+}
 
 export default function LoginPage() {
   return (

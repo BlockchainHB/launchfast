@@ -1,4 +1,4 @@
-# SellerSprite Dashboard - Claude Code Project Guide
+# LaunchFast - Claude Code Project Guide
 
 ## Project Overview
 Amazon product sourcing dashboard using SellerSprite API + OpenAI GPT-4 for automated A10-F1 scoring system.

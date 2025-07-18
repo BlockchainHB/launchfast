@@ -1,6 +1,12 @@
 import { Sparkles } from "lucide-react"
 import Link from "next/link"
 import { SignupForm } from "@/components/signup-form"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Sign Up - LaunchFast",
+  description: "Create your LaunchFast account - Amazon Product Intelligence Dashboard"
+}
 
 export default function SignupPage() {
   return (
