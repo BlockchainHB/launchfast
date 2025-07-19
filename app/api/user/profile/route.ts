@@ -1,16 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
   try {
-    // Use your user ID for testing
-    const testUserId = '0e955998-11ad-41e6-a270-989ab1c86788'
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    const userId = session.user.id
 
     // Get user profile from user_profiles table
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
-      .eq('id', testUserId)
+      .eq('id', userId)
       .single()
 
     if (profileError) {

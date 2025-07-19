@@ -1,16 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
   try {
-    // Use your user ID for testing
-    const testUserId = '0e955998-11ad-41e6-a270-989ab1c86788'
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    const userId = session.user.id
 
     // Get aggregated stats from user's products
     const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
       .select('grade, monthly_revenue, profit_estimate, created_at')
-      .eq('user_id', testUserId)
+      .eq('user_id', userId)
 
     if (productsError) {
       throw productsError

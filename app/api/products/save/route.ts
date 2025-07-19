@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { extractMarketKeywords } from '@/lib/market-calculations'
 import { Logger } from '@/lib/logger'
+import { createServerClient } from '@supabase/ssr'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,8 +15,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use your user ID for testing
-    const testUserId = '0e955998-11ad-41e6-a270-989ab1c86788'
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    const userId = session.user.id
 
     // Check if supabaseAdmin is configured
     if (!supabaseAdmin) {
@@ -35,7 +57,7 @@ export async function POST(request: NextRequest) {
       console.log('Saving market analysis for keyword:', marketAnalysis.keyword)
       
       const marketPayload = {
-        user_id: testUserId,
+        user_id: userId,
         keyword: marketAnalysis.keyword,
         search_filters: marketAnalysis.search_filters || {},
         
@@ -87,7 +109,7 @@ export async function POST(request: NextRequest) {
         Logger.dev.trace(`Processing product: ${product.asin}`)
         // Insert/update product with user_id
         const productPayload = {
-          user_id: testUserId,
+          user_id: userId,
           asin: product.asin,
           title: product.title,
           brand: product.brand || 'Unknown',
@@ -238,8 +260,29 @@ export async function POST(request: NextRequest) {
 // GET method to fetch user's saved products
 export async function GET(request: NextRequest) {
   try {
-    // Use your user ID for testing
-    const testUserId = '0e955998-11ad-41e6-a270-989ab1c86788'
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    const userId = session.user.id
 
     // Fetch user's products with keywords and AI analysis joined
     const { data: products, error: productsError } = await supabaseAdmin
@@ -266,7 +309,7 @@ export async function GET(request: NextRequest) {
           risk_factors
         )
       `)
-      .eq('user_id', testUserId)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
     if (productsError) {
