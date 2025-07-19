@@ -148,20 +148,14 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <a href="#">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Launch Fast</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="p-4 pb-2">
+        <div className="flex items-center space-x-2">
+          <img src="/favicon.svg" alt="Launch Fast" className="h-8 w-8 flex-shrink-0" />
+          <div className="flex flex-col min-w-0">
+            <span className="text-lg font-bold text-foreground">Launch Fast</span>
+            <span className="text-xs text-muted-foreground -mt-1">Built by <span className="text-primary">LegacyX FBA</span></span>
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} onDataRefresh={onDataRefresh} />

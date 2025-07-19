@@ -78,7 +78,8 @@ export default function WaitlistPage() {
   return (
     <>
       <Navbar />
-      <main className="relative flex min-h-screen w-full items-center justify-center overflow-hidden xl:h-screen no-select pt-24">
+      <div className="h-16 sm:h-18"></div> {/* Spacer for fixed navbar */}
+      <main className="relative flex min-h-[calc(100vh-4rem)] sm:min-h-[calc(100vh-4.5rem)] w-full items-center justify-center overflow-hidden no-select">
         <Spotlight />
 
       <Particles
@@ -89,7 +90,7 @@ export default function WaitlistPage() {
         color={color}
       />
 
-      <div className="relative z-[100] mx-auto max-w-4xl px-6 py-16 text-center sm:px-8 lg:px-12 lg:py-20">
+      <div className="relative z-10 mx-auto max-w-4xl px-6 py-8 sm:py-16 text-center sm:px-8 lg:px-12 lg:py-20">
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

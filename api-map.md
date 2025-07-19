@@ -2,6 +2,7 @@
 
 ## API Endpoints Overview
 
+#
 ### 1. Product Research API
 **Endpoint:** `POST /api/products/research`
 **Purpose:** Main product discovery and analysis workflow

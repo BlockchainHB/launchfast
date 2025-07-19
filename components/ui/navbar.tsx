@@ -6,9 +6,9 @@ import Link from 'next/link'
 
 export default function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-md border-b border-border/20">
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-background/80 sm:bg-background/60 backdrop-blur-md border-b border-border/20 shadow-sm">
       <div className="container mx-auto px-6 lg:px-8">
-        <div className="flex h-18 items-center justify-between">
+        <div className="flex h-16 sm:h-18 items-center justify-between">
           {/* Logo/Brand */}
           <div className="flex items-center space-x-2">
             <img src="/favicon.svg" alt="LegacyX FBA" className="h-8 w-8" />

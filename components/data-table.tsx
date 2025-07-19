@@ -77,209 +77,306 @@ import {
 import { assessProductRisk, getRiskTooltip } from "@/lib/risk-assessment"
 
 const columns: ColumnDef<EnhancedProduct>[] = [
+  // 1. Select + Product (Combined)
   {
-    id: "select",
+    id: "select-product",
     header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
+      <div className="flex items-center space-x-4">
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+        <div className="text-xs font-medium">Product</div>
+      </div>
     ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-    size: 40,
-  },
-  {
-    accessorKey: "title",
-    header: "Product",
     cell: ({ row }) => {
       const product = row.original
       return (
-        <div className="flex items-center space-x-3 min-w-[300px]">
-          {product.images && product.images[0] && (
-            <img 
-              src={product.images[0]} 
-              alt={product.title}
-              className="w-12 h-12 object-cover rounded-md border"
-            />
-          )}
-          <div className="flex flex-col space-y-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="font-medium text-sm text-foreground truncate max-w-[200px]">
-                    {product.title}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[300px]">
-                  <p>{product.title}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-muted-foreground">{product.asin}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-4 p-0 text-muted-foreground hover:text-primary"
-                onClick={() => window.open(`https://amazon.com/dp/${product.asin}`, '_blank')}
-              >
-                <IconExternalLink className="h-3 w-3" />
-              </Button>
-            </div>
-            {product.brand && (
-              <span className="text-xs text-muted-foreground">{product.brand}</span>
+        <div className="flex items-center space-x-4">
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+          <div className="flex items-center space-x-3 min-w-[300px]">
+            {product.images && product.images[0] && (
+              <img 
+                src={product.images[0]} 
+                alt={product.title}
+                className="w-12 h-12 object-cover rounded-md border"
+              />
             )}
+            <div className="flex flex-col space-y-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="font-medium text-sm text-foreground truncate max-w-[200px]">
+                      {product.title}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <p>{product.title}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-muted-foreground">{product.asin}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 p-0 text-muted-foreground hover:text-primary"
+                  onClick={() => window.open(`https://amazon.com/dp/${product.asin}`, '_blank')}
+                >
+                  <IconExternalLink className="h-3 w-3" />
+                </Button>
+              </div>
+              {product.brand && (
+                <span className="text-xs text-muted-foreground">{product.brand}</span>
+              )}
+            </div>
           </div>
         </div>
       )
     },
     enableHiding: false,
+    enableSorting: false,
+    meta: {
+      sticky: 'left'
+    }
   },
+  // 3. Grade
   {
     accessorKey: "grade",
-    header: "Grade",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Grade</div>
+    ),
     cell: ({ row }) => {
       const riskAssessment = assessProductRisk(row.original)
-      const riskTooltip = getRiskTooltip(row.original)
       
       return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <GradeBadge 
-                grade={row.original.grade}
-                isRisky={riskAssessment.isRisky}
-                hasWarnings={riskAssessment.hasWarnings}
-              />
-            </TooltipTrigger>
-            <TooltipContent>
-              <div className="max-w-xs">
-                <p className="font-medium">{row.original.grade} Grade</p>
-                {(riskAssessment.isRisky || riskAssessment.hasWarnings) && (
-                  <p className="text-sm text-muted-foreground mt-1">{riskTooltip}</p>
-                )}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="flex justify-center">
+          <GradeBadge 
+            grade={row.original.grade}
+            isRisky={riskAssessment.isRisky}
+            hasWarnings={riskAssessment.hasWarnings}
+          />
+        </div>
       )
     },
     size: 80,
   },
+  // 4. Consistency
   {
-    accessorKey: "price",
-    header: "Price",
-    cell: ({ row }) => (
-      <span className={getPriceColor(row.original.price || 0)}>
-        ${row.original.price?.toFixed(2) || '0.00'}
-      </span>
+    accessorKey: "aiAnalysis.consistencyRating",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Consistency</div>
     ),
-    size: 80,
+    cell: ({ row }) => (
+      <div className="flex justify-center">
+        <Badge 
+          variant="outline" 
+          className={`text-xs ${getConsistencyColor(row.original.aiAnalysis?.consistencyRating || 'Unknown')}`}
+        >
+          {row.original.aiAnalysis?.consistencyRating || 'Unknown'}
+        </Badge>
+      </div>
+    ),
+    size: 100,
   },
+  // 5. Risk Type
+  {
+    accessorKey: "aiAnalysis.riskClassification",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Risk</div>
+    ),
+    cell: ({ row }) => (
+      <div className="flex justify-center">
+        <Badge 
+          variant="outline" 
+          className={`text-xs ${getRiskColor(row.original.aiAnalysis?.riskClassification || 'Unknown')}`}
+        >
+          {row.original.aiAnalysis?.riskClassification || 'Unknown'}
+        </Badge>
+      </div>
+    ),
+    size: 100,
+  },
+  // 6. Daily Revenue
+  {
+    accessorKey: "calculatedMetrics.dailyRevenue",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Daily Rev</div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">
+        <span className={getDailyRevenueColor(row.original.calculatedMetrics?.dailyRevenue || 0)}>
+          ${row.original.calculatedMetrics?.dailyRevenue?.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || '0'}
+        </span>
+      </div>
+    ),
+    size: 100,
+  },
+  // 7. Monthly Revenue
   {
     accessorKey: "salesData.monthlyRevenue",
-    header: "Monthly Revenue",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Monthly Rev</div>
+    ),
     cell: ({ row }) => (
-      <span className={getMonthlyRevenueColor(row.original.salesData?.monthlyRevenue || 0)}>
-        ${row.original.salesData?.monthlyRevenue?.toLocaleString() || '0'}
-      </span>
+      <div className="text-center">
+        <span className={getMonthlyRevenueColor(row.original.salesData?.monthlyRevenue || 0)}>
+          ${row.original.salesData?.monthlyRevenue?.toLocaleString() || '0'}
+        </span>
+      </div>
     ),
     size: 120,
   },
-  {
-    accessorKey: "calculatedMetrics.dailyRevenue",
-    header: "Daily Revenue",
-    cell: ({ row }) => (
-      <span className={getDailyRevenueColor(row.original.calculatedMetrics?.dailyRevenue || 0)}>
-        ${row.original.calculatedMetrics?.dailyRevenue?.toFixed(2) || '0.00'}
-      </span>
-    ),
-    size: 100,
-  },
-  {
-    accessorKey: "aiAnalysis.consistencyRating",
-    header: "Consistency",
-    cell: ({ row }) => (
-      <Badge 
-        variant="outline" 
-        className={`text-xs ${getConsistencyColor(row.original.aiAnalysis?.consistencyRating || 'Unknown')}`}
-      >
-        {row.original.aiAnalysis?.consistencyRating || 'Unknown'}
-      </Badge>
-    ),
-    size: 100,
-  },
-  {
-    accessorKey: "aiAnalysis.riskClassification",
-    header: "Risk Type",
-    cell: ({ row }) => (
-      <Badge 
-        variant="outline" 
-        className={`text-xs ${getRiskColor(row.original.aiAnalysis?.riskClassification || 'Unknown')}`}
-      >
-        {row.original.aiAnalysis?.riskClassification || 'Unknown'}
-      </Badge>
-    ),
-    size: 100,
-  },
+  // 8. Sales Volume
   {
     accessorKey: "salesData.monthlySales",
-    header: "Sales Volume",
-    cell: ({ row }) => (
-      <span className="text-sm">
-        {row.original.salesData?.monthlySales?.toLocaleString() || '0'}/mo
-      </span>
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Sales Vol</div>
     ),
+    cell: ({ row }) => {
+      const value = row.original.salesData?.monthlySales || 0
+      const formatCompact = (num: number) => {
+        if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
+        if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}K`
+        return num.toString()
+      }
+      return (
+        <div className="text-center">
+          <span className="text-sm">
+            {formatCompact(value)}/mo
+          </span>
+        </div>
+      )
+    },
     size: 100,
   },
+  // 9. CPC
   {
     accessorKey: "keywords",
-    header: "CPC",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">CPC</div>
+    ),
     cell: ({ row }) => {
       const keywords = row.original.keywords || []
       const avgCpc = keywords.length > 0
         ? keywords.reduce((sum, kw) => sum + (kw?.cpc || 0), 0) / keywords.length
         : 0
       return (
-        <span className={getCPCColor(avgCpc)}>
-          ${avgCpc.toFixed(2)}
-        </span>
+        <div className="text-center">
+          <span className={getCPCColor(avgCpc)}>
+            ${avgCpc.toFixed(2)}
+          </span>
+        </div>
       )
     },
     size: 80,
   },
+  // 10. COG
   {
-    accessorKey: "calculatedMetrics.reviewCategory",
-    header: "Review Count",
+    accessorKey: "salesData.cogs",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">COG</div>
+    ),
     cell: ({ row }) => (
-      <div className="flex flex-col">
-        <span className={`text-sm font-medium ${getReviewCountColor(row.original.reviews || 0)}`}>
-          {row.original.reviews?.toLocaleString() || '0'}
+      <div className="text-center">
+        <span className="metric-currency">
+          ${row.original.salesData?.cogs?.toFixed(2) || ((row.original.price || 0) * 0.3).toFixed(2)}
         </span>
-        <span className="text-xs text-muted-foreground">
-          {row.original.calculatedMetrics?.reviewCategory || 'N/A'}
+      </div>
+    ),
+    size: 80,
+  },
+  // 11. Fulfillment Fees
+  {
+    accessorKey: "calculatedMetrics.fulfillmentFees",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">FBA Fees</div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">
+        <span className={getFulfillmentFeesColor(row.original.calculatedMetrics?.fulfillmentFees || 0)}>
+          ${row.original.calculatedMetrics?.fulfillmentFees?.toFixed(2) || '0.00'}
+        </span>
+      </div>
+    ),
+    size: 120,
+  },
+  // 12. Profit Margin
+  {
+    accessorKey: "salesData.margin",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Margin</div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">
+        <span className={getProfitMarginColor((row.original.salesData?.margin || 0) * 100)}>
+          {((row.original.salesData?.margin || 0) * 100).toFixed(1)}%
         </span>
       </div>
     ),
     size: 100,
   },
+  // 13. 20 Click Launch Budget
+  {
+    accessorKey: "calculatedMetrics.launchBudget",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Launch Budget</div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">
+        <span className="metric-currency">
+          ${row.original.calculatedMetrics?.launchBudget?.toFixed(2) || '0.00'}
+        </span>
+      </div>
+    ),
+    size: 140,
+  },
+  // 14. Profit/Unit After Launch
+  {
+    accessorKey: "calculatedMetrics.profitPerUnitAfterLaunch",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Profit/Unit</div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">
+        <span className="metric-currency">
+          ${row.original.calculatedMetrics?.profitPerUnitAfterLaunch?.toFixed(2) || '0.00'}
+        </span>
+      </div>
+    ),
+    size: 150,
+  },
+  // 15. Review Count
+  {
+    accessorKey: "calculatedMetrics.reviewCategory",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Reviews</div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">
+        <span className={`text-sm font-medium ${getReviewCountColor(row.original.reviews || 0)}`}>
+          {row.original.reviews?.toLocaleString() || '0'}
+        </span>
+      </div>
+    ),
+    size: 100,
+  },
+  // 16. Rating
   {
     accessorKey: "rating",
-    header: "Rating",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Rating</div>
+    ),
     cell: ({ row }) => (
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center justify-center space-x-1">
         <span className={`text-sm ${getRatingColor(row.original.rating || 0)}`}>
           {row.original.rating?.toFixed(1) || '0.0'}
         </span>
@@ -288,112 +385,51 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     ),
     size: 80,
   },
+  // 17. Variations
   {
     accessorKey: "calculatedMetrics.variations",
-    header: "Variations",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Variations</div>
+    ),
     cell: ({ row }) => (
-      <span className="text-sm">
-        {row.original.calculatedMetrics?.variations || 1}
-      </span>
+      <div className="text-center">
+        <span className="text-sm">
+          {row.original.calculatedMetrics?.variations || 1}
+        </span>
+      </div>
     ),
     size: 80,
   },
+  // 18. Dimensions
   {
     accessorKey: "dimensions",
-    header: "Dimensions",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Dimensions</div>
+    ),
     cell: ({ row }) => (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="text-xs text-muted-foreground cursor-help">
-              {formatDimensions(row.original.dimensions)}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{formatDimensions(row.original.dimensions)}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <div className="text-center">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-xs text-muted-foreground cursor-help">
+                {formatDimensions(row.original.dimensions)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{formatDimensions(row.original.dimensions)}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
     ),
     size: 120,
   },
-  {
-    accessorKey: "dimensions.weight",
-    header: "Weight",
-    cell: ({ row }) => {
-      const weight = row.original.dimensions?.weight
-      const unit = row.original.dimensions?.weightUnit || 'lbs'
-      return (
-        <span className="text-sm">
-          {weight ? `${weight}${unit}` : 'Unknown'}
-        </span>
-      )
-    },
-    size: 80,
-  },
-  {
-    accessorKey: "calculatedMetrics.fulfillmentFees",
-    header: "Fulfillment Fees",
-    cell: ({ row }) => (
-      <span className={getFulfillmentFeesColor(row.original.calculatedMetrics?.fulfillmentFees || 0)}>
-        ${row.original.calculatedMetrics?.fulfillmentFees?.toFixed(2) || '0.00'}
-      </span>
-    ),
-    size: 120,
-  },
-  {
-    accessorKey: "salesData.cogs",
-    header: "COG",
-    cell: ({ row }) => (
-      <span className="metric-currency">
-        ${row.original.salesData?.cogs?.toFixed(2) || ((row.original.price || 0) * 0.3).toFixed(2)}
-      </span>
-    ),
-    size: 80,
-  },
-  {
-    accessorKey: "salesData.margin",
-    header: "Profit Margin",
-    cell: ({ row }) => (
-      <span className={getProfitMarginColor((row.original.salesData?.margin || 0) * 100)}>
-        {((row.original.salesData?.margin || 0) * 100).toFixed(1)}%
-      </span>
-    ),
-    size: 100,
-  },
-  {
-    accessorKey: "calculatedMetrics.launchBudget",
-    header: "20 Click Launch Budget",
-    cell: ({ row }) => (
-      <span className="metric-currency">
-        ${row.original.calculatedMetrics?.launchBudget?.toFixed(2) || '0.00'}
-      </span>
-    ),
-    size: 140,
-  },
-  {
-    accessorKey: "calculatedMetrics.profitPerUnitAfterLaunch",
-    header: "Profit/Unit After Launch",
-    cell: ({ row }) => (
-      <span className="metric-currency">
-        ${row.original.calculatedMetrics?.profitPerUnitAfterLaunch?.toFixed(2) || '0.00'}
-      </span>
-    ),
-    size: 150,
-  },
-  {
-    accessorKey: "createdAt",
-    header: "Date",
-    cell: ({ row }) => (
-      <span className="text-xs text-muted-foreground">
-        {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : 'N/A'}
-      </span>
-    ),
-    size: 80,
-  },
+  // 19. AI Analysis
   {
     accessorKey: "competitiveIntelligence",
-    header: "AI Analysis",
+    header: ({ column }) => (
+      <div className="text-xs font-medium">AI Analysis</div>
+    ),
     cell: ({ row }) => (
       <TooltipProvider>
         <Tooltip>
@@ -409,6 +445,21 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       </TooltipProvider>
     ),
     size: 150,
+  },
+  // 20. Date
+  {
+    accessorKey: "createdAt",
+    header: ({ column }) => (
+      <div className="text-center text-xs font-medium">Date</div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">
+        <span className="text-xs text-muted-foreground">
+          {row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString() : 'N/A'}
+        </span>
+      </div>
+    ),
+    size: 80,
   },
 ]
 
@@ -512,13 +563,20 @@ export function DataTable({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="bg-muted/50">
-                {headerGroup.headers.map((header) => {
+                {headerGroup.headers.map((header, index) => {
+                  const isSticky = header.column.columnDef.meta?.sticky === 'left'
+                  
                   return (
                     <TableHead 
                       key={header.id} 
                       colSpan={header.colSpan}
-                      style={{ width: header.getSize() }}
-                      className="font-medium text-left px-4 py-3 text-sm border-b whitespace-nowrap"
+                      style={{ 
+                        width: header.getSize(),
+                        left: isSticky ? '0px' : undefined
+                      }}
+                      className={`font-medium text-left px-4 py-3 text-sm border-b whitespace-nowrap ${
+                        isSticky ? 'sticky z-30 bg-muted backdrop-blur-sm shadow-lg border-r' : ''
+                      }`}
                     >
                       {header.isPlaceholder
                         ? null
@@ -540,15 +598,24 @@ export function DataTable({
                   data-state={row.getIsSelected() && "selected"}
                   className="hover:bg-muted/30 transition-colors"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell 
-                      key={cell.id}
-                      style={{ width: cell.column.getSize() }}
-                      className="px-4 py-3 text-sm border-b whitespace-nowrap"
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell, index) => {
+                    const isSticky = cell.column.columnDef.meta?.sticky === 'left'
+                    
+                    return (
+                      <TableCell 
+                        key={cell.id}
+                        style={{ 
+                          width: cell.column.getSize(),
+                          left: isSticky ? '0px' : undefined
+                        }}
+                        className={`px-4 py-3 text-sm border-b whitespace-nowrap ${
+                          isSticky ? 'sticky z-30 bg-background backdrop-blur-sm shadow-lg border-r' : ''
+                        }`}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    )
+                  })}
                 </TableRow>
               ))
             ) : (
