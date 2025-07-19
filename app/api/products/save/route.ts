@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { extractMarketKeywords } from '@/lib/market-calculations'
+import { Logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
-    const { products } = await request.json()
+    const { products, marketAnalysis } = await request.json()
 
     if (!products || !Array.isArray(products)) {
       return NextResponse.json(
@@ -24,12 +26,65 @@ export async function POST(request: NextRequest) {
     }
 
     const savedProducts = []
+    let savedMarket = null
     
-    console.log('Attempting to save', products.length, 'products for user:', testUserId)
+    Logger.save.start(products.length, !!marketAnalysis)
+    
+    // If market analysis is provided, save market data first
+    if (marketAnalysis) {
+      console.log('Saving market analysis for keyword:', marketAnalysis.keyword)
+      
+      const marketPayload = {
+        user_id: testUserId,
+        keyword: marketAnalysis.keyword,
+        search_filters: marketAnalysis.search_filters || {},
+        
+        // Market Statistics (Averaged) - Ensure proper types
+        avg_price: Math.round(marketAnalysis.avg_price || 0),
+        avg_monthly_sales: Math.round(marketAnalysis.avg_monthly_sales || 0),
+        avg_monthly_revenue: Math.round(marketAnalysis.avg_monthly_revenue || 0),
+        avg_reviews: Math.round(marketAnalysis.avg_reviews || 0),
+        avg_rating: parseFloat((marketAnalysis.avg_rating || 0).toFixed(2)),
+        avg_bsr: Math.round(marketAnalysis.avg_bsr || 0),
+        avg_profit_margin: parseFloat((marketAnalysis.avg_profit_margin || 0).toFixed(4)),
+        avg_cpc: parseFloat((marketAnalysis.avg_cpc || 0).toFixed(2)),
+        avg_daily_revenue: Math.round(marketAnalysis.avg_daily_revenue || 0),
+        avg_launch_budget: Math.round(marketAnalysis.avg_launch_budget || 0),
+        avg_profit_per_unit: parseFloat((marketAnalysis.avg_profit_per_unit || 0).toFixed(2)),
+        
+        // Market-Level Analysis
+        market_grade: marketAnalysis.market_grade,
+        market_consistency_rating: marketAnalysis.market_consistency_rating,
+        market_risk_classification: marketAnalysis.market_risk_classification,
+        total_products_analyzed: marketAnalysis.total_products_analyzed,
+        products_verified: marketAnalysis.products_verified,
+        
+        // Market Intelligence
+        market_competitive_intelligence: marketAnalysis.market_competitive_intelligence,
+        market_trends: marketAnalysis.market_trends || {},
+        opportunity_score: marketAnalysis.opportunity_score,
+        
+        research_date: new Date().toISOString()
+      }
+
+      const { data: marketData, error: marketError } = await supabaseAdmin
+        .from('markets')
+        .insert(marketPayload)
+        .select()
+        .single()
+
+      if (marketError) {
+        console.error('Market save error:', marketError)
+        throw new Error('Failed to save market analysis')
+      }
+
+      savedMarket = marketData
+      Logger.save.marketSaved(marketData.id)
+    }
     
     for (const product of products) {
       try {
-        console.log('Processing product:', product.asin, product.title)
+        Logger.dev.trace(`Processing product: ${product.asin}`)
         // Insert/update product with user_id
         const productPayload = {
           user_id: testUserId,
@@ -52,10 +107,14 @@ export async function POST(request: NextRequest) {
           competitive_intelligence: product.competitiveIntelligence || '',
           apify_source: product.apifySource || false,
           seller_sprite_verified: product.sellerSpriteVerified || false,
-          calculated_metrics: product.calculatedMetrics || {}
+          calculated_metrics: product.calculatedMetrics || {},
+          // Market relationship fields
+          market_id: savedMarket?.id || null,
+          is_market_representative: products.indexOf(product) === 0, // First product is representative
+          analysis_rank: products.indexOf(product) + 1
         }
 
-        console.log('Saving product payload:', JSON.stringify(productPayload, null, 2))
+        Logger.dev.trace(`Saving product: ${product.asin}`)
 
         const { data: productData, error: productError } = await supabaseAdmin
           .from('products')
@@ -68,7 +127,7 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        console.log('Successfully saved product:', product.asin)
+        Logger.save.productSaved(product.asin)
 
         // Insert AI analysis
         if (product.aiAnalysis) {
@@ -132,12 +191,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    // If market was saved, extract and save market keywords
+    if (savedMarket && marketAnalysis) {
+      try {
+        const marketKeywords = extractMarketKeywords(products, savedMarket.id, marketAnalysis.keyword)
+        if (marketKeywords.length > 0) {
+          await supabaseAdmin
+            .from('market_keywords')
+            .insert(marketKeywords)
+          console.log(`Saved ${marketKeywords.length} market keywords`)
+        }
+      } catch (error) {
+        console.warn('Failed to save market keywords:', error)
+        // Continue without failing the entire operation
+      }
+    }
+
+    const response: any = {
       success: true,
-      message: `Successfully saved ${savedProducts.length} products`,
+      message: savedMarket 
+        ? `Successfully saved market analysis and ${savedProducts.length} products`
+        : `Successfully saved ${savedProducts.length} products`,
       count: savedProducts.length,
       products: savedProducts
-    })
+    }
+
+    if (savedMarket) {
+      response.market = savedMarket
+    }
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('Save products API error:', error)
@@ -158,7 +241,7 @@ export async function GET(request: NextRequest) {
     // Use your user ID for testing
     const testUserId = '0e955998-11ad-41e6-a270-989ab1c86788'
 
-    // Fetch user's products with keywords joined
+    // Fetch user's products with keywords and AI analysis joined
     const { data: products, error: productsError } = await supabaseAdmin
       .from('products')
       .select(`
@@ -172,6 +255,15 @@ export async function GET(request: NextRequest) {
             competition_score,
             avg_cpc
           )
+        ),
+        ai_analysis(
+          risk_classification,
+          consistency_rating,
+          estimated_dimensions,
+          estimated_weight,
+          opportunity_score,
+          market_insights,
+          risk_factors
         )
       `)
       .eq('user_id', testUserId)
@@ -206,15 +298,15 @@ export async function GET(request: NextRequest) {
         cogs: product.sales_data?.cogs || 0,
         ...(product.sales_data || {})
       },
-      // Create aiAnalysis from competitive_intelligence and other fields
-      aiAnalysis: product.competitive_intelligence ? {
-        riskClassification: 'Electric', // Default for now
-        consistencyRating: 'Consistent', // Default for now
-        estimatedDimensions: product.dimensions?.length ? `${product.dimensions.length} x ${product.dimensions.width} x ${product.dimensions.height}` : 'Unknown',
-        estimatedWeight: product.dimensions?.weight ? `${product.dimensions.weight}` : 'Unknown',
-        opportunityScore: 7, // Default for now
-        marketInsights: [],
-        riskFactors: []
+      // Create aiAnalysis from actual database data
+      aiAnalysis: product.ai_analysis ? {
+        riskClassification: product.ai_analysis.risk_classification,
+        consistencyRating: product.ai_analysis.consistency_rating,
+        estimatedDimensions: product.ai_analysis.estimated_dimensions,
+        estimatedWeight: product.ai_analysis.estimated_weight,
+        opportunityScore: product.ai_analysis.opportunity_score,
+        marketInsights: product.ai_analysis.market_insights || [],
+        riskFactors: product.ai_analysis.risk_factors || []
       } : null,
       keywords: product.product_keywords?.map(pk => ({
         keyword: pk.keywords?.keyword || '',

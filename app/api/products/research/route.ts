@@ -6,6 +6,7 @@ import { scoreProduct, scoreApifyProduct } from '@/lib/scoring'
 import { supabaseAdmin } from '@/lib/supabase'
 import { cache, CACHE_TTL } from '@/lib/cache'
 import { calculateAllMetrics, formatCompetitiveIntelligence } from '@/lib/calculations'
+import { Logger } from '@/lib/logger'
 import type { SearchParams, ProcessedProduct, KeywordData, ApifyProduct, EnhancedProduct } from '@/types'
 
 export async function POST(request: NextRequest) {
@@ -21,12 +22,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`🚀 Starting new Apify + SellerSprite research for: "${keyword}"`)
+    Logger.research.start(keyword, filters)
 
     // Check cache first
     const cacheKey = cache.generateKey('apify_product_research', { keyword, filters, limit })
     const cached = await cache.get<EnhancedProduct[]>(cacheKey)
     if (cached) {
+      Logger.cache.hit(`research_${keyword}`)
       return NextResponse.json({
         success: true,
         data: cached,
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest) {
         source: 'cache'
       })
     }
+    Logger.cache.miss(`research_${keyword}`)
 
     // Validate API keys
     if (!process.env.APIFY_API_TOKEN) {
@@ -71,7 +74,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    console.log(`✅ Apify found ${apifyProducts.length} relevant products`)
+    Logger.research.apifyFound(apifyProducts.length)
 
     // Score all Apify products using preliminary scoring
     const scoredProducts = apifyProducts.map(product => {
@@ -89,10 +92,7 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b.preliminaryScore - a.preliminaryScore)
       .slice(0, 5)
 
-    console.log(`🏆 Top 5 products selected for SellerSprite verification:`)
-    topProducts.forEach((product, index) => {
-      console.log(`${index + 1}. ${product.asin} - Score: ${product.preliminaryScore} (${product.estimatedGrade})`)
-    })
+    Logger.dev.trace(`Top 5 products selected for verification: ${topProducts.map(p => p.asin).join(', ')}`)
 
     // Phase 2: Parallel SellerSprite Verification for Top 5 🆕
     console.log('🔍 Phase 2: Parallel SellerSprite Verification (Top 5 Only)')
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     // Create parallel verification promises for all top products
     const verificationPromises = topProducts.map(async (apifyProduct) => {
       try {
-        console.log(`🔍 Verifying top product: ${apifyProduct.asin} (Score: ${apifyProduct.preliminaryScore})`)
+        Logger.research.sellerSpriteVerifying(apifyProduct.asin, apifyProduct.preliminaryScore)
 
         // Parallel API calls: SellerSprite sales + keyword data
         const [sellerSpriteSales, keywordData] = await Promise.all([
@@ -116,11 +116,11 @@ export async function POST(request: NextRequest) {
 
         // Skip if no verified sales data (NO FALLBACKS)
         if (!sellerSpriteSales) {
-          console.warn(`⚠️ Skipping ${apifyProduct.asin} - no verified sales data`)
+          Logger.research.sellerSpriteFailed(apifyProduct.asin, 'no verified sales data')
           return null
         }
 
-        console.log(`✅ SellerSprite verified: ${apifyProduct.asin}`)
+        Logger.research.sellerSpriteVerified(apifyProduct.asin)
 
         // Convert Apify product to our format with enhanced data
         const productData = apifyClient.mapToProductData(apifyProduct)
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     // Filter out failed verifications (null results)
     const verifiedProducts = verificationResults.filter((product): product is EnhancedProduct => product !== null)
 
-    console.log(`✅ Successfully verified ${verifiedProducts.length} out of 5 top products`)
+    Logger.dev.trace(`Verified ${verifiedProducts.length} out of 5 products`)
 
     // Sort by final A10-F1 grade score (highest first)
     const finalProducts = verifiedProducts.sort((a, b) => {
@@ -204,6 +204,18 @@ export async function POST(request: NextRequest) {
       const scoreB = getGradeScore(b.grade)
       return scoreB - scoreA
     })
+
+    // Calculate market analysis from final products
+    let marketAnalysis = null
+    if (finalProducts.length > 0) {
+      try {
+        const { createMarketAnalysis } = await import('@/lib/market-calculations')
+        marketAnalysis = createMarketAnalysis(keyword.trim(), finalProducts, filters)
+        Logger.research.marketCalculated(marketAnalysis.market_grade, finalProducts.length)
+      } catch (error) {
+        Logger.error('Market analysis calculation', error)
+      }
+    }
 
     // Cache results
     await cache.set(cacheKey, finalProducts, CACHE_TTL.SEARCH_RESULTS)
@@ -222,11 +234,12 @@ export async function POST(request: NextRequest) {
     }
 
     const processingTime = Date.now() - startTime
-    console.log(`🎉 Research completed in ${processingTime}ms - Found ${finalProducts.length} verified products`)
+    Logger.research.completed(finalProducts.length, processingTime)
 
     return NextResponse.json({
       success: true,
       data: finalProducts,
+      marketAnalysis: marketAnalysis,
       cached: false,
       count: finalProducts.length,
       processing_time: processingTime,

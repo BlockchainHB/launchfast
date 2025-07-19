@@ -80,6 +80,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
   // 1. Select + Product (Combined)
   {
     id: "select-product",
+    accessorFn: (row) => row.title,
     header: ({ table }) => (
       <div className="flex items-center space-x-4">
         <Checkbox
@@ -509,13 +510,13 @@ export function DataTable({
 
 
   return (
-    <div className="w-full">
+    <div className="w-full px-4 lg:px-6">
       <div className="flex items-center justify-between py-4">
         <Input
           placeholder="Filter products..."
-          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+          value={(table.getColumn("select-product")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("title")?.setFilterValue(event.target.value)
+            table.getColumn("select-product")?.setFilterValue(event.target.value)
           }
           className="max-w-sm search-input"
         />

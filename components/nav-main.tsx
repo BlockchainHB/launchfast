@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { IconCirclePlusFilled, IconMail, type Icon } from "@tabler/icons-react"
+import { IconCirclePlusFilled, type Icon } from "@tabler/icons-react"
+import { useRouter, usePathname } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +26,8 @@ export function NavMain({
   onDataRefresh?: () => void
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
 
   return (
     <SidebarGroup>
@@ -39,25 +42,35 @@ export function NavMain({
               <IconCirclePlusFilled />
               <span>Quick Research</span>
             </SidebarMenuButton>
-            <Button
-              size="icon"
-              className="size-8 group-data-[collapsible=icon]:opacity-0"
-              variant="outline"
-            >
-              <IconMail />
-              <span className="sr-only">Inbox</span>
-            </Button>
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {items.map((item) => {
+            const isActive = pathname === item.url || (pathname === '/dashboard' && item.url === '/dashboard')
+            const isDisabled = item.url === '#'
+            
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton 
+                  tooltip={item.title}
+                  onClick={() => {
+                    if (item.url && item.url !== '#') {
+                      router.push(item.url)
+                    }
+                  }}
+                  className={`
+                    ${!isDisabled ? 'cursor-pointer' : 'cursor-default opacity-60'}
+                    ${isActive ? 'bg-primary/10 text-primary border-primary/20 border' : ''}
+                    ${!isDisabled && !isActive ? 'hover:bg-muted/50 hover:text-foreground transition-colors' : ''}
+                  `}
+                  data-active={isActive}
+                >
+                  {item.icon && <item.icon className={isActive ? 'text-primary' : ''} />}
+                  <span>{item.title}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
       

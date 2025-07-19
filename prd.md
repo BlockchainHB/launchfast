@@ -1443,4 +1443,248 @@ const margin = (avgPrice - totalCosts) / avgPrice
 - **A10 Grading**: More accurate product scoring with realistic margin considerations
 - **FBA Calculator**: Dynamic fees based on product dimensions and weight ($2.50-$15+)
 
-This PRD provides complete implementation details for the fully functional SellerSprite dashboard with enhanced Apify integration, parallel processing, comprehensive competitive intelligence capabilities, complete database integration with real data display, enhanced UX with real user authentication and statistics, premium UI/UX design with optimized performance, a comprehensive A10-algorithm-accurate color grading system for precise visual product opportunity assessment, and planned accurate profit margin calculation implementation using real cost data and Amazon referral fee structures across all user touchpoints.
+## Phase 14: Table UX Improvements & Branding Consistency (Week 14) ✅ COMPLETED
+
+### 14.1 Sticky Column Gap Resolution ✅
+- **Problem Identified**: Content bleeding through gaps between Select and Product sticky columns
+- **User Feedback**: "Why can't you make the product and select box 1 column all together instead of 2 columns?"
+- **Solution Implemented**: Combined Select + Product into single sticky column eliminating all gaps
+- **Result**: Seamless sticky column experience with no content bleed-through
+
+### 14.2 Table Column Layout Optimization ✅
+- **Column Centering**: Implemented centered headers and cells for all numeric/badge columns
+- **Title Size Reduction**: Reduced table title sizes for better column spacing
+- **Responsive Headers**: Added text-xs font-medium for consistent header styling
+- **Z-Index Management**: Proper layering with z-30 for sticky columns vs z-20 for regular content
+
+### 14.3 Landing Page Layout Fixes ✅
+- **Navbar Overlap Issue**: Fixed mobile navbar overlapping main content
+- **Solution**: Added calculated spacer div (h-16 sm:h-18) matching navbar height
+- **Layout System**: Implemented min-h-[calc(100vh-4rem)] for proper content height
+- **Z-Index Fix**: Updated navbar to z-[100] and content to z-10 for proper layering
+
+### 14.4 Branding Consistency Implementation ✅
+- **Analysis Completed**: Identified differences between landing page navbar and dashboard sidebar branding
+- **Navbar Branding**: Two-line structure with "Launch Fast" + "Built by LegacyX FBA"
+- **Sidebar Integration**: Implemented matching branding structure in SidebarHeader
+- **Visual Alignment**: Added favicon, consistent spacing, and proper flex layout
+
+### 14.5 Technical Implementation Details ✅
+
+#### Sticky Column Combined Structure
+```typescript
+{
+  id: "select-product",
+  header: ({ table }) => (
+    <div className="flex items-center space-x-4">
+      <Checkbox checked={...} onCheckedChange={...} />
+      <div className="text-xs font-medium">Product</div>
+    </div>
+  ),
+  cell: ({ row }) => (
+    <div className="flex items-center space-x-4">
+      <Checkbox checked={...} onCheckedChange={...} />
+      <div className="flex items-center space-x-3 min-w-[300px]">
+        {/* Product content with image, title, ASIN, brand */}
+      </div>
+    </div>
+  ),
+  meta: { sticky: 'left' }
+}
+```
+
+#### Enhanced Sticky Positioning
+```css
+/* Headers and cells */
+.sticky {
+  position: sticky;
+  left: 0px;
+  z-index: 30;
+  background: var(--background);
+  backdrop-blur: sm;
+  box-shadow: lg;
+  border-right: 1px solid var(--border);
+}
+```
+
+#### Branding Consistency Structure
+```typescript
+// Navbar (Reference)
+<div className="flex items-center space-x-2">
+  <img src="/favicon.svg" alt="LegacyX FBA" className="h-8 w-8" />
+  <div className="flex flex-col">
+    <span className="text-lg font-bold text-foreground">Launch Fast</span>
+    <span className="text-xs text-muted-foreground -mt-1">Built by <span className="text-primary">LegacyX FBA</span></span>
+  </div>
+</div>
+
+// Sidebar (Implemented)
+<SidebarHeader className="p-4 pb-2">
+  <div className="flex items-center space-x-2">
+    <img src="/favicon.svg" alt="Launch Fast" className="h-8 w-8 flex-shrink-0" />
+    <div className="flex flex-col min-w-0">
+      <span className="text-lg font-bold text-foreground">Launch Fast</span>
+      <span className="text-xs text-muted-foreground -mt-1">Built by <span className="text-primary">LegacyX FBA</span></span>
+    </div>
+  </div>
+</SidebarHeader>
+```
+
+### 14.6 Layout System Improvements ✅
+- **Mobile Navbar**: Solid background (bg-background/80) with proper z-index
+- **Responsive Heights**: h-16 sm:h-18 for consistent navbar sizing
+- **Content Spacing**: Calculated spacer divs instead of hardcoded padding
+- **Overflow Management**: Proper backdrop-blur and shadow effects
+
+### 14.7 Column Layout Restructuring ✅
+- **Total Columns**: 20 optimized columns with consistent formatting
+- **Sticky Behavior**: Combined first column stays fixed during horizontal scroll
+- **Content Hierarchy**: Centered numeric data, left-aligned text content
+- **Performance**: Efficient rendering with proper width/z-index management
+
+### Current Status: Enhanced Table UX & Consistent Branding ✅
+- **User Experience**: Eliminated sticky column gaps and content bleeding
+- **Visual Consistency**: Matching branding across landing page and dashboard
+- **Mobile Optimization**: Fixed navbar overlap and responsive layout issues
+- **Performance**: Optimized table rendering with proper positioning and layering
+
+## Phase 15: Market Synthesis & Hierarchical Database Transformation (Week 15) ✅ COMPLETED
+
+### 15.1 Mission Overview ✅ COMPLETED
+- **Current Workflow**: Research Keyword → Find 3-5 Products → Show Top 3 → Save All 3-5 → Display All Products
+- **Target Workflow**: Research Keyword → Find 3-5 Products → Calculate Market Average → Save Market + Products → Display Market (expandable to show products)
+- **Core Transformation**: Shift from product-centric to market-centric analysis with synthesized statistics
+
+### 15.2 Database Schema Implementation ✅ COMPLETED
+- **Markets Table**: 26 columns including averaged statistics, market-level analysis, and metadata
+- **Enhanced Products Table**: Added market_id, is_market_representative, analysis_rank columns
+- **Market Keywords Table**: Comprehensive keyword analysis linked to markets
+- **Performance Optimization**: Strategic indexes for optimal query performance
+- **Security Implementation**: Row Level Security (RLS) policies for data isolation
+
+### 15.3 Workflow Architecture Design ✅ COMPLETED
+
+#### Data Flow Transformation
+```
+Research Modal → Enhanced SSE Stream → Find 3-5 Products → Calculate Market Analysis
+Frontend → Display Market + Individual Products → Save Market + Products → Dashboard
+```
+
+#### Enhanced Endpoints Strategy
+- `GET /api/products/research/stream` - **ENHANCED** with market calculation during research
+- `POST /api/products/save` - **ENHANCED** to save market data + individual products
+- `GET /api/products/save` - **ENHANCED** to return markets with expandable products
+- Real-time market calculation integrated into research workflow
+
+### 15.4 Market Statistics Algorithm ✅ COMPLETED
+- **Simple Averaging Strategy**: Calculate averages of all key metrics from 3-5 verified products
+- **Existing Grading Logic**: Apply current A10-F1 grading system to averaged market statistics
+- **Market Analysis**: Generate consistency ratings and risk classifications based on product variance
+- **No Complex Weighting**: Keep calculations straightforward using simple mathematical averages
+
+### 15.5 Real-Time Progress Enhancement ✅ COMPLETED
+
+#### Professional Display Controller Implementation
+- **Event-Driven Display**: Smart queue system for engaging UX without backend delays
+- **Minimum Display Time**: 2-second minimum per phase for meaningful user engagement
+- **Professional UX**: Similar to Vercel/Linear progress indicators
+- **Performance Optimization**: No artificial delays in backend processing
+
+#### Enhanced Progress Phases
+```
+1. Marketplace Analysis (8 steps) - During actual Apify scrape (~60 seconds)
+2. Product Verification - Individual product images/titles (2 seconds each)  
+3. A10 Grading Algorithm - Professional algorithm display
+4. Complete - Market analysis with expandable product details
+```
+
+### 15.6 Market Calculation System ✅ COMPLETED
+
+#### Market Statistics Calculation
+- **lib/market-calculations.ts**: Complete market averaging and grading utilities
+- **Market Consistency**: Based on grade variance across products
+- **Market Risk**: Most common risk classification from individual products
+- **Opportunity Score**: Calculated from market metrics (1-100 scale)
+- **Market Keywords**: Single entry with averaged CPC and search volume
+
+#### AI Analysis Integration
+- **Representative Product**: Uses first verified product's AI analysis
+- **Market Intelligence**: Synthesized competitive intelligence for market-level insights
+- **Risk Assessment**: Market-level risk classification based on product patterns
+
+### 15.7 Research Modal Enhancement ✅ COMPLETED
+
+#### Market-Centric Display
+- **Market Summary Card**: Primary display showing averaged market statistics
+- **Market Grade**: A10-F1 grading applied to averaged metrics
+- **Consistency Rating**: Visual indicator of market stability
+- **Expandable Products**: "Individual Products Analyzed" section with collapse/expand
+
+#### User Experience Flow
+```
+1. User searches keyword → SSE progress with engaging phases
+2. Results show Market Analysis as primary focus
+3. Individual products shown as expandable secondary detail
+4. Save functionality stores both market and products
+5. Dashboard displays market-centric view with product expansion
+```
+
+### 15.8 Database Integration ✅ COMPLETED
+
+#### Enhanced Save Endpoint
+- **Transaction-Based**: Atomic saves for market + products
+- **Market Keywords**: Single keyword entry with averaged metrics
+- **Product Relationships**: All products linked to market with ranking
+- **Data Integrity**: Proper foreign key relationships and constraints
+
+#### API Enhancement Results
+- **Market Persistence**: Successfully saving market analysis data
+- **Product Linking**: Individual products properly associated with markets
+- **Keyword Accuracy**: Fixed to save user's search term with averaged metrics
+- **Error Handling**: Proper PostgreSQL data type handling
+
+### 15.9 Bug Fixes & Critical Issues ✅ COMPLETED
+
+#### AI Analysis Hardcoding Fix
+- **Problem**: All products showing "Electric" risk classification
+- **Solution**: Read actual AI analysis from database instead of hardcoded values
+- **Result**: Accurate risk classification (motorcycle accessories show "Physical", not "Electric")
+
+#### Market Keywords Table Logic
+- **Problem**: Saving 26 individual keywords instead of 1 market keyword
+- **Solution**: Single entry for user's search term with averaged CPC/volume
+- **Result**: Proper market-level keyword analysis
+
+#### Display Controller Implementation
+- **Problem**: Research phases spamming too fast or adding artificial delays
+- **Solution**: Professional event-driven display controller with smart queuing
+- **Result**: Engaging UX without backend performance impact
+
+### Technical Implementation Complete ✅
+
+#### Core Files Implemented
+- **lib/market-calculations.ts**: Market averaging, grading, and analysis utilities
+- **lib/progress-display-controller.ts**: Professional progress management system
+- **components/research-modal.tsx**: Market-centric research display with SSE
+- **app/api/products/research/stream/route.ts**: Enhanced with market calculation
+- **app/api/products/save/route.ts**: Market + product persistence with proper data types
+
+#### Market Analysis Features
+- **Real-Time Calculation**: Market statistics calculated during research
+- **Visual Hierarchy**: Market as primary, products as expandable detail
+- **Professional UX**: Industry-standard progress indicators and display
+- **Data Quality**: Accurate AI analysis and market keyword implementation
+
+### Current Status: Complete Market-Centric Transformation ✅
+- **Research Workflow**: Enhanced SSE with market calculation and professional progress
+- **Database Integration**: Market + product persistence with proper relationships
+- **User Experience**: Market-centric display with expandable product details
+- **Data Accuracy**: Fixed AI analysis hardcoding and market keyword logic
+- **Performance**: Event-driven display controller for optimal UX without delays
+
+### Next Phase: Dashboard Market Table Implementation 🔄 PLANNED
+- **Market Data Table**: Expandable table showing markets with product drill-down
+- **Dual View System**: Markets tab + Individual Products tab for backward compatibility
+- **Visual Hierarchy**: Market rows with expandable seller analysis details
+
+This PRD provides complete implementation details for the fully functional SellerSprite dashboard with enhanced Apify integration, parallel processing, comprehensive competitive intelligence capabilities, complete database integration with real data display, enhanced UX with real user authentication and statistics, premium UI/UX design with optimized performance, a comprehensive A10-algorithm-accurate color grading system for precise visual product opportunity assessment, accurate profit margin calculation implementation using real cost data and Amazon referral fee structures, enhanced table UX with consistent branding, and planned market synthesis transformation with hierarchical database architecture across all user touchpoints.

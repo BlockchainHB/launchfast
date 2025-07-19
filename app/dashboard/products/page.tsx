@@ -1,8 +1,8 @@
 'use client'
 
 import { AppSidebar } from "@/components/app-sidebar"
-import { MarketDataTable } from "@/components/market-data-table"
-import { MarketTableSkeleton } from "@/components/market-table-skeleton"
+import { DataTable } from "@/components/data-table"
+import { ProductTableSkeleton } from "@/components/product-table-skeleton"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -10,7 +10,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { useEffect, useState } from "react"
-import { DashboardData, DashboardDataResponse, transformMarketToTableRow } from "@/types/dashboard"
+import { DashboardData, DashboardDataResponse } from "@/types/dashboard"
 
 export default function Page() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
@@ -19,7 +19,7 @@ export default function Page() {
 
   useEffect(() => {
     // Update document title
-    document.title = "Dashboard - LaunchFast"
+    document.title = "Products - LaunchFast"
     fetchDashboardData()
   }, [])
 
@@ -63,8 +63,8 @@ export default function Page() {
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                <SectionCards stats={dashboardData?.stats} loading={true} />
-                <MarketTableSkeleton />
+                <SectionCards stats={dashboardData?.stats} loading={true} mode="product" />
+                <ProductTableSkeleton />
               </div>
             </div>
           </div>
@@ -89,7 +89,7 @@ export default function Page() {
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                <SectionCards stats={dashboardData?.stats} loading={false} />
+                <SectionCards stats={dashboardData?.stats} loading={false} mode="product" />
                 <div className="flex items-center justify-center py-8">
                   <div className="text-center">
                     <p className="text-destructive mb-2">Error: {error}</p>
@@ -124,8 +124,8 @@ export default function Page() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards stats={dashboardData?.stats} loading={false} />
-              {(!dashboardData?.markets || dashboardData.markets.length === 0) ? (
+              <SectionCards stats={dashboardData?.stats} loading={false} mode="product" />
+              {(!dashboardData?.legacyProducts || dashboardData.legacyProducts.length === 0) ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="text-center">
                     <div className="mb-4">
@@ -144,14 +144,14 @@ export default function Page() {
                         />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-semibold text-foreground">No Markets Analyzed</h3>
+                    <h3 className="text-lg font-semibold text-foreground">No Products Saved</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Start researching to see your market analysis with expandable product details.
+                      Start researching to see your individual product analysis here.
                     </p>
                   </div>
                 </div>
               ) : (
-                <MarketDataTable data={dashboardData.markets.map(transformMarketToTableRow)} />
+                <DataTable data={dashboardData.legacyProducts} />
               )}
             </div>
           </div>

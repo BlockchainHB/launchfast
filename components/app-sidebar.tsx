@@ -3,17 +3,9 @@
 import * as React from "react"
 import { useEffect, useState } from "react"
 import {
-  IconChartBar,
   IconDashboard,
-  IconDatabase,
   IconFileAnalytics,
-  IconHistory,
-  IconHelp,
-  IconInnerShadowTop,
-  IconPackage,
   IconSearch,
-  IconSettings,
-  IconTrendingUp,
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/nav-documents"
@@ -49,62 +41,21 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: IconDashboard,
     },
     {
-      title: "Product Search",
-      url: "#",
+      title: "Product Search", 
+      url: "/dashboard/products",
       icon: IconSearch,
     },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-    {
-      title: "Search History",
-      url: "#",
-      icon: IconHistory,
-    },
-    {
-      title: "Opportunities",
-      url: "#",
-      icon: IconTrendingUp,
-    },
   ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "API Status",
-      url: "#",
-      icon: IconDatabase,
-    },
-  ],
+  navSecondary: [],
   documents: [
     {
-      name: "High-Grade Products",
-      url: "#",
-      icon: IconTrendingUp,
-    },
-    {
-      name: "Analysis Reports",
+      name: "Product Analysis",
       url: "#",
       icon: IconFileAnalytics,
-    },
-    {
-      name: "Product Database",
-      url: "#",
-      icon: IconPackage,
     },
   ],
 }

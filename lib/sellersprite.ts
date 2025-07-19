@@ -2,6 +2,7 @@ import axios from 'axios'
 import { cache, CACHE_TTL, cacheHelpers } from './cache'
 import { calculateReferralFeeFromApify } from './amazon-fees'
 import { calculateEnhancedFbaCost } from './calculations'
+import { Logger } from './logger'
 import type { 
   ProductData, 
   SalesPrediction, 
@@ -146,7 +147,7 @@ export class SellerSpriteClient {
         }
       })
 
-      console.log('SellerSprite Sales Response:', JSON.stringify(response.data, null, 2))
+      Logger.dev.trace(`Sales prediction response code: ${response.data.code}`)
       
       if (response.data.code !== 'OK') {
         // Log the error but don't throw - some ASINs may not have prediction data
@@ -268,7 +269,7 @@ export class SellerSpriteClient {
         }
       })
 
-      console.log('SellerSprite Keyword Mining Response:', response.data)
+      Logger.dev.trace(`Keyword mining response code: ${response.data.code}`)
       
       // SellerSprite API returns data in response.data.data.items format
       const items = response.data.data.items || []
