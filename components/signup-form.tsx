@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,7 @@ export function SignupForm({
     invitationCode: ''
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -67,15 +67,20 @@ export function SignupForm({
       setError('An unexpected error occurred')
       setIsSubmitting(false)
     }
-  }
+  }, [formData, router])
 
-  const handleRequestEarlyAccess = () => {
+  const handleRequestEarlyAccess = useCallback(() => {
     router.push('/')
-  }
+  }, [router])
+
+  // Optimized input handlers to prevent unnecessary re-renders
+  const handleInputChange = useCallback((field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }))
+  }, [])
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
+      <Card className="border border-primary/10 bg-white/5 backdrop-blur-md">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Sign Up</CardTitle>
           <CardDescription>
@@ -93,8 +98,9 @@ export function SignupForm({
                     type="text"
                     placeholder="Enter your invitation code"
                     value={formData.invitationCode}
-                    onChange={(e) => setFormData({ ...formData, invitationCode: e.target.value })}
+                    onChange={handleInputChange('invitationCode')}
                     required
+                    className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
                 </div>
                 <div className="grid gap-3">
@@ -104,8 +110,9 @@ export function SignupForm({
                     type="text"
                     placeholder="John Doe"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={handleInputChange('name')}
                     required
+                    className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
                 </div>
                 <div className="grid gap-3">
@@ -115,8 +122,9 @@ export function SignupForm({
                     type="email"
                     placeholder="m@example.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={handleInputChange('email')}
                     required
+                    className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
                 </div>
                 <div className="grid gap-3">
@@ -126,7 +134,8 @@ export function SignupForm({
                     type="text"
                     placeholder="Your Amazon Business"
                     value={formData.company}
-                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    onChange={handleInputChange('company')}
+                    className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
                 </div>
                 <div className="grid gap-3">
@@ -135,8 +144,9 @@ export function SignupForm({
                     id="password"
                     type="password"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={handleInputChange('password')}
                     required
+                    className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
                 </div>
                 <div className="grid gap-3">
@@ -145,8 +155,9 @@ export function SignupForm({
                     id="confirmPassword"
                     type="password"
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    onChange={handleInputChange('confirmPassword')}
                     required
+                    className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
                 </div>
                 
@@ -157,13 +168,17 @@ export function SignupForm({
                 )}
                 
                 <div className="grid gap-3">
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-b from-primary to-primary/80 hover:shadow-[0_0_20px_rgba(98,49,163,0.4)] transition-all duration-300" 
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? 'Creating Account...' : 'Sign Up'}
                   </Button>
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="w-full"
+                    className="w-full border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 hover:bg-white/10"
                     onClick={handleRequestEarlyAccess}
                   >
                     Request Early Access

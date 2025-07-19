@@ -61,7 +61,7 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
+      <Card className="border border-primary/10 bg-white/5 backdrop-blur-md">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Login</CardTitle>
           <CardDescription>
@@ -81,6 +81,7 @@ export function LoginForm({
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
+                    className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
                 </div>
                 <div className="grid gap-3">
@@ -99,6 +100,7 @@ export function LoginForm({
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required 
+                    className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
                 </div>
                 
@@ -109,13 +111,17 @@ export function LoginForm({
                 )}
                 
                 <div className="grid gap-3">
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-b from-primary to-primary/80 hover:shadow-[0_0_20px_rgba(98,49,163,0.4)] transition-all duration-300" 
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? 'Signing in...' : 'Login'}
                   </Button>
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="w-full"
+                    className="w-full border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 hover:bg-white/10"
                     onClick={handleRequestEarlyAccess}
                   >
                     Request Early Access
