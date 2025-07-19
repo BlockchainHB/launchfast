@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { extractMarketKeywords } from '@/lib/market-calculations'
 import { Logger } from '@/lib/logger'
 import { createServerClient } from '@supabase/ssr'
+import { cache } from '@/lib/cache'
 
 export async function POST(request: NextRequest) {
   try {
@@ -228,6 +229,11 @@ export async function POST(request: NextRequest) {
         // Continue without failing the entire operation
       }
     }
+
+    // Invalidate dashboard cache so new data shows immediately
+    const dashboardCacheKey = `dashboard_data_${userId}`
+    await cache.del(dashboardCacheKey)
+    console.log(`🗑️ Invalidated dashboard cache for user: ${userId}`)
 
     const response: any = {
       success: true,
