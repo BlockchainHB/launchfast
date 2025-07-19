@@ -125,7 +125,15 @@ export default function Page() {
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
               <SectionCards stats={dashboardData?.stats} loading={false} mode="product" />
-              {(!dashboardData?.legacyProducts || dashboardData.legacyProducts.length === 0) ? (
+              {(() => {
+                // Combine all products from markets and legacy products
+                const allProducts = [
+                  ...dashboardData?.legacyProducts || [],
+                  ...(dashboardData?.markets || []).flatMap(market => market.products || [])
+                ]
+                
+                return allProducts.length === 0
+              })() ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="text-center">
                     <div className="mb-4">
@@ -151,7 +159,10 @@ export default function Page() {
                   </div>
                 </div>
               ) : (
-                <DataTable data={dashboardData.legacyProducts} />
+                <DataTable data={[
+                  ...dashboardData?.legacyProducts || [],
+                  ...(dashboardData?.markets || []).flatMap(market => market.products || [])
+                ]} />
               )}
             </div>
           </div>
