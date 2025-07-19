@@ -138,8 +138,8 @@ function ProductSubRow({ product, isLast }: { product: EnhancedProduct; isLast: 
       <TableCell className="text-center">
         <span className="text-sm">
           {((product.salesData?.monthlySales || 0) >= 1000 
-            ? `${((product.salesData?.monthlySales || 0) / 1000).toFixed(1)}K` 
-            : (product.salesData?.monthlySales || 0).toString()
+            ? `${Math.round((product.salesData?.monthlySales || 0) / 1000)}K` 
+            : Math.round(product.salesData?.monthlySales || 0).toString()
           )}/mo
         </span>
       </TableCell>
@@ -396,8 +396,8 @@ function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketT
       const value = row.original.monthlySales
       const formatCompact = (num: number) => {
         if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
-        if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}K`
-        return num.toString()
+        if (num >= 1000) return `${Math.round(num / 1000)}K`
+        return Math.round(num).toString()
       }
       return (
         <div className="text-center">

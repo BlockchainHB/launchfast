@@ -246,8 +246,8 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       const value = row.original.salesData?.monthlySales || 0
       const formatCompact = (num: number) => {
         if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
-        if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}K`
-        return num.toString()
+        if (num >= 1000) return `${Math.round(num / 1000)}K`
+        return Math.round(num).toString()
       }
       return (
         <div className="text-center">
