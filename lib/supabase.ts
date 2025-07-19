@@ -1,17 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Client-side Supabase client using SSR package
-export const supabase = typeof window !== 'undefined' 
+export const supabase = typeof window !== 'undefined' && supabaseUrl && supabaseAnonKey
   ? createBrowserClient(supabaseUrl, supabaseAnonKey)
-  : createClient(supabaseUrl, supabaseAnonKey)
+  : supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
 
 // Server-side Supabase client with service role key (only available on server)
-export const supabaseAdmin = typeof window === 'undefined' 
-  ? createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+export const supabaseAdmin = typeof window === 'undefined' && supabaseUrl && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -20,7 +22,7 @@ export const supabaseAdmin = typeof window === 'undefined'
   : null
 
 // Auth helpers
-export const auth = supabase.auth
+export const auth = supabase?.auth
 
 // Database helpers
 export const db = supabase
