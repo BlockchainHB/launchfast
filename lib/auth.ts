@@ -118,12 +118,30 @@ export const authHelpers = {
   // Sign out
   async signOut(): Promise<{ error?: string }> {
     try {
+      if (!supabase) {
+        // If supabase client is not available, just clear local storage
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.replace(/\./g, '-') + '-auth-token')
+        }
+        return {}
+      }
+
       const { error } = await supabase.auth.signOut()
-      if (error) {
+      if (error && error.message !== 'Auth session missing!') {
         return { error: error.message }
       }
+      
+      // Clear any remaining local storage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.replace(/\./g, '-') + '-auth-token')
+      }
+      
       return {}
     } catch (error) {
+      // Even if logout fails, clear local storage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.replace(/\./g, '-') + '-auth-token')
+      }
       return { error: 'Failed to sign out' }
     }
   },

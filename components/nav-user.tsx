@@ -51,15 +51,27 @@ export function NavUser({
     setIsLoggingOut(true)
     try {
       const { error } = await authHelpers.signOut()
-      if (error) {
+      if (error && error !== 'Auth session missing!') {
         console.error('Logout error:', error)
         // Still redirect even if there's an error to ensure user is logged out
       }
-      // Redirect to login page
+      
+      // Clear any browser cache/cookies
+      if (typeof window !== 'undefined') {
+        // Force reload to clear any cached state
+        window.location.href = '/login'
+        return
+      }
+      
+      // Fallback redirect
       router.push('/login')
     } catch (error) {
       console.error('Logout failed:', error)
-      // Force redirect anyway
+      // Force redirect anyway and clear browser state
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+        return
+      }
       router.push('/login')
     } finally {
       setIsLoggingOut(false)
