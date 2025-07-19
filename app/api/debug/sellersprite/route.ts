@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sellerSpriteClient } from '@/lib/sellersprite'
+import axios from 'axios'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,7 +8,6 @@ export async function POST(request: NextRequest) {
     console.log('Testing SellerSprite Product Research API with keyword:', keyword)
     
     // Make raw API call to inspect response structure
-    const axios = require('axios')
     const response = await axios.post('https://api.sellersprite.com/v1/product/research', {
       keyword,
       marketplace: 'US',

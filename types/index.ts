@@ -36,6 +36,9 @@ export interface SalesPrediction {
   ppu: number // Price Per Unit
   fbaCost: number
   cogs?: number // Cost of Goods Sold
+  // Enhanced Amazon fee calculation fields
+  referralFee?: number // Amazon referral fee amount
+  referralCategory?: string // Amazon fee category name
 }
 
 export interface KeywordData {

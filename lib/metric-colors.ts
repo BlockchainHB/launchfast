@@ -38,21 +38,24 @@ export const getDailyRevenueColor = (dailyRevenue: number): string => {
 
 // Profit Margin coloring based on A10 algorithm penalties/boosts
 export const getProfitMarginColor = (margin: number): string => {
-  // INSTANT DISQUALIFIER: Below 25% = F1 grade
-  if (margin < 25) return 'text-red-600 font-bold border-l-4 border-red-500 pl-2 bg-red-50/50 dark:bg-red-900/30'
+  // INSTANT DISQUALIFIER: Below 15% = F1 grade (Recalibrated for dynamic Amazon fees)
+  if (margin < 15) return 'text-red-600 font-bold border-l-4 border-red-500 pl-2 bg-red-50/50 dark:bg-red-900/30'
   
-  // A10 GATE REQUIREMENT: 50%+ = boost points + A10 gate requirement
-  if (margin >= 50) return 'text-emerald-600 font-bold ring-1 ring-emerald-400/30 px-1 rounded'
+  // A10 GATE REQUIREMENT: 45%+ = excellent margins + A10 gate requirement
+  if (margin >= 45) return 'text-emerald-600 font-bold ring-1 ring-emerald-400/30 px-1 rounded'
   
-  // BOOST POINTS: 40%+ = boost points
-  if (margin >= 40) return 'text-emerald-600 font-semibold'
+  // BOOST POINTS: 35%+ = good margins boost points
+  if (margin >= 35) return 'text-emerald-600 font-semibold'
   
-  // SAFE ZONE: 30%+ = no penalty
-  if (margin >= 30) return 'text-blue-600'
+  // SAFE ZONE: 30%+ = decent margin boost, no penalty
+  if (margin >= 30) return 'text-emerald-500'
   
-  // PENALTY ZONES: Minor and major penalties
-  if (margin >= 28) return 'text-amber-600 border-l-2 border-amber-400 pl-1' // 28-30% = -2 penalty points
-  if (margin >= 25) return 'text-orange-600 border-l-2 border-orange-400 pl-1' // 25-28% = -4 total penalty points
+  // SAFE ZONE: 25%+ = no penalty
+  if (margin >= 25) return 'text-blue-600'
+  
+  // PENALTY ZONES: Major penalties for very low margins
+  if (margin >= 20) return 'text-amber-600 border-l-2 border-amber-400 pl-1' // 20-25% = -3 penalty points
+  if (margin >= 15) return 'text-orange-600 border-l-2 border-orange-400 pl-1' // 15-20% = -6 total penalty points
   
   return 'text-red-600 font-semibold' // Fallback
 }

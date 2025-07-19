@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import axios from 'axios'
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,7 +8,6 @@ export async function POST(request: NextRequest) {
     console.log('Testing raw SellerSprite Reverse ASIN API with ASIN:', asin)
     
     // Make raw API call to inspect response structure
-    const axios = require('axios')
     const response = await axios.post('https://api.sellersprite.com/v1/traffic/keyword', {
       asin,
       marketplace: 'US',

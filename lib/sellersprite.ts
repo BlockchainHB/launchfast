@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { cache, CACHE_TTL, cacheHelpers } from './cache'
+import { calculateReferralFeeFromApify } from './amazon-fees'
+import { calculateEnhancedFbaCost } from './calculations'
 import type { 
   ProductData, 
   SalesPrediction, 
@@ -167,20 +169,22 @@ export class SellerSpriteClient {
       const monthlySales = Math.round(totalSales * (30 / Math.max(validDays.length, 1)))
       const monthlyRevenue = Math.round(totalRevenue * (30 / Math.max(validDays.length, 1)))
       
-      // Basic margin estimation (this would need more sophisticated calculation)
-      const estimatedCOGS = avgPrice * 0.4 // Assume 40% COGS
-      const estimatedFBA = avgPrice * 0.15 // Assume 15% FBA fees
-      const margin = avgPrice > 0 ? (avgPrice - estimatedCOGS - estimatedFBA) / avgPrice : 0
-      const monthlyProfit = monthlyRevenue * Math.max(margin, 0)
+      // Enhanced margin calculation using real SellerSprite data and Amazon fees
+      const dimensions = data.asinDetail?.dimensions || data.asinDetail?.packageDimensions
+      const enhancedMargin = this.calculateEnhancedMargin(data, avgPrice, dimensions)
+      const monthlyProfit = monthlyRevenue * Math.max(enhancedMargin.margin, 0)
       
       const salesData: SalesPrediction = {
         monthlyProfit: Math.round(monthlyProfit),
         monthlyRevenue: monthlyRevenue,
         monthlySales: monthlySales,
-        margin: Math.round(margin * 100) / 100,
-        ppu: avgPrice > 0 ? Math.round((margin * avgPrice * 100)) / 100 : 0,
-        fbaCost: Math.round(estimatedFBA * 100) / 100,
-        cogs: Math.round(estimatedCOGS * 100) / 100
+        margin: Math.round(enhancedMargin.margin * 100) / 100,
+        ppu: avgPrice > 0 ? Math.round((enhancedMargin.margin * avgPrice * 100)) / 100 : 0,
+        fbaCost: enhancedMargin.fbaCost,
+        cogs: enhancedMargin.cogs,
+        // Add new enhanced fields
+        referralFee: enhancedMargin.referralFee,
+        referralCategory: enhancedMargin.referralCategory
       }
 
       await cacheHelpers.setSalesData(asin, salesData)
@@ -326,6 +330,43 @@ export class SellerSpriteClient {
     } catch (error) {
       console.error('Error fetching comprehensive product analysis:', error)
       throw new Error('Failed to analyze product')
+    }
+  }
+
+  // Enhanced margin calculation using real SellerSprite data and Amazon referral/FBA fees
+  private calculateEnhancedMargin(data: any, avgPrice: number, dimensions?: { length?: number; width?: number; height?: number; weight?: number }): {
+    margin: number;
+    cogs: number;
+    fbaCost: number;
+    referralFee: number;
+    referralCategory: string;
+  } {
+    // Extract real COGS and FBA estimates from SellerSprite data if available
+    const asinDetail = data.asinDetail || {}
+    const sellerSpriteCOGS = asinDetail.estimatedCost || asinDetail.cogs
+    const sellerSpriteFBA = asinDetail.fbaFee || asinDetail.estimatedFbaFee
+    const category = asinDetail.category || asinDetail.nodeLabelPath || ''
+    
+    // Use SellerSprite COGS if available, otherwise fall back to improved estimate
+    const cogs = sellerSpriteCOGS || (avgPrice * 0.35) // Reduced from 40% to 35%
+    
+    // Use SellerSprite FBA if available, otherwise use enhanced FBA calculator
+    const fbaCost = sellerSpriteFBA || calculateEnhancedFbaCost(avgPrice, dimensions)
+    
+    // Calculate Amazon referral fee using our new system
+    const referralFeeData = calculateReferralFeeFromApify(category, avgPrice)
+    const referralFee = referralFeeData.fee
+    
+    // Calculate total costs and margin
+    const totalCosts = cogs + fbaCost + referralFee
+    const margin = avgPrice > 0 ? Math.max(0, (avgPrice - totalCosts) / avgPrice) : 0
+    
+    return {
+      margin,
+      cogs: Math.round(cogs * 100) / 100,
+      fbaCost: Math.round(fbaCost * 100) / 100,
+      referralFee: Math.round(referralFee * 100) / 100,
+      referralCategory: referralFeeData.category
     }
   }
 

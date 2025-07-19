@@ -118,8 +118,8 @@ function checkDisqualifiers(inputs: ScoringInputs): string[] {
     disqualifiers.push('Price below $25')
   }
 
-  if (inputs.margin < 0.25) {
-    disqualifiers.push('Margin below 25%')
+  if (inputs.margin < 0.15) {
+    disqualifiers.push('Margin below 15%')
   }
 
   if (inputs.riskClassification === 'Banned') {
@@ -165,14 +165,14 @@ function calculatePenalties(inputs: ScoringInputs): { total: number; details: st
     details.push('Breakable product risk (-5 pts)')
   }
 
-  // Margin penalties
-  if (inputs.margin < 0.30) {
-    total += 2
-    details.push('Low margin: <30% (-2 pts)')
+  // Margin penalties - Recalibrated for dynamic Amazon fee structure
+  if (inputs.margin < 0.25) {
+    total += 3
+    details.push('Low margin: <25% (-3 pts)')
   }
-  if (inputs.margin < 0.28) {
-    total += 2
-    details.push('Very low margin: <28% (-2 pts)')
+  if (inputs.margin < 0.20) {
+    total += 3
+    details.push('Very low margin: <20% (-3 pts)')
   }
 
   // BSR penalties (if available)
@@ -204,13 +204,16 @@ function calculateBoosts(inputs: ScoringInputs): { total: number; details: strin
     details.push('Moderate advertising cost: <$1.00 CPC (+1 pt)')
   }
 
-  // High margin + good PPU boost
-  if (inputs.margin >= 0.50 && inputs.ppu >= 0.20) {
-    total += 3
-    details.push('Excellent margins: 50%+ margin + 20%+ PPU (+3 pts)')
-  } else if (inputs.margin >= 0.40) {
+  // High margin + good PPU boost - Recalibrated for dynamic Amazon fees
+  if (inputs.margin >= 0.45 && inputs.ppu >= 0.20) {
+    total += 4
+    details.push('Excellent margins: 45%+ margin + 20%+ PPU (+4 pts)')
+  } else if (inputs.margin >= 0.35) {
+    total += 2
+    details.push('Good margin: 35%+ (+2 pts)')
+  } else if (inputs.margin >= 0.30) {
     total += 1
-    details.push('Good margin: 40%+ (+1 pt)')
+    details.push('Decent margin: 30%+ (+1 pt)')
   }
 
   // Low competition boost
