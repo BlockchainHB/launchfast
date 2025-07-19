@@ -28,6 +28,7 @@ import {
 } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
+import { GradeBadge } from "@/components/ui/grade-badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -63,6 +64,17 @@ import {
 } from "@/components/ui/tooltip"
 import type { EnhancedProduct } from "@/types"
 import { formatDimensions, getRiskColor, getConsistencyColor } from "@/lib/calculations"
+import { 
+  getPriceColor, 
+  getMonthlyRevenueColor, 
+  getDailyRevenueColor, 
+  getProfitMarginColor, 
+  getFulfillmentFeesColor,
+  getCPCColor,
+  getReviewCountColor,
+  getRatingColor 
+} from "@/lib/metric-colors"
+import { assessProductRisk, getRiskTooltip } from "@/lib/risk-assessment"
 
 const columns: ColumnDef<EnhancedProduct>[] = [
   {
@@ -138,19 +150,40 @@ const columns: ColumnDef<EnhancedProduct>[] = [
   {
     accessorKey: "grade",
     header: "Grade",
-    cell: ({ row }) => (
-      <Badge className={`grade-badge grade-${row.original.grade.toLowerCase()}`}>
-        {row.original.grade}
-      </Badge>
-    ),
+    cell: ({ row }) => {
+      const riskAssessment = assessProductRisk(row.original)
+      const riskTooltip = getRiskTooltip(row.original)
+      
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <GradeBadge 
+                grade={row.original.grade}
+                isRisky={riskAssessment.isRisky}
+                hasWarnings={riskAssessment.hasWarnings}
+              />
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="max-w-xs">
+                <p className="font-medium">{row.original.grade} Grade</p>
+                {(riskAssessment.isRisky || riskAssessment.hasWarnings) && (
+                  <p className="text-sm text-muted-foreground mt-1">{riskTooltip}</p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    },
     size: 80,
   },
   {
     accessorKey: "price",
     header: "Price",
     cell: ({ row }) => (
-      <span className="metric-currency">
-        ${row.original.price.toFixed(2)}
+      <span className={getPriceColor(row.original.price || 0)}>
+        ${row.original.price?.toFixed(2) || '0.00'}
       </span>
     ),
     size: 80,
@@ -159,7 +192,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     accessorKey: "salesData.monthlyRevenue",
     header: "Monthly Revenue",
     cell: ({ row }) => (
-      <span className="metric-currency font-semibold">
+      <span className={getMonthlyRevenueColor(row.original.salesData?.monthlyRevenue || 0)}>
         ${row.original.salesData?.monthlyRevenue?.toLocaleString() || '0'}
       </span>
     ),
@@ -169,7 +202,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     accessorKey: "calculatedMetrics.dailyRevenue",
     header: "Daily Revenue",
     cell: ({ row }) => (
-      <span className="metric-currency">
+      <span className={getDailyRevenueColor(row.original.calculatedMetrics?.dailyRevenue || 0)}>
         ${row.original.calculatedMetrics?.dailyRevenue?.toFixed(2) || '0.00'}
       </span>
     ),
@@ -220,7 +253,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
         ? keywords.reduce((sum, kw) => sum + (kw?.cpc || 0), 0) / keywords.length
         : 0
       return (
-        <span className="text-sm">
+        <span className={getCPCColor(avgCpc)}>
           ${avgCpc.toFixed(2)}
         </span>
       )
@@ -232,7 +265,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     header: "Review Count",
     cell: ({ row }) => (
       <div className="flex flex-col">
-        <span className="text-sm font-medium">
+        <span className={`text-sm font-medium ${getReviewCountColor(row.original.reviews || 0)}`}>
           {row.original.reviews?.toLocaleString() || '0'}
         </span>
         <span className="text-xs text-muted-foreground">
@@ -247,7 +280,9 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     header: "Rating",
     cell: ({ row }) => (
       <div className="flex items-center space-x-1">
-        <span className="text-sm">{row.original.rating?.toFixed(1) || '0.0'}</span>
+        <span className={`text-sm ${getRatingColor(row.original.rating || 0)}`}>
+          {row.original.rating?.toFixed(1) || '0.0'}
+        </span>
         <span className="text-xs text-yellow-500">⭐</span>
       </div>
     ),
@@ -300,7 +335,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     accessorKey: "calculatedMetrics.fulfillmentFees",
     header: "Fulfillment Fees",
     cell: ({ row }) => (
-      <span className="metric-currency">
+      <span className={getFulfillmentFeesColor(row.original.calculatedMetrics?.fulfillmentFees || 0)}>
         ${row.original.calculatedMetrics?.fulfillmentFees?.toFixed(2) || '0.00'}
       </span>
     ),
@@ -320,7 +355,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     accessorKey: "salesData.margin",
     header: "Profit Margin",
     cell: ({ row }) => (
-      <span className="metric-percentage">
+      <span className={getProfitMarginColor((row.original.salesData?.margin || 0) * 100)}>
         {((row.original.salesData?.margin || 0) * 100).toFixed(1)}%
       </span>
     ),

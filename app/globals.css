@@ -224,27 +224,114 @@
     }
   }
 
-  /* ===== A10-F1 Grade System Styles ===== */
+  /* ===== A10-F1 Grade System Styles with Progressive Intensity ===== */
 
-  /* Grade Background Colors */
-  .grade-a10, .grade-a9, .grade-a8, .grade-a7, .grade-a6, .grade-a5, .grade-a4, .grade-a3, .grade-a2, .grade-a1 {
-    @apply bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800;
+  /* A GRADES - Emerald with Progressive Intensity (Best to Good) */
+  .grade-a10 { @apply bg-emerald-600 text-white border-emerald-700 shadow-emerald-500/25 shadow-lg font-bold dark:bg-emerald-600 dark:text-white dark:border-emerald-500; }
+  .grade-a9  { @apply bg-emerald-500 text-white border-emerald-600 font-semibold dark:bg-emerald-500 dark:text-white dark:border-emerald-400; }
+  .grade-a8  { @apply bg-emerald-400 text-emerald-900 border-emerald-500 font-semibold dark:bg-emerald-400 dark:text-emerald-900 dark:border-emerald-300; }
+  .grade-a7  { @apply bg-emerald-300 text-emerald-900 border-emerald-400 dark:bg-emerald-700 dark:text-emerald-100 dark:border-emerald-600; }
+  .grade-a6  { @apply bg-emerald-200 text-emerald-900 border-emerald-300 dark:bg-emerald-800 dark:text-emerald-200 dark:border-emerald-700; }
+  .grade-a5  { @apply bg-emerald-100 text-emerald-900 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700; }
+  .grade-a4  { @apply bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800; }
+  .grade-a3  { @apply bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/25 dark:text-emerald-400 dark:border-emerald-800; }
+  .grade-a2  { @apply bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800; }
+  .grade-a1  { @apply bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800; }
+
+  /* B GRADES - Blue with Progressive Intensity (Good to Fair) */
+  .grade-b10 { @apply bg-blue-500 text-white border-blue-600 font-semibold dark:bg-blue-500 dark:text-white dark:border-blue-400; }
+  .grade-b9  { @apply bg-blue-400 text-white border-blue-500 dark:bg-blue-400 dark:text-white dark:border-blue-300; }
+  .grade-b8  { @apply bg-blue-300 text-blue-900 border-blue-400 dark:bg-blue-600 dark:text-blue-100 dark:border-blue-500; }
+  .grade-b7  { @apply bg-blue-200 text-blue-900 border-blue-300 dark:bg-blue-700 dark:text-blue-200 dark:border-blue-600; }
+  .grade-b6  { @apply bg-blue-100 text-blue-900 border-blue-200 dark:bg-blue-800 dark:text-blue-300 dark:border-blue-700; }
+  .grade-b5  { @apply bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700; }
+  .grade-b4  { @apply bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800; }
+  .grade-b3  { @apply bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/25 dark:text-blue-400 dark:border-blue-800; }
+  .grade-b2  { @apply bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800; }
+  .grade-b1  { @apply bg-blue-200 text-blue-800 border-blue-300 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700; }
+
+  /* C GRADES - Amber/Yellow with Progressive Intensity (Moderate to Poor) */
+  .grade-c10 { @apply bg-amber-400 text-amber-900 border-amber-500 font-medium dark:bg-amber-600 dark:text-amber-100 dark:border-amber-500; }
+  .grade-c9  { @apply bg-amber-300 text-amber-900 border-amber-400 dark:bg-amber-700 dark:text-amber-200 dark:border-amber-600; }
+  .grade-c8  { @apply bg-amber-200 text-amber-900 border-amber-300 dark:bg-amber-800 dark:text-amber-300 dark:border-amber-700; }
+  .grade-c7  { @apply bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700; }
+  .grade-c6  { @apply bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800; }
+  .grade-c5  { @apply bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/25 dark:text-amber-400 dark:border-amber-800; }
+  .grade-c4  { @apply bg-amber-100 text-amber-800 border-amber-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800; }
+  .grade-c3  { @apply bg-amber-200 text-amber-900 border-amber-300 dark:bg-yellow-900/40 dark:text-yellow-400 dark:border-yellow-800; }
+  .grade-c2  { @apply bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800; }
+  .grade-c1  { @apply bg-yellow-200 text-yellow-800 border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-400 dark:border-yellow-700; }
+
+  /* D GRADES - Orange with Progressive Intensity (Poor to Very Poor) */
+  .grade-d10 { @apply bg-orange-400 text-orange-900 border-orange-500 dark:bg-orange-600 dark:text-orange-100 dark:border-orange-500; }
+  .grade-d9  { @apply bg-orange-300 text-orange-900 border-orange-400 dark:bg-orange-700 dark:text-orange-200 dark:border-orange-600; }
+  .grade-d8  { @apply bg-orange-200 text-orange-900 border-orange-300 dark:bg-orange-800 dark:text-orange-300 dark:border-orange-700; }
+  .grade-d7  { @apply bg-orange-100 text-orange-900 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700; }
+  .grade-d6  { @apply bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800; }
+  .grade-d5  { @apply bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800; }
+  .grade-d4  { @apply bg-orange-200 text-orange-900 border-orange-300 dark:bg-orange-900/40 dark:text-orange-400 dark:border-orange-800; }
+  .grade-d3  { @apply bg-orange-300 text-orange-900 border-orange-400 dark:bg-orange-900/50 dark:text-orange-400 dark:border-orange-700; }
+  .grade-d2  { @apply bg-orange-400 text-orange-900 border-orange-500 dark:bg-red-900/40 dark:text-red-400 dark:border-red-700; }
+  .grade-d1  { @apply bg-red-200 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-400 dark:border-red-700; }
+
+  /* F GRADE - Red (Critical Failure) */
+  .grade-f1 { @apply bg-red-500 text-white border-red-600 shadow-red-500/25 shadow-lg font-bold dark:bg-red-500 dark:text-white dark:border-red-400; }
+
+  /* Risk Assessment Enhancements */
+  .risk-pulse {
+    animation: risk-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  .grade-b10, .grade-b9, .grade-b8, .grade-b7, .grade-b6, .grade-b5, .grade-b4, .grade-b3, .grade-b2, .grade-b1 {
-    @apply bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800;
+  @keyframes risk-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
   }
 
-  .grade-c10, .grade-c9, .grade-c8, .grade-c7, .grade-c6, .grade-c5, .grade-c4, .grade-c3, .grade-c2, .grade-c1 {
-    @apply bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800;
+  /* Special A10 Goldmine Treatment */
+  .grade-a10 {
+    position: relative;
+    overflow: visible;
+  }
+  
+  .grade-a10::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, transparent, rgba(16, 185, 129, 0.3), transparent);
+    border-radius: inherit;
+    animation: goldmine-shine 3s ease-in-out infinite;
+    z-index: -1;
   }
 
-  .grade-d10, .grade-d9, .grade-d8, .grade-d7, .grade-d6, .grade-d5, .grade-d4, .grade-d3, .grade-d2, .grade-d1 {
-    @apply bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800;
+  @keyframes goldmine-shine {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
   }
 
+  /* F1 Warning Treatment */
   .grade-f1 {
-    @apply bg-red-50 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800;
+    position: relative;
+  }
+  
+  .grade-f1::after {
+    content: '⚠';
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    font-size: 8px;
+    animation: warning-blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes warning-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
   }
 
   /* Grade Badge Styles */
