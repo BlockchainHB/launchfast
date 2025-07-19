@@ -279,7 +279,7 @@ async function fetchMarketsWithProducts(userId: string): Promise<MarketWithProdu
 }
 
 /**
- * Fetch legacy products (products without market_id)
+ * Fetch ALL products for the Products page (both with and without market_id)
  */
 async function fetchLegacyProducts(userId: string): Promise<LegacyProduct[]> {
   const { data: products, error: productsError } = await supabaseAdmin
@@ -307,7 +307,7 @@ async function fetchLegacyProducts(userId: string): Promise<LegacyProduct[]> {
       )
     `)
     .eq('user_id', userId)
-    .is('market_id', null) // Only products without market association
+    // Removed the .is('market_id', null) filter to show ALL products
     .order('created_at', { ascending: false })
 
   if (productsError) {
