@@ -1,29 +1,56 @@
 import Redis from 'ioredis'
 
 // Redis client setup with connection error handling
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
-  lazyConnect: false,
-  enableOfflineQueue: true,
-  connectTimeout: 10000,
-  ...(process.env.REDIS_URL?.startsWith('rediss://') && { tls: {} })
-})
+const createRedisClient = () => {
+  const redisUrl = process.env.REDIS_URL
+  
+  if (!redisUrl) {
+    console.warn('REDIS_URL not found, Redis will be disabled')
+    return null
+  }
+
+  return new Redis(redisUrl, {
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+    enableOfflineQueue: false,
+    connectTimeout: 10000,
+    commandTimeout: 5000,
+    ...(redisUrl.startsWith('rediss://') && { 
+      tls: {
+        checkServerIdentity: () => undefined
+      } 
+    })
+  })
+}
+
+const redis = createRedisClient()
 
 // Handle Redis connection errors gracefully
-redis.on('error', (error) => {
-  console.warn('Redis connection error (cache disabled):', error.message)
-})
+if (redis) {
+  redis.on('error', (error) => {
+    console.warn('Redis connection error (cache disabled):', error.message)
+  })
 
-redis.on('connect', () => {
-  console.log('Redis connected successfully')
-})
+  redis.on('connect', () => {
+    console.log('Redis connected successfully')
+  })
+}
 
 // In-memory fallback cache when Redis is unavailable
 const memoryCache = new Map<string, { data: any, expires: number }>()
 
 export const cache = {
   async get<T>(key: string): Promise<T | null> {
+    if (!redis) {
+      // Use memory cache when Redis is not available
+      const cached = memoryCache.get(key)
+      if (cached && cached.expires > Date.now()) {
+        return cached.data
+      }
+      return null
+    }
+
     try {
       const data = await redis.get(key)
       return data ? JSON.parse(data) : null
@@ -39,6 +66,15 @@ export const cache = {
   },
 
   async set(key: string, value: any, ttl: number): Promise<void> {
+    if (!redis) {
+      // Use memory cache when Redis is not available
+      memoryCache.set(key, {
+        data: value,
+        expires: Date.now() + (ttl * 1000)
+      })
+      return
+    }
+
     try {
       await redis.setex(key, ttl, JSON.stringify(value))
     } catch (error) {
@@ -52,6 +88,11 @@ export const cache = {
   },
 
   async del(key: string): Promise<void> {
+    if (!redis) {
+      memoryCache.delete(key)
+      return
+    }
+
     try {
       await redis.del(key)
     } catch (error) {
@@ -61,6 +102,11 @@ export const cache = {
   },
 
   async exists(key: string): Promise<boolean> {
+    if (!redis) {
+      const cached = memoryCache.get(key)
+      return cached ? cached.expires > Date.now() : false
+    }
+
     try {
       const result = await redis.exists(key)
       return result === 1
