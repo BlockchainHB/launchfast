@@ -7,6 +7,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { cache, CACHE_TTL } from '@/lib/cache'
 import { calculateAllMetrics, formatCompetitiveIntelligence } from '@/lib/calculations'
 import { Logger } from '@/lib/logger'
+import { createServerClient } from '@supabase/ssr'
 import type { SearchParams, ProcessedProduct, KeywordData, ApifyProduct, EnhancedProduct } from '@/types'
 
 export async function POST(request: NextRequest) {
@@ -21,6 +22,30 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    const userId = user.id
 
     Logger.research.start(keyword, filters)
 
@@ -225,6 +250,7 @@ export async function POST(request: NextRequest) {
       await supabaseAdmin
         .from('search_sessions')
         .insert({
+          user_id: userId,
           keyword,
           filters: filters || {},
           results_count: finalProducts.length
@@ -268,12 +294,13 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to store product in database
-async function storeProductInDatabase(product: ProcessedProduct, scoring: any) {
+async function storeProductInDatabase(product: ProcessedProduct, scoring: any, userId: string) {
   try {
     // Insert product
     const { data: productData, error: productError } = await supabaseAdmin
       .from('products')
       .upsert({
+        user_id: userId,
         asin: product.asin,
         title: product.title,
         brand: product.brand,
@@ -298,6 +325,7 @@ async function storeProductInDatabase(product: ProcessedProduct, scoring: any) {
     await supabaseAdmin
       .from('ai_analysis')
       .upsert({
+        user_id: userId,
         product_id: productData.id,
         risk_classification: product.aiAnalysis.riskClassification,
         consistency_rating: product.aiAnalysis.consistencyRating,
@@ -315,6 +343,7 @@ async function storeProductInDatabase(product: ProcessedProduct, scoring: any) {
         const { data: keywordData, error: keywordError } = await supabaseAdmin
           .from('keywords')
           .upsert({
+            user_id: userId,
             keyword: keyword.keyword,
             search_volume: keyword.searchVolume,
             competition_score: keyword.competitionScore,

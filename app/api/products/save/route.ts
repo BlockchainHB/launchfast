@@ -29,16 +29,16 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (sessionError || !session?.user) {
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized - please login' },
         { status: 401 }
       )
     }
 
-    const userId = session.user.id
+    const userId = user.id
 
     // Check if supabaseAdmin is configured
     if (!supabaseAdmin) {
@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
           await supabaseAdmin
             .from('ai_analysis')
             .upsert({
+              user_id: userId,
               product_id: productData.id,
               risk_classification: product.aiAnalysis.riskClassification,
               consistency_rating: product.aiAnalysis.consistencyRating,
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest) {
             const { data: keywordData, error: keywordError } = await supabaseAdmin
               .from('keywords')
               .upsert({
+                user_id: userId,
                 keyword: keyword.keyword,
                 search_volume: keyword.searchVolume,
                 competition_score: keyword.competitionScore,
@@ -279,16 +281,16 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (sessionError || !session?.user) {
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized - please login' },
         { status: 401 }
       )
     }
 
-    const userId = session.user.id
+    const userId = user.id
 
     // Fetch user's products with keywords and AI analysis joined
     const { data: products, error: productsError } = await supabaseAdmin

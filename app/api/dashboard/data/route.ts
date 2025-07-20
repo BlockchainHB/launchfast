@@ -81,21 +81,22 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (sessionError || !session?.user) {
+    if (userError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized - please login' },
         { status: 401 }
       )
     }
 
-    const userId = session.user.id
+    const userId = user.id
 
     // Check cache first for performance
     const cacheKey = `dashboard_data_${userId}`
     const cached = await cache.get<DashboardData>(cacheKey)
     if (cached) {
+      console.log('📋 Using cached data - markets:', cached.markets?.length || 0)
       return NextResponse.json({
         success: true,
         data: cached,
@@ -167,12 +168,12 @@ async function fetchUserProfile(userId: string): Promise<UserProfile> {
   try {
     const { data: profile, error } = await supabaseAdmin
       .from('user_profiles')
-      .select('id, name, email, company')
-      .eq('user_id', userId)
+      .select('id, full_name, company')
+      .eq('id', userId)
       .single()
 
     if (error) {
-      console.warn('Profile fetch failed, using fallback')
+      console.warn('Profile fetch failed, using fallback. Error:', error.message, 'Code:', error.code)
       return {
         id: userId,
         name: 'Launch Fast User',
@@ -183,8 +184,8 @@ async function fetchUserProfile(userId: string): Promise<UserProfile> {
 
     return {
       id: profile.id,
-      name: profile.name || 'Launch Fast User',
-      email: profile.email || 'user@launchfast.com', 
+      name: profile.full_name || 'Launch Fast User',
+      email: 'user@launchfast.com', 
       company: profile.company || 'LegacyX FBA'
     }
   } catch (error) {
@@ -204,6 +205,14 @@ async function fetchUserProfile(userId: string): Promise<UserProfile> {
 async function fetchMarketsWithProducts(userId: string): Promise<MarketWithProducts[]> {
   try {
     console.log('🔍 Fetching markets for user:', userId)
+    
+    // First check if any markets exist at all
+    const { data: allMarkets, error: countError } = await supabaseAdmin
+      .from('markets')
+      .select('id, user_id, keyword')
+      .limit(5)
+    
+    console.log('🔍 Sample markets in database:', allMarkets)
     
     const { data: markets, error: marketsError } = await supabaseAdmin
       .from('markets')

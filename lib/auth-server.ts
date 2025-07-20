@@ -18,13 +18,13 @@ export async function getAuthenticatedUser(request: NextRequest) {
     }
   )
 
-  const { data: { session }, error } = await supabase.auth.getSession()
+  const { data: { user }, error } = await supabase.auth.getUser()
   
-  if (error || !session?.user) {
+  if (error || !user) {
     return null
   }
 
-  return session.user
+  return user
 }
 
 /**
@@ -45,13 +45,13 @@ export async function getAuthenticatedUserFromCookies() {
     }
   )
 
-  const { data: { session }, error } = await supabase.auth.getSession()
+  const { data: { user }, error } = await supabase.auth.getUser()
   
-  if (error || !session?.user) {
+  if (error || !user) {
     return null
   }
 
-  return session.user
+  return user
 }
 
 /**

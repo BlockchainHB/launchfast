@@ -3,9 +3,11 @@ import Redis from 'ioredis'
 // Redis client setup with connection error handling
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 1,
-  lazyConnect: true,
-  enableOfflineQueue: false
+  maxRetriesPerRequest: 3,
+  lazyConnect: false,
+  enableOfflineQueue: true,
+  connectTimeout: 10000,
+  ...(process.env.REDIS_URL?.startsWith('rediss://') && { tls: {} })
 })
 
 // Handle Redis connection errors gracefully

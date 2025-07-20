@@ -7,6 +7,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { cache, CACHE_TTL } from '@/lib/cache'
 import { calculateAllMetrics, formatCompetitiveIntelligence } from '@/lib/calculations'
 import { Logger } from '@/lib/logger'
+import { createServerClient } from '@supabase/ssr'
 import type { SearchParams, EnhancedProduct } from '@/types'
 
 interface ProgressEvent {
@@ -66,6 +67,34 @@ export async function GET(request: NextRequest) {
         controller.close()
         return
       }
+
+      // Get authenticated user from session
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return request.cookies.get(name)?.value
+            },
+          },
+        }
+      )
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        sendEvent({
+          phase: 'error',
+          message: 'Unauthorized - please login',
+          progress: 0,
+          timestamp: new Date().toISOString()
+        })
+        controller.close()
+        return
+      }
+
+      const userId = user.id
 
       Logger.research.start(keyword, filters)
 
@@ -279,6 +308,7 @@ export async function GET(request: NextRequest) {
         await supabaseAdmin
           .from('search_sessions')
           .insert({
+            user_id: userId,
             keyword,
             filters: filters || {},
             results_count: finalProducts.length

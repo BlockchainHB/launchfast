@@ -59,8 +59,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { getCachedColumnHeaderText } from "@/lib/table-utils"
+import { formatWholeNumber, formatAbbreviatedCurrency } from "@/lib/number-formatting"
 import type { MarketTableRow, EnhancedProduct } from "@/types/dashboard"
-import { formatDimensions, getRiskColor, getConsistencyColor } from "@/lib/calculations"
+import { formatDimensions, formatWeight, getRiskColor, getConsistencyColor } from "@/lib/calculations"
 import { 
   getPriceColor, 
   getMonthlyRevenueColor, 
@@ -186,35 +188,17 @@ function ProductSubRow({ product, isLast }: { product: EnhancedProduct; isLast: 
           <span className="text-xs text-yellow-500">⭐</span>
         </div>
       </TableCell>
-      <TableCell className="text-center">
-        <span className="text-sm">
-          {product.calculatedMetrics?.variations || 1}
-        </span>
-      </TableCell>
+      {/* Market Size - show product weight info */}
       <TableCell className="text-center">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="text-xs text-muted-foreground cursor-help">
-                {formatDimensions(product.dimensions)}
+                {formatWeight(product.dimensions)}
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{formatDimensions(product.dimensions)}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </TableCell>
-      <TableCell>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="text-xs text-muted-foreground cursor-help max-w-[150px] truncate">
-                {product.competitiveIntelligence || 'No analysis available'}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-[300px]">
-              <p>{product.competitiveIntelligence || 'No analysis available'}</p>
+              <p>Product Weight: {formatWeight(product.dimensions)}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -380,7 +364,7 @@ function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketT
     cell: ({ row }) => (
       <div className="text-center">
         <span className={getMonthlyRevenueColor(row.original.monthlyRevenue)}>
-          ${row.original.monthlyRevenue.toLocaleString()}
+          {formatAbbreviatedCurrency(row.original.monthlyRevenue)}
         </span>
       </div>
     ),
@@ -512,7 +496,7 @@ function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketT
     cell: ({ row }) => (
       <div className="text-center">
         <span className={`text-sm font-medium ${getReviewCountColor(row.original.reviews)}`}>
-          {row.original.reviews.toLocaleString()}
+          {formatWholeNumber(row.original.reviews)}
         </span>
       </div>
     ),
@@ -657,7 +641,7 @@ export function MarketDataTable({
                 <IconChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
+            <DropdownMenuContent align="end" className="w-[200px] text-black">
               {table
                 .getAllColumns()
                 .filter(
@@ -669,13 +653,13 @@ export function MarketDataTable({
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
-                      className="capitalize"
+                      className="text-black"
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) =>
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {column.columnDef.header as string}
+{getCachedColumnHeaderText(column)}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

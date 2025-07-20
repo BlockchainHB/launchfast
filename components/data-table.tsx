@@ -29,6 +29,8 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { GradeBadge } from "@/components/ui/grade-badge"
+import { getCachedColumnHeaderText } from "@/lib/table-utils"
+import { formatAbbreviatedCurrency } from "@/lib/number-formatting"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -63,7 +65,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import type { EnhancedProduct } from "@/types"
-import { formatDimensions, getRiskColor, getConsistencyColor } from "@/lib/calculations"
+import { formatDimensions, formatWeight, getRiskColor, getConsistencyColor } from "@/lib/calculations"
 import { 
   getPriceColor, 
   getMonthlyRevenueColor, 
@@ -230,7 +232,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     cell: ({ row }) => (
       <div className="text-center">
         <span className={getMonthlyRevenueColor(row.original.salesData?.monthlyRevenue || 0)}>
-          ${row.original.salesData?.monthlyRevenue?.toLocaleString() || '0'}
+          {formatAbbreviatedCurrency(row.original.salesData?.monthlyRevenue)}
         </span>
       </div>
     ),
@@ -401,11 +403,11 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     ),
     size: 80,
   },
-  // 18. Dimensions
+  // 18. Weight
   {
     accessorKey: "dimensions",
     header: ({ column }) => (
-      <div className="text-center text-xs font-medium">Dimensions</div>
+      <div className="text-center text-xs font-medium">Weight</div>
     ),
     cell: ({ row }) => (
       <div className="text-center">
@@ -413,17 +415,17 @@ const columns: ColumnDef<EnhancedProduct>[] = [
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="text-xs text-muted-foreground cursor-help">
-                {formatDimensions(row.original.dimensions)}
+                {formatWeight(row.original.dimensions)}
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{formatDimensions(row.original.dimensions)}</p>
+              <p>Product Weight: {formatWeight(row.original.dimensions)}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
     ),
-    size: 120,
+    size: 100,
   },
   // 19. AI Analysis
   {
@@ -529,7 +531,7 @@ export function DataTable({
                 <IconChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
+            <DropdownMenuContent align="end" className="w-[200px] text-black">
               {table
                 .getAllColumns()
                 .filter(
@@ -541,13 +543,13 @@ export function DataTable({
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
-                      className="capitalize"
+                      className="text-black"
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) =>
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {column.columnDef.header as string}
+{getCachedColumnHeaderText(column)}
                     </DropdownMenuCheckboxItem>
                   )
                 })}

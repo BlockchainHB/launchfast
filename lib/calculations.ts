@@ -179,6 +179,21 @@ export function formatDimensions(dimensions?: any): string {
 }
 
 /**
+ * Format only weight from dimensions JSONB
+ */
+export function formatWeight(dimensions?: any): string {
+  if (!dimensions) return 'Unknown'
+  
+  const { weight, weightUnit } = dimensions
+  
+  if (weight) {
+    return `${weight}${weightUnit || 'lbs'}`
+  }
+  
+  return 'Unknown'
+}
+
+/**
  * Get risk color for UI display
  */
 export function getRiskColor(riskClassification: string): string {
@@ -216,6 +231,7 @@ export const calculationUtils = {
   formatCompetitiveIntelligence,
   calculateAllMetrics,
   formatDimensions,
+  formatWeight,
   getRiskColor,
   getConsistencyColor
 }
