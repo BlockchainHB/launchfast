@@ -55,9 +55,6 @@ export function LoginForm({
     }
   }
 
-  const handleRequestEarlyAccess = () => {
-    router.push('/')
-  }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -110,29 +107,13 @@ export function LoginForm({
                   </div>
                 )}
                 
-                <div className="grid gap-3">
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-b from-primary to-primary/80 hover:shadow-[0_0_20px_rgba(98,49,163,0.4)] transition-all duration-300" 
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Signing in...' : 'Login'}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="w-full border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 hover:bg-white/10"
-                    onClick={handleRequestEarlyAccess}
-                  >
-                    Request Early Access
-                  </Button>
-                </div>
-              </div>
-              <div className="text-center text-sm">
-                Don&apos;t have an account?{" "}
-                <Link href="/signup" className="underline underline-offset-4">
-                  Sign up
-                </Link>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-b from-primary to-primary/80 hover:shadow-[0_0_20px_rgba(98,49,163,0.4)] transition-all duration-300" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Signing in...' : 'Login'}
+                </Button>
               </div>
             </div>
           </form>

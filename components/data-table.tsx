@@ -78,6 +78,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { TableFilters } from "@/components/ui/table-filters"
 import { toast } from "sonner"
 import type { EnhancedProduct } from "@/types"
 import { formatDimensions, formatWeight, getRiskColor, getConsistencyColor } from "@/lib/calculations"
@@ -194,6 +195,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       )
     },
     size: 80,
+    filterFn: 'equalsString',
   },
   // 4. Consistency
   {
@@ -230,6 +232,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       </div>
     ),
     size: 100,
+    filterFn: 'nestedProperty',
   },
   // 6. Daily Revenue
   {
@@ -245,6 +248,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       </div>
     ),
     size: 100,
+    filterFn: 'range',
   },
   // 7. Monthly Revenue
   {
@@ -260,6 +264,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       </div>
     ),
     size: 120,
+    filterFn: 'range',
   },
   // 8. Sales Volume
   {
@@ -349,6 +354,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       </div>
     ),
     size: 100,
+    filterFn: 'range',
   },
   // 13. 20 Click Launch Budget
   {
@@ -382,7 +388,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
   },
   // 15. Review Count
   {
-    accessorKey: "calculatedMetrics.reviewCategory",
+    accessorKey: "reviews",
     header: ({ column }) => (
       <div className="text-center text-xs font-medium">Reviews</div>
     ),
@@ -394,6 +400,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       </div>
     ),
     size: 100,
+    filterFn: 'range',
   },
   // 16. Rating
   {
@@ -410,6 +417,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       </div>
     ),
     size: 80,
+    filterFn: 'range',
   },
   // 17. Variations
   {
@@ -578,6 +586,41 @@ export function DataTable({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    filterFns: {
+      // Custom filter for nested properties
+      nestedProperty: (row, columnId, filterValue) => {
+        if (!filterValue) return true
+        const keys = columnId.split('.')
+        let value = row.original as any
+        for (const key of keys) {
+          value = value?.[key]
+          if (value === undefined || value === null) return false
+        }
+        return String(value) === String(filterValue)
+      },
+      // Custom filter for range values
+      range: (row, columnId, filterValue) => {
+        if (!filterValue || (!filterValue[0] && !filterValue[1])) return true
+        const keys = columnId.split('.')
+        let value = row.original as any
+        for (const key of keys) {
+          value = value?.[key]
+          if (value === undefined || value === null) return false
+        }
+        let numValue = Number(value)
+        if (isNaN(numValue)) return false
+        
+        // Handle margin percentage conversion
+        if (columnId === 'salesData.margin') {
+          numValue = numValue * 100
+        }
+        
+        const [min, max] = filterValue
+        if (min !== undefined && numValue < min) return false
+        if (max !== undefined && numValue > max) return false
+        return true
+      }
+    }
   })
 
   const selectedRows = table.getFilteredSelectedRowModel().rows
@@ -659,17 +702,87 @@ export function DataTable({
     console.log(`✅ Updated DataTable with ${updatedProducts.length} modified products`)
   }
 
+  // Filter configurations for products table
+  const filterConfigs = [
+    {
+      column: 'grade',
+      label: 'Grade',
+      type: 'select' as const,
+      options: [
+        { label: 'A+', value: 'A+', color: '#10b981' },
+        { label: 'A', value: 'A', color: '#059669' },
+        { label: 'B+', value: 'B+', color: '#84cc16' },
+        { label: 'B', value: 'B', color: '#65a30d' },
+        { label: 'C+', value: 'C+', color: '#eab308' },
+        { label: 'C', value: 'C', color: '#ca8a04' },
+        { label: 'D+', value: 'D+', color: '#f97316' },
+        { label: 'D', value: 'D', color: '#ea580c' },
+        { label: 'F', value: 'F', color: '#ef4444' }
+      ]
+    },
+    {
+      column: 'aiAnalysis.riskClassification',
+      label: 'Risk Level',
+      type: 'select' as const,
+      options: [
+        { label: 'Low Risk', value: 'Low Risk', color: '#10b981' },
+        { label: 'Medium Risk', value: 'Medium Risk', color: '#eab308' },
+        { label: 'High Risk', value: 'High Risk', color: '#ef4444' },
+        { label: 'Unknown', value: 'Unknown', color: '#6b7280' }
+      ]
+    },
+    {
+      column: 'salesData.monthlyRevenue',
+      label: 'Monthly Revenue',
+      type: 'range' as const,
+      min: 0,
+      max: 1000000,
+      step: 1000
+    },
+    {
+      column: 'calculatedMetrics.dailyRevenue',
+      label: 'Daily Revenue',
+      type: 'range' as const,
+      min: 0,
+      max: 10000,
+      step: 100
+    },
+    {
+      column: 'salesData.margin',
+      label: 'Profit Margin %',
+      type: 'range' as const,
+      min: 0,
+      max: 100,
+      step: 1
+    },
+    {
+      column: 'reviews',
+      label: 'Review Count',
+      type: 'range' as const,
+      min: 0,
+      max: 50000,
+      step: 100
+    },
+    {
+      column: 'rating',
+      label: 'Rating',
+      type: 'range' as const,
+      min: 1,
+      max: 5,
+      step: 0.1
+    }
+  ]
+
   return (
     <div className="w-full px-4 lg:px-6">
+      <TableFilters
+        table={table}
+        searchColumn="select-product"
+        searchPlaceholder="Search products..."
+        filters={filterConfigs}
+      />
       <div className="flex items-center justify-between py-4">
-        <Input
-          placeholder="Filter products..."
-          value={(table.getColumn("select-product")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("select-product")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm search-input"
-        />
+        <div></div>
         <div className="flex items-center space-x-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

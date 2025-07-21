@@ -62,7 +62,7 @@ export async function middleware(request: NextRequest) {
   
   // Define protected routes
   const protectedRoutes = ['/dashboard']
-  const authRoutes = ['/login', '/signup']
+  const authRoutes = ['/login']
   
   const isProtectedRoute = protectedRoutes.some(route => 
     request.nextUrl.pathname.startsWith(route)
@@ -77,6 +77,38 @@ export async function middleware(request: NextRequest) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
+  }
+  
+  // HARD PAYWALL: Check subscription status for authenticated users on protected routes
+  if (user && isProtectedRoute) {
+    try {
+      // Get user profile with subscription info
+      const { data: profile, error } = await supabase
+        .from('user_profiles')
+        .select('subscription_tier')
+        .eq('id', user.id)
+        .single()
+      
+      if (error) {
+        console.error('Error fetching user profile:', error)
+        // If profile doesn't exist or error, redirect to subscribe
+        return NextResponse.redirect(new URL('/api/subscribe', request.url))
+      }
+      
+      const subscriptionTier = profile?.subscription_tier || 'expired'
+      
+      // Hard paywall: Only allow 'pro' or 'unlimited' tier
+      const hasValidSubscription = subscriptionTier === 'pro' || subscriptionTier === 'unlimited'
+      
+      if (!hasValidSubscription) {
+        // Redirect to subscription page for hard paywall
+        return NextResponse.redirect(new URL('/api/subscribe', request.url))
+      }
+    } catch (error) {
+      console.error('Middleware subscription check error:', error)
+      // On error, redirect to subscribe to be safe
+      return NextResponse.redirect(new URL('/api/subscribe', request.url))
+    }
   }
   
   // If user is authenticated and trying to access auth routes

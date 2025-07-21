@@ -22,10 +22,11 @@ export default function Navbar() {
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
             <Button 
+              asChild
               variant="ghost" 
               className="text-sm font-medium"
             >
-              Sign Up
+              <Link href="/api/subscribe">Sign Up</Link>
             </Button>
             <Button 
               asChild 

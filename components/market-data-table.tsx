@@ -90,6 +90,7 @@ import {
   getReviewCountColor,
   getRatingColor 
 } from "@/lib/metric-colors"
+import { TableFilters } from "@/components/ui/table-filters"
 
 // Product sub-row component
 function ProductSubRow({ product, isLast }: { product: EnhancedProduct; isLast: boolean }) {
@@ -739,17 +740,61 @@ export function MarketDataTable({
     }
   })
 
+  // Filter configurations for markets
+  const marketFilters = [
+    {
+      column: "market_grade",
+      label: "Market Grade",
+      type: "select" as const,
+      options: [
+        { label: "A1 - Excellent", value: "A1", color: "#16a34a" },
+        { label: "A2 - Excellent", value: "A2", color: "#16a34a" },
+        { label: "B1 - Good", value: "B1", color: "#eab308" },
+        { label: "B2 - Good", value: "B2", color: "#eab308" },
+        { label: "C1 - Fair", value: "C1", color: "#f97316" },
+        { label: "C2 - Fair", value: "C2", color: "#f97316" },
+        { label: "D1 - Poor", value: "D1", color: "#dc2626" },
+        { label: "D2 - Poor", value: "D2", color: "#dc2626" },
+        { label: "F1 - Avoid", value: "F1", color: "#7f1d1d" },
+      ]
+    },
+    {
+      column: "market_risk_classification",
+      label: "Risk Level",
+      type: "select" as const,
+      options: [
+        { label: "Low Risk", value: "Low Risk", color: "#16a34a" },
+        { label: "Medium Risk", value: "Medium Risk", color: "#eab308" },
+        { label: "High Risk", value: "High Risk", color: "#dc2626" },
+      ]
+    },
+    {
+      column: "avg_monthly_revenue",
+      label: "Monthly Revenue",
+      type: "range" as const,
+      min: 0,
+      max: 100000,
+      step: 1000
+    },
+    {
+      column: "opportunity_score",
+      label: "Opportunity Score",
+      type: "range" as const,
+      min: 0,
+      max: 10,
+      step: 0.1
+    }
+  ]
+
   return (
     <div className="w-full px-4 lg:px-6">
-      <div className="flex items-center justify-between py-4">
-        <Input
-          placeholder="Filter markets by keyword..."
-          value={(table.getColumn("select-keyword")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("select-keyword")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm search-input"
-        />
+      <TableFilters
+        table={table}
+        searchColumn="select-keyword"
+        searchPlaceholder="Filter markets by keyword..."
+        filters={marketFilters}
+      />
+      <div className="flex items-center justify-end py-2">
         <div className="flex items-center space-x-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

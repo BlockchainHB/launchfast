@@ -40,7 +40,8 @@ export default function WaitlistPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-4"
+              className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tighter text-foreground mb-4 leading-none"
+              style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}
             >
               Find Profitable Amazon Products
             </motion.h1>
@@ -49,7 +50,8 @@ export default function WaitlistPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-primary mb-6"
+              className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tighter text-primary mb-8 leading-none"
+              style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}
             >
               in 60 Seconds
             </motion.div>
@@ -58,7 +60,8 @@ export default function WaitlistPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-12"
+              className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed mb-12 font-medium"
+              style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif' }}
             >
               Advanced A10-F1 scoring system analyzes 1000+ data points to identify
               low-competition, high-profit opportunities on Amazon.
@@ -77,7 +80,7 @@ export default function WaitlistPage() {
                 <div className="p-2 rounded-lg bg-primary/10">
                   <Target className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg">Smart Product Discovery</h3>
+                <h3 className="font-bold text-lg tracking-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}>Smart Product Discovery</h3>
               </div>
               <p className="text-muted-foreground leading-relaxed">
                 AI-powered analysis identifies low-competition opportunities with high profit potential.
@@ -89,7 +92,7 @@ export default function WaitlistPage() {
                 <div className="p-2 rounded-lg bg-primary/10">
                   <BarChart3 className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg">Real-Time Analytics</h3>
+                <h3 className="font-bold text-lg tracking-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}>Real-Time Analytics</h3>
               </div>
               <p className="text-muted-foreground leading-relaxed">
                 Live profit calculations, demand forecasting, and market trend analysis.
@@ -101,7 +104,7 @@ export default function WaitlistPage() {
                 <div className="p-2 rounded-lg bg-primary/10">
                   <Shield className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg">Risk Assessment</h3>
+                <h3 className="font-bold text-lg tracking-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}>Risk Assessment</h3>
               </div>
               <p className="text-muted-foreground leading-relaxed">
                 Advanced scoring system evaluates market saturation and competitive landscape.
@@ -117,16 +120,16 @@ export default function WaitlistPage() {
             className="text-center mb-16"
           >
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button className="px-8 py-4 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors text-lg">
-                Sign Up Now
-              </button>
-              
-              <button className="px-8 py-4 border border-border text-foreground font-semibold rounded-lg hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors text-lg flex items-center gap-2">
+              <button className="px-8 py-4 border border-border text-foreground font-bold rounded-xl hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-300 text-lg flex items-center gap-2 tracking-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}>
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z"/>
                 </svg>
                 Watch Demo
               </button>
+              
+              <a href="/api/subscribe" className="px-8 py-4 bg-primary text-primary-foreground font-bold rounded-xl hover:bg-primary/90 hover:shadow-lg hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-300 text-lg inline-block text-center tracking-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}>
+                Start for $50/month
+              </a>
             </div>
           </motion.div>
 

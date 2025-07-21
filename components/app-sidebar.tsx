@@ -78,16 +78,13 @@ export function AppSidebar({
       const response = await fetch('/api/user/profile')
       if (response.ok) {
         const result = await response.json()
-        if (result.success && result.data) {
-          setUser({
-            name: result.data.name,
-            email: result.data.email,
-            avatar: result.data.avatar || defaultUser.avatar,
-            company: result.data.company,
-            role: result.data.role,
-            subscriptionTier: result.data.subscriptionTier
-          })
-        }
+        setUser({
+          name: result.full_name || result.email?.split('@')[0] || 'User',
+          email: result.email,
+          avatar: result.avatar_url || defaultUser.avatar,
+          company: result.company,
+          subscriptionTier: result.subscription_tier
+        })
       }
     } catch (error) {
       console.error('Failed to fetch user profile:', error)
