@@ -130,7 +130,7 @@ export class SellerSpriteClient {
   }
 
   // Sales Prediction - Profit calculation endpoint
-  async salesPrediction(asin: string): Promise<SalesPrediction> {
+  async salesPrediction(asin: string): Promise<SalesPrediction | null> {
     const cached = await cacheHelpers.getSalesData(asin)
     if (cached) return cached as SalesPrediction
 
@@ -156,14 +156,14 @@ export class SellerSpriteClient {
       }
       
       const data = response.data.data
-      const dailyItems = data.dailyItemList || []
+      const dailyItems: Array<{sales: number, amount: number}> = data.dailyItemList || []
       
       // Calculate monthly averages from daily data
       const recentDays = dailyItems.slice(-30) // Last 30 days
-      const validDays = recentDays.filter(day => day.sales > 0)
+      const validDays = recentDays.filter((day: {sales: number}) => day.sales > 0)
       
-      const totalSales = validDays.reduce((sum, day) => sum + day.sales, 0)
-      const totalRevenue = validDays.reduce((sum, day) => sum + day.amount, 0)
+      const totalSales = validDays.reduce((sum: number, day: {sales: number}) => sum + day.sales, 0)
+      const totalRevenue = validDays.reduce((sum: number, day: {amount: number}) => sum + day.amount, 0)
       const avgPrice = validDays.length > 0 ? totalRevenue / totalSales : data.asinDetail?.price || 0
       
       // Estimate monthly values
@@ -318,7 +318,7 @@ export class SellerSpriteClient {
       // Get opportunities based on top keywords
       const topKeywords = (keywordData as KeywordData[]).slice(0, 5)
       const opportunities = await Promise.all(
-        topKeywords.map(kw => this.keywordMining(kw.keyword, { minSearches: 500 }))
+        topKeywords.map(kw => this.keywordMining(kw.keyword, { minSearch: 500 }))
       )
 
       return {
@@ -335,7 +335,20 @@ export class SellerSpriteClient {
   }
 
   // Enhanced margin calculation using real SellerSprite data and Amazon referral/FBA fees
-  private calculateEnhancedMargin(data: any, avgPrice: number, dimensions?: { length?: number; width?: number; height?: number; weight?: number }): {
+  private calculateEnhancedMargin(
+    data: { 
+      asinDetail?: { 
+        estimatedCost?: number; 
+        cogs?: number; 
+        fbaFee?: number; 
+        estimatedFbaFee?: number; 
+        category?: string; 
+        nodeLabelPath?: string; 
+      } 
+    }, 
+    avgPrice: number, 
+    dimensions?: { length?: number; width?: number; height?: number; weight?: number }
+  ): {
     margin: number;
     cogs: number;
     fbaCost: number;
@@ -379,8 +392,9 @@ export class SellerSpriteClient {
     for (let i = 0; i < retries; i++) {
       try {
         return await requestFn()
-      } catch (error: any) {
-        if (error.response?.status === 429 && i < retries - 1) {
+      } catch (error: unknown) {
+        const errorObj = error as { response?: { status?: number } }
+        if (errorObj.response?.status === 429 && i < retries - 1) {
           // Rate limited, wait and retry
           const delay = Math.pow(2, i) * 1000 // Exponential backoff
           await new Promise(resolve => setTimeout(resolve, delay))

@@ -38,7 +38,7 @@ export async function GET() {
       .single()
 
     if (error) {
-      console.error('Error fetching user profile:', error)
+      console.error('User profile fetch failed')
       return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })
     }
 
@@ -56,7 +56,7 @@ export async function GET() {
       cancel_at_period_end: profile?.cancel_at_period_end
     })
   } catch (error) {
-    console.error('Profile fetch error:', error)
+    console.error('Profile operation failed')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -117,7 +117,7 @@ export async function PATCH(request: NextRequest) {
       subscription_tier: updatedProfile?.subscription_tier || 'expired'
     })
   } catch (error) {
-    console.error('Profile update error:', error)
+    console.error('Profile update failed')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET
     )
   } catch (err) {
-    console.error('Webhook signature verification failed:', err)
+    // Log error without sensitive details
+    console.error('Webhook signature verification failed')
     return NextResponse.json(
       { error: 'Webhook signature verification failed' },
       { status: 400 }
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true })
 
   } catch (error) {
-    console.error(`Error processing webhook ${event.type}:`, error)
+    console.error('Webhook processing failed')
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
@@ -151,7 +152,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     })
     .eq('id', userId)
 
-  console.log(`Subscription deleted for user ${userId}`)
+  console.log('Subscription deleted successfully')
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
@@ -175,7 +176,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
     })
     .eq('id', userId)
 
-  console.log(`Payment succeeded for user ${userId}`)
+  console.log('Payment succeeded')
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
@@ -199,7 +200,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     })
     .eq('id', userId)
 
-  console.log(`Payment failed for user ${userId}`)
+  console.log('Payment failed')
 }
 
 async function updateUserSubscription(
@@ -243,7 +244,7 @@ async function updateUserSubscription(
         paymentMethodBrand = paymentMethod.card.brand
       }
     } catch (error) {
-      console.log('Could not retrieve payment method details:', error)
+      console.log('Could not retrieve payment method details')
     }
   }
 
@@ -264,9 +265,9 @@ async function updateUserSubscription(
     .eq('id', userId)
 
   if (error) {
-    console.error('Failed to update user subscription:', error)
+    console.error('Failed to update user subscription')
     throw error
   }
 
-  console.log(`Updated subscription for user ${userId}: ${subscriptionTier} (${status})`)
+  console.log('Updated subscription successfully')
 }

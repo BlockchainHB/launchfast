@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { cache, CACHE_TTL } from '@/lib/cache'
 import { createServerClient } from '@supabase/ssr'
 import { mergeProductsWithOverrides, mergeMarketsWithOverrides, type ProductOverride, type MarketOverride } from '@/lib/product-overrides'
+import type { EnhancedProduct } from '@/types'
 
 // TypeScript interfaces for the response
 interface DashboardStats {
@@ -51,13 +52,8 @@ interface MarketWithProducts {
   products: EnhancedProduct[]
 }
 
-interface LegacyProduct {
-  id: string
-  asin: string
-  title: string
-  brand: string
-  grade: string
-  // ... all product fields
+interface LegacyProduct extends EnhancedProduct {
+  // This ensures LegacyProduct has all EnhancedProduct fields
 }
 
 interface DashboardData {
@@ -197,6 +193,10 @@ export async function GET(request: NextRequest) {
  */
 async function fetchUserProfile(userId: string): Promise<UserProfile> {
   try {
+    if (!supabaseAdmin) {
+      throw new Error('Supabase admin client is not initialized')
+    }
+    
     const { data: profile, error } = await supabaseAdmin
       .from('user_profiles')
       .select('id, full_name, company')
@@ -235,6 +235,10 @@ async function fetchUserProfile(userId: string): Promise<UserProfile> {
  */
 async function fetchMarketsWithProducts(userId: string): Promise<MarketWithProducts[]> {
   try {
+    if (!supabaseAdmin) {
+      throw new Error('Supabase admin client is not initialized')
+    }
+    
     console.log('🔍 Fetching markets for user:', userId)
     
     // First check if any markets exist at all
@@ -322,6 +326,10 @@ async function fetchMarketsWithProducts(userId: string): Promise<MarketWithProdu
  * Fetch ALL products for the Products page (both with and without market_id)
  */
 async function fetchLegacyProducts(userId: string): Promise<LegacyProduct[]> {
+  if (!supabaseAdmin) {
+    throw new Error('Supabase admin client is not initialized')
+  }
+  
   const { data: products, error: productsError } = await supabaseAdmin
     .from('products')
     .select(`
@@ -361,7 +369,7 @@ async function fetchLegacyProducts(userId: string): Promise<LegacyProduct[]> {
 /**
  * Transform database product to table format (shared utility)
  */
-function transformProductForTable(product: any) {
+function transformProductForTable(product: any): EnhancedProduct {
   return {
     id: product.id,
     asin: product.asin,
@@ -390,14 +398,22 @@ function transformProductForTable(product: any) {
     
     // AI analysis from actual database data
     aiAnalysis: product.ai_analysis ? {
-      riskClassification: product.ai_analysis.risk_classification,
-      consistencyRating: product.ai_analysis.consistency_rating,
-      estimatedDimensions: product.ai_analysis.estimated_dimensions,
-      estimatedWeight: product.ai_analysis.estimated_weight,
-      opportunityScore: product.ai_analysis.opportunity_score,
+      riskClassification: product.ai_analysis.risk_classification || 'No Risk',
+      consistencyRating: product.ai_analysis.consistency_rating || 'Consistent',
+      estimatedDimensions: product.ai_analysis.estimated_dimensions || '',
+      estimatedWeight: product.ai_analysis.estimated_weight || '',
+      opportunityScore: product.ai_analysis.opportunity_score || 0,
       marketInsights: product.ai_analysis.market_insights || [],
       riskFactors: product.ai_analysis.risk_factors || []
-    } : null,
+    } : {
+      riskClassification: 'No Risk',
+      consistencyRating: 'Consistent',
+      estimatedDimensions: '',
+      estimatedWeight: '',
+      opportunityScore: 0,
+      marketInsights: [],
+      riskFactors: []
+    },
     
     // Keywords
     keywords: product.product_keywords?.map((pk: any) => ({
@@ -413,6 +429,12 @@ function transformProductForTable(product: any) {
     competitiveIntelligence: product.competitive_intelligence || '',
     apifySource: product.apify_source || false,
     sellerSpriteVerified: product.seller_sprite_verified || false,
+    
+    // Legacy fields for backward compatibility
+    monthlyRevenue: product.monthly_revenue || 0,
+    monthlySales: product.monthly_sales || 0,
+    profitEstimate: product.profit_estimate || 0,
+    
     createdAt: product.created_at,
     updatedAt: product.updated_at
   }
@@ -533,6 +555,10 @@ async function calculateOverrideAwareStats(
 
 async function calculateUserStats(userId: string): Promise<DashboardStats> {
   try {
+    if (!supabaseAdmin) {
+      throw new Error('Supabase admin client is not initialized')
+    }
+    
     // Get all user products for stats calculation
     const { data: allProducts, error } = await supabaseAdmin
       .from('products')
@@ -614,6 +640,10 @@ async function calculateUserStats(userId: string): Promise<DashboardStats> {
  */
 async function fetchUserProductOverrides(userId: string): Promise<ProductOverride[]> {
   try {
+    if (!supabaseAdmin) {
+      throw new Error('Supabase admin client is not initialized')
+    }
+    
     const { data: overrides, error } = await supabaseAdmin
       .from('product_overrides')
       .select('*')
@@ -636,6 +666,10 @@ async function fetchUserProductOverrides(userId: string): Promise<ProductOverrid
  */
 async function fetchUserMarketOverrides(userId: string): Promise<MarketOverride[]> {
   try {
+    if (!supabaseAdmin) {
+      throw new Error('Supabase admin client is not initialized')
+    }
+    
     const { data: overrides, error } = await supabaseAdmin
       .from('market_overrides')
       .select('*')

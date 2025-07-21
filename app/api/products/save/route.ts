@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     
     // If market analysis is provided, save market data first
     if (marketAnalysis) {
-      console.log('Saving market analysis for keyword:', marketAnalysis.keyword)
+      Logger.save.marketAnalysisStart(marketAnalysis.keyword)
       
       const marketPayload = {
         user_id: userId,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (marketError) {
-        console.error('Market save error:', marketError)
+        Logger.error('Market save failed', marketError)
         throw new Error('Failed to save market analysis')
       }
 
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         .select()
 
       if (batchProductError) {
-        console.error('Batch product save error:', batchProductError)
+        Logger.error('Batch product save failed', batchProductError)
         throw new Error('Failed to save products in batch')
       }
 
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
           .upsert(aiAnalysesPayloads, { onConflict: 'product_id' })
 
         if (aiError) {
-          console.warn('Batch AI analysis save warning:', aiError)
+          Logger.warn('Batch AI analysis save failed')
         } else {
           Logger.save.aiAnalysesBatchSaved(aiAnalysesPayloads.length)
         }
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
           .select('id, keyword')
 
         if (keywordError) {
-          console.warn('Batch keyword save warning:', keywordError)
+          Logger.warn('Batch keyword save failed')
         } else {
           // Create keyword mapping for relationships
           keywordIdMap = batchSavedKeywords.reduce((acc, kw) => {
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
             .upsert(productKeywordRelations, { onConflict: 'product_id,keyword_id' })
 
           if (relationError) {
-            console.warn('Batch product-keyword relation save warning:', relationError)
+            Logger.warn('Batch product-keyword relation save failed')
           } else {
             Logger.save.productKeywordRelationsBatchSaved(productKeywordRelations.length)
           }
@@ -255,9 +255,9 @@ export async function POST(request: NextRequest) {
       Logger.save.batchSaveCompleted(products.length, allKeywords.length, productKeywordMappings.length)
 
     } catch (error) {
-      console.error('Batch save operation failed:', error)
+      Logger.error('Batch save operation failed', error)
       // Fallback to individual saves if batch fails
-      console.log('Falling back to individual saves...')
+      Logger.warn('Falling back to individual saves')
       
       for (const product of products) {
         try {
@@ -296,7 +296,7 @@ export async function POST(request: NextRequest) {
             .single()
 
           if (productError) {
-            console.error('Fallback product save error for', product.asin, ':', productError)
+            Logger.error('Fallback product save failed', productError)
             continue
           }
 
@@ -304,7 +304,7 @@ export async function POST(request: NextRequest) {
           Logger.save.productSaved(product.asin)
 
         } catch (fallbackError) {
-          console.error(`Fallback error saving product ${product.asin}:`, fallbackError)
+          Logger.error('Fallback save failed', fallbackError)
           continue
         }
       }
@@ -318,10 +318,10 @@ export async function POST(request: NextRequest) {
           await supabaseAdmin
             .from('market_keywords')
             .insert(marketKeywords)
-          console.log(`Saved ${marketKeywords.length} market keywords`)
+          Logger.save.marketKeywordsSaved(marketKeywords.length)
         }
       } catch (error) {
-        console.warn('Failed to save market keywords:', error)
+        Logger.warn('Market keywords save failed')
         // Continue without failing the entire operation
       }
     }
@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
     // Invalidate dashboard cache so new data shows immediately
     const dashboardCacheKey = `dashboard_data_${userId}`
     await cache.del(dashboardCacheKey)
-    console.log(`🗑️ Invalidated dashboard cache for user: ${userId}`)
+    Logger.cache.invalidated('dashboard', userId)
 
     const response: any = {
       success: true,
@@ -347,7 +347,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response)
 
   } catch (error) {
-    console.error('Save products API error:', error)
+    Logger.error('Save products API', error)
     
     return NextResponse.json(
       { 
@@ -476,7 +476,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Get products API error:', error)
+    Logger.error('Get products API', error)
     
     return NextResponse.json(
       { 

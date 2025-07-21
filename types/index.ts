@@ -227,6 +227,10 @@ export interface EnhancedProduct extends ProcessedProduct {
   // Calculated metrics for dashboard
   calculatedMetrics?: CalculatedMetrics
   competitiveIntelligence?: string // Formatted competitive insights
+  // Legacy fields for backward compatibility
+  monthlyRevenue?: number
+  monthlySales?: number
+  profitEstimate?: number
   // Override tracking
   hasOverrides?: boolean
   overrideInfo?: {

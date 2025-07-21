@@ -1,4 +1,4 @@
-import { EnhancedProduct } from './product'
+import { EnhancedProduct } from './index'
 
 /**
  * Dashboard user profile interface

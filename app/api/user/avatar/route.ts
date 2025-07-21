@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (uploadError) {
-      console.error('Upload error:', uploadError)
+      console.error('Avatar upload failed')
       return NextResponse.json({ 
         error: 'Failed to upload file' 
       }, { status: 500 })
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
 
     if (updateError) {
-      console.error('Profile update error:', updateError)
+      console.error('Profile update failed')
       return NextResponse.json({ 
         error: 'Failed to update profile' 
       }, { status: 500 })
@@ -174,7 +174,7 @@ export async function DELETE(request: NextRequest) {
       .eq('id', user.id)
 
     if (updateError) {
-      console.error('Profile update error:', updateError)
+      console.error('Profile update failed')
       return NextResponse.json({ 
         error: 'Failed to update profile' 
       }, { status: 500 })

@@ -60,8 +60,6 @@ export async function POST(request: NextRequest) {
     })
 
     if (updateError) {
-      console.error('Password update error:', updateError)
-      
       // Handle specific Supabase error codes
       if (updateError.message?.includes('same_password') || updateError.message?.includes('same password')) {
         return NextResponse.json({ error: 'New password must be different from current password' }, { status: 400 })
@@ -72,7 +70,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ message: 'Password updated successfully' })
   } catch (error) {
-    console.error('Password change error:', error)
+    // Log error without sensitive details
+    console.error('Password change failed')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

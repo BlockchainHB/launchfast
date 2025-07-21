@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Phase 1: Apify Product Discovery & Initial Scoring
-    console.log('📍 Phase 1: Apify Product Discovery & Scoring')
+    Logger.dev.trace('Phase 1: Apify Product Discovery & Scoring')
     const apifyProducts = await apifyClient.searchProducts(keyword, {
       maxItems: 20, // Get 20 to have selection pool
       maxReviews: filters?.maxReviews || 1000,
@@ -130,11 +130,11 @@ export async function POST(request: NextRequest) {
         // Parallel API calls: SellerSprite sales + keyword data
         const [sellerSpriteSales, keywordData] = await Promise.all([
           sellerSpriteClient.salesPrediction(apifyProduct.asin).catch(error => {
-            console.warn(`❌ SellerSprite sales failed for ${apifyProduct.asin}: ${error.message}`)
+            Logger.api.sellerSpriteVerificationFailed(apifyProduct.asin)
             return null
           }),
           sellerSpriteClient.reverseASIN(apifyProduct.asin, 1, 10).catch(error => {
-            console.warn(`❌ Keyword data failed for ${apifyProduct.asin}: ${error.message}`)
+            Logger.api.keywordDataFailed(apifyProduct.asin)
             return []
           })
         ])
@@ -209,13 +209,13 @@ export async function POST(request: NextRequest) {
         return enhancedProduct
 
       } catch (error) {
-        console.error(`Error processing product ${apifyProduct.asin}:`, error)
+        Logger.error('Product processing failed', error)
         return null
       }
     })
 
     // Wait for all parallel verifications to complete
-    console.log(`⚡ Processing ${topProducts.length} products in parallel...`)
+    Logger.dev.trace(`Processing ${topProducts.length} products in parallel`)
     const verificationResults = await Promise.all(verificationPromises)
     
     // Filter out failed verifications (null results)
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
           results_count: finalProducts.length
         })
     } catch (error) {
-      console.error('Failed to log search session:', error)
+      Logger.error('Search session logging', error)
     }
 
     const processingTime = Date.now() - startTime
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Product research API error:', error)
+    Logger.error('Product research API', error)
     
     return NextResponse.json(
       { 
@@ -355,7 +355,7 @@ async function storeProductInDatabase(product: ProcessedProduct, scoring: any, u
           .single()
 
         if (keywordError) {
-          console.warn('Failed to insert keyword:', keywordError)
+          Logger.warn('Keyword insert failed')
           continue
         }
 
@@ -372,7 +372,7 @@ async function storeProductInDatabase(product: ProcessedProduct, scoring: any, u
     }
 
   } catch (error) {
-    console.error('Database storage error:', error)
+    Logger.error('Database storage', error)
     throw error
   }
 }

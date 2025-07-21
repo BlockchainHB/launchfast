@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 // Reuse the same data fetching logic from dashboard API
 import { supabaseAdmin } from '@/lib/supabase'
 import { mergeProductsWithOverrides, mergeMarketsWithOverrides, type ProductOverride, type MarketOverride } from '@/lib/product-overrides'
+import type { EnhancedProduct } from '@/types'
 
 interface ExportParams {
   type: 'products' | 'markets' | 'combined'
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     const exportType = searchParams.get('type') || 'products'
     const includeOverrides = searchParams.get('includeOverrides') !== 'false'
 
-    console.log(`📊 Starting CSV export for user ${userId}, type: ${exportType}`)
+    // Starting CSV export process
 
     // Fetch the same data as dashboard (with overrides already applied)
     const [marketsWithProducts, legacyProducts, productOverrides, marketOverrides] = await Promise.all([
@@ -66,9 +67,19 @@ export async function GET(request: NextRequest) {
       case 'products':
         const allProducts = [
           ...marketsWithAllOverrides.flatMap(market => 
-            market.products.map(product => ({ ...product, marketKeyword: market.keyword, marketId: market.id, marketGrade: market.market_grade }))
+            market.products.map(product => ({ 
+              ...product, 
+              marketKeyword: market.keyword, 
+              marketId: market.id, 
+              marketGrade: market.market_grade 
+            } as EnhancedProduct & { marketKeyword: string; marketId: string; marketGrade: string }))
           ),
-          ...legacyProductsWithOverrides.map(product => ({ ...product, marketKeyword: '', marketId: '', marketGrade: '' }))
+          ...legacyProductsWithOverrides.map(product => ({ 
+            ...product, 
+            marketKeyword: '', 
+            marketId: '', 
+            marketGrade: '' 
+          } as EnhancedProduct & { marketKeyword: string; marketId: string; marketGrade: string }))
         ]
         csvContent = generateProductsCSV(allProducts, includeOverrides)
         filename = `launchfast-products-${new Date().toISOString().split('T')[0]}.csv`
@@ -100,7 +111,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(csvContent, { headers })
 
   } catch (error) {
-    console.error('❌ CSV Export error:', error)
+    console.error('CSV Export failed')
     return NextResponse.json(
       { error: 'Failed to export CSV', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -111,7 +122,7 @@ export async function GET(request: NextRequest) {
 /**
  * Generate Products CSV - All products with market context
  */
-function generateProductsCSV(products: any[], includeOverrides: boolean): string {
+function generateProductsCSV(products: (EnhancedProduct & { marketKeyword?: string; marketId?: string; marketGrade?: string })[], includeOverrides: boolean): string {
   const headers = [
     '🆔 Product ID',
     '🏷️ ASIN',
@@ -335,7 +346,7 @@ function generateMarketsCSV(markets: any[], includeOverrides: boolean): string {
 /**
  * Generate Combined CSV - Markets with their products as sub-rows
  */
-function generateCombinedCSV(markets: any[], legacyProducts: any[], includeOverrides: boolean): string {
+function generateCombinedCSV(markets: any[], legacyProducts: EnhancedProduct[], includeOverrides: boolean): string {
   const headers = [
     '📋 Entry Type',
     '🔑 Market Keyword',
@@ -424,6 +435,10 @@ function generateCombinedCSV(markets: any[], legacyProducts: any[], includeOverr
 
 // Reuse data fetching functions from dashboard API
 async function fetchMarketsWithProducts(userId: string) {
+  if (!supabaseAdmin) {
+    throw new Error('Supabase admin client is not initialized')
+  }
+  
   const { data: markets, error } = await supabaseAdmin
     .from('markets')
     .select(`
@@ -442,7 +457,7 @@ async function fetchMarketsWithProducts(userId: string) {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Markets fetch error:', error)
+    console.error('Markets fetch failed')
     return []
   }
 
@@ -453,6 +468,10 @@ async function fetchMarketsWithProducts(userId: string) {
 }
 
 async function fetchLegacyProducts(userId: string) {
+  if (!supabaseAdmin) {
+    throw new Error('Supabase admin client is not initialized')
+  }
+  
   const { data: products, error } = await supabaseAdmin
     .from('products')
     .select(`
@@ -468,14 +487,14 @@ async function fetchLegacyProducts(userId: string) {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Products fetch error:', error)
+    console.error('Products fetch failed')
     return []
   }
 
   return (products || []).map(transformProduct)
 }
 
-function transformProduct(product: any) {
+function transformProduct(product: any): EnhancedProduct {
   return {
     id: product.id,
     asin: product.asin,
@@ -530,6 +549,10 @@ function transformProduct(product: any) {
 }
 
 async function fetchUserProductOverrides(userId: string): Promise<ProductOverride[]> {
+  if (!supabaseAdmin) {
+    throw new Error('Supabase admin client is not initialized')
+  }
+  
   const { data: overrides, error } = await supabaseAdmin
     .from('product_overrides')
     .select('*')
@@ -539,6 +562,10 @@ async function fetchUserProductOverrides(userId: string): Promise<ProductOverrid
 }
 
 async function fetchUserMarketOverrides(userId: string): Promise<MarketOverride[]> {
+  if (!supabaseAdmin) {
+    throw new Error('Supabase admin client is not initialized')
+  }
+  
   const { data: overrides, error } = await supabaseAdmin
     .from('market_overrides')
     .select('*')

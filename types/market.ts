@@ -1,3 +1,5 @@
+import { EnhancedProduct } from './index'
+
 export interface MarketFilters {
   maxReviews?: number
   minRating?: number
@@ -58,4 +60,4 @@ export interface MarketKeyword {
 }
 
 // Re-export existing product types for convenience
-export type { EnhancedProduct } from './product'
+export type { EnhancedProduct } from './index'
