@@ -288,9 +288,9 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
       }
       
       // Show success toast with market recalculation info
-      const successToastId = toast.success(`Updated ${currentProduct.title.slice(0, 25)}`, {
+      const successToastId = toast.success(`Updated ${currentProduct.title.slice(0, 20)}`, {
         id: loadingToast,
-        description: `${enabledOverrides.length} fields updated`
+        description: `${enabledOverrides.length} fields`
       })
       
       // Store the toast ID for potential dismissal
