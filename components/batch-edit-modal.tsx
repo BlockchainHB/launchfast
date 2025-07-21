@@ -405,7 +405,7 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
       variations: ensureInteger(getFieldValue('variations')),
       reviews: ensureInteger(getFieldValue('reviews')),
       rating: ensureDecimal(getFieldValue('rating')),
-      avg_cpc: ensureDecimal(getFieldValue('avgCpc')) ? Number(ensureDecimal(getFieldValue('avgCpc')).toFixed(2)) : null,
+      avg_cpc: ensureDecimal(getFieldValue('avgCpc')) ? Number(ensureDecimal(getFieldValue('avgCpc'))!.toFixed(2)) : null,
       weight: ensureDecimal(getFieldValue('weight'))
     }
   }

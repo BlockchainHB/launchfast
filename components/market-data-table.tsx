@@ -164,9 +164,25 @@ function ProductSubRow({ product, isLast }: { product: EnhancedProduct; isLast: 
         </span>
       </TableCell>
       <TableCell className="text-center">
-        <span className={getCPCColor((product.keywords || []).reduce((sum, kw) => sum + (kw?.cpc || 0), 0) / Math.max((product.keywords || []).length, 1))}>
-          ${((product.keywords || []).reduce((sum, kw) => sum + (kw?.cpc || 0), 0) / Math.max((product.keywords || []).length, 1)).toFixed(2)}
-        </span>
+        {(() => {
+          // Check for CPC override first
+          let avgCpc = 0
+          if (product.hasOverrides && product.overrideInfo?.avg_cpc) {
+            avgCpc = product.overrideInfo.avg_cpc
+          } else {
+            // Fall back to keyword average
+            const keywords = product.keywords || []
+            avgCpc = keywords.length > 0
+              ? keywords.reduce((sum, kw) => sum + (kw?.cpc || 0), 0) / keywords.length
+              : 0
+          }
+          
+          return (
+            <span className={getCPCColor(avgCpc)}>
+              ${Number(avgCpc).toFixed(2)}
+            </span>
+          )
+        })()}
       </TableCell>
       <TableCell className="text-center">
         <span className="metric-currency">

@@ -296,14 +296,24 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       <div className="text-center text-xs font-medium">CPC</div>
     ),
     cell: ({ row }) => {
-      const keywords = row.original.keywords || []
-      const avgCpc = keywords.length > 0
-        ? keywords.reduce((sum, kw) => sum + (kw?.cpc || 0), 0) / keywords.length
-        : 0
+      const product = row.original
+      
+      // Check for CPC override first
+      let avgCpc = 0
+      if (product.hasOverrides && product.overrideInfo?.avg_cpc) {
+        avgCpc = product.overrideInfo.avg_cpc
+      } else {
+        // Fall back to keyword average
+        const keywords = product.keywords || []
+        avgCpc = keywords.length > 0
+          ? keywords.reduce((sum, kw) => sum + (kw?.cpc || 0), 0) / keywords.length
+          : 0
+      }
+      
       return (
         <div className="text-center">
           <span className={getCPCColor(avgCpc)}>
-            ${avgCpc.toFixed(2)}
+            ${Number(avgCpc).toFixed(2)}
           </span>
         </div>
       )
