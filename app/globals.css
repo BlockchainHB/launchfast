@@ -353,7 +353,7 @@
   .grade-d1  { @apply bg-red-200 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-400 dark:border-red-700; }
 
   /* F GRADE - Red (Critical Failure) */
-  .grade-f1 { @apply bg-red-500 text-white border-red-600 shadow-red-500/25 shadow-lg font-bold dark:bg-red-500 dark:text-white dark:border-red-400; }
+  .grade-f1 { @apply bg-red-100 text-red-800 border-red-200 font-medium dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30; }
 
   /* Risk Assessment Enhancements */
   .risk-pulse {

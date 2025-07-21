@@ -54,6 +54,12 @@ export const Logger = {
     },
     batchSaveCompleted: (productCount: number, keywordCount: number, relationCount: number) => {
       console.log(`⚡ [BATCH] Batch save completed: ${productCount} products, ${keywordCount} keywords, ${relationCount} relations`)
+    },
+    marketAnalysisStart: (keyword: string) => {
+      console.log(`🔍 [SAVE] Starting market analysis save for: "${keyword}"`)
+    },
+    marketKeywordsSaved: (count: number) => {
+      console.log(`🔑 [SAVE] Market keywords saved: ${count}`)
     }
   },
 
@@ -105,6 +111,11 @@ export const Logger = {
     console.error(`💥 [ERROR] ${context}:`, error instanceof Error ? error.message : error)
   },
 
+  // Warning logging
+  warn: (message: string) => {
+    console.warn(`⚠️ [WARN] ${message}`)
+  },
+
   // Cache logging
   cache: {
     hit: (key: string) => {
@@ -115,6 +126,9 @@ export const Logger = {
     },
     set: (key: string, ttl: number) => {
       console.log(`💾 [CACHE] Set: ${key} (TTL: ${ttl}s)`)
+    },
+    invalidated: (cacheType: string, userId?: string) => {
+      console.log(`🗑️ [CACHE] Invalidated: ${cacheType}${userId ? ` for user ${userId}` : ''}`)
     }
   }
 }

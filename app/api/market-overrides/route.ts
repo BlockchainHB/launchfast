@@ -2,18 +2,33 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { MarketRecalculator } from '@/lib/market-recalculator'
 import { cache } from '@/lib/cache'
+import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (!userId) {
+    if (userError || !user) {
       return NextResponse.json(
-        { error: 'user_id is required' },
-        { status: 400 }
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
       )
     }
+
+    const userId = user.id
 
     const { data, error } = await supabaseAdmin
       .from('market_overrides')
@@ -48,12 +63,35 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { market_id, user_id, override_reason } = body
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
 
-    if (!market_id || !user_id) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
       return NextResponse.json(
-        { error: 'market_id and user_id are required' },
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    const userId = user.id
+    const body = await request.json()
+    const { market_id, override_reason } = body
+
+    if (!market_id) {
+      return NextResponse.json(
+        { error: 'market_id is required' },
         { status: 400 }
       )
     }
@@ -62,7 +100,7 @@ export async function POST(request: NextRequest) {
     const { data: existingOverride } = await supabaseAdmin
       .from('market_overrides')
       .select('id, market_grade')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .eq('market_id', market_id)
       .single()
     
@@ -73,7 +111,7 @@ export async function POST(request: NextRequest) {
     const recalculator = new MarketRecalculator()
     const result = await recalculator.recalculateMarket(
       market_id, 
-      user_id, 
+      userId, 
       override_reason || 'Manual market recalculation'
     )
 
@@ -85,7 +123,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Force invalidate dashboard cache to update stats cards (especially for re-overrides)
-    const dashboardCacheKey = `dashboard_data_${user_id}`
+    const dashboardCacheKey = `dashboard_data_${userId}`
     
     console.log(`🔍 Invalidating cache for ${isReOverride ? 're-override' : 'new override'}: ${dashboardCacheKey}`)
     await cache.del(dashboardCacheKey)
@@ -120,16 +158,31 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
-    const marketId = searchParams.get('market_id')
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (!userId) {
+    if (userError || !user) {
       return NextResponse.json(
-        { error: 'user_id is required' },
-        { status: 400 }
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
       )
     }
+
+    const userId = user.id
+    const { searchParams } = new URL(request.url)
+    const marketId = searchParams.get('market_id')
 
     let query = supabaseAdmin
       .from('market_overrides')

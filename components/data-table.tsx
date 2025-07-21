@@ -637,16 +637,6 @@ export function DataTable({
     if (!hasSelection) return
 
     try {
-      // Get user profile for authentication
-      const userResponse = await fetch('/api/user/profile')
-      const userData = await userResponse.json()
-      
-      if (!userData.success || !userData.data?.id) {
-        toast.error('Authentication required')
-        return
-      }
-      
-      const userId = userData.data.id
       const asins = selectedProducts.map(p => p.asin)
       
       // Show loading toast
@@ -656,7 +646,7 @@ export function DataTable({
       const response = await fetch('/api/products/batch-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ asins, userId }),
+        body: JSON.stringify({ asins }),
       })
       
       const result = await response.json()
@@ -851,16 +841,18 @@ export function DataTable({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Selected Products</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete {selectedRows.length} selected product{selectedRows.length > 1 ? 's' : ''}?
-                  <br /><br />
-                  <strong>This will:</strong>
-                  <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                    <li>Permanently delete {selectedRows.length} product{selectedRows.length > 1 ? 's' : ''} from your research</li>
-                    <li>Remove all product overrides and customizations</li>
-                    <li>Recalculate affected market data</li>
-                  </ul>
-                  <br />
-                  <span className="text-destructive font-medium">This action cannot be undone.</span>
+                  <>
+                    Are you sure you want to delete {selectedRows.length} selected product{selectedRows.length > 1 ? 's' : ''}?
+                    <br /><br />
+                    <strong>This will:</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                      <li>Permanently delete {selectedRows.length} product{selectedRows.length > 1 ? 's' : ''} from your research</li>
+                      <li>Remove all product overrides and customizations</li>
+                      <li>Recalculate affected market data</li>
+                    </ul>
+                    <br />
+                    <span className="text-destructive font-medium">This action cannot be undone.</span>
+                  </>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

@@ -226,7 +226,6 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
       const overrides = selectedProducts.map(product => ({
         product_id: product.id,
         asin: product.asin,
-        user_id: userId,
         override_reason: form.notes || 'Batch product edit',
         notes: form.notes,
         ...transformProductToDatabase(product, form)

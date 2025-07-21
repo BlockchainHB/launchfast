@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { getGradeIcon } from "@/lib/icons"
 
 interface GradeBadgeProps extends React.ComponentProps<"span"> {
   grade: string
@@ -8,28 +9,6 @@ interface GradeBadgeProps extends React.ComponentProps<"span"> {
   hasWarnings?: boolean
 }
 
-function getGradeIcon(grade: string) {
-  const gradeUpper = grade.toUpperCase()
-  
-  if (gradeUpper === 'A10') {
-    return '🏆' // Trophy for the best grade
-  } else if (gradeUpper.startsWith('A')) {
-    return '⭐' // Star for A grades
-  } else if (gradeUpper.startsWith('B')) {
-    return '✓' // Check mark for B grades
-  } else if (gradeUpper.startsWith('C')) {
-    return '○' // Circle for C grades
-  } else if (gradeUpper.startsWith('D')) {
-    return '△' // Triangle for D grades
-  } else if (gradeUpper.startsWith('E')) {
-    return '!!' // Warning for E grades
-  } else if (gradeUpper === 'F1') {
-    return '💀' // Skull for the worst grade
-  } else if (gradeUpper.startsWith('F')) {
-    return '✗' // X for F grades
-  }
-  return ''
-}
 
 function getGradePrefix(grade: string) {
   const gradeUpper = grade.toUpperCase()
@@ -57,9 +36,9 @@ export function GradeBadge({ grade, children, className, isRisky = false, hasWar
   const isA10 = grade.toUpperCase() === 'A10'
   const isF1 = grade.toUpperCase() === 'F1'
   const specialStyles = isA10 ? "shadow-lg shadow-emerald-500/25 ring-1 ring-emerald-400/30" : 
-                      isF1 ? "shadow-lg shadow-red-500/25 ring-1 ring-red-400/30" : ""
+                      isF1 ? "" : ""
   
-  const icon = getGradeIcon(grade)
+  const icon = getGradeIcon(grade, 14)
   const displayText = children || getGradePrefix(grade)
   
   return (
@@ -67,7 +46,7 @@ export function GradeBadge({ grade, children, className, isRisky = false, hasWar
       className={cn(baseStyles, gradeClass, riskStyles, warningStyles, specialStyles, className)}
       {...props}
     >
-      {icon && <span className="text-[10px] leading-none">{icon}</span>}
+      {icon && <span className="flex items-center">{icon}</span>}
       <span className={isA10 || isF1 ? "font-bold tracking-wide" : ""}>{displayText}</span>
     </span>
   )

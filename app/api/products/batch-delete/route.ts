@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,21 +16,44 @@ const supabaseAdmin = createClient(
 
 interface BatchDeleteRequest {
   asins: string[]
-  userId: string
 }
 
 // POST /api/products/batch-delete - Delete multiple products
 export async function POST(request: NextRequest) {
   try {
-    const body: BatchDeleteRequest = await request.json()
-    const { asins, userId } = body
+    // Get authenticated user from session
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // Note: We can't set cookies in API routes, but this prevents the warning
+          },
+          remove(name: string, options: any) {
+            // Note: We can't remove cookies in API routes, but this prevents the warning
+          },
+        },
+      }
+    )
 
-    if (!userId) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
       return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized - please login' },
+        { status: 401 }
       )
     }
+
+    const userId = user.id
+    
+    const body: BatchDeleteRequest = await request.json()
+    const { asins } = body
 
     if (!asins || !Array.isArray(asins) || asins.length === 0) {
       return NextResponse.json(
@@ -87,18 +112,47 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Batch deleted ${productsToDelete.length} products`)
 
-    // Trigger market recalculation for affected markets
+    // Check for empty markets and delete them
+    const emptyMarkets = []
+    for (const marketId of Array.from(affectedMarkets)) {
+      const { data: remainingProducts, error: countError } = await supabaseAdmin
+        .from('products')
+        .select('id')
+        .eq('market_id', marketId)
+        .eq('user_id', userId)
+      
+      if (!countError && remainingProducts && remainingProducts.length === 0) {
+        // Delete the empty market
+        const { error: deleteMarketError } = await supabaseAdmin
+          .from('markets')
+          .delete()
+          .eq('id', marketId)
+          .eq('user_id', userId)
+        
+        if (!deleteMarketError) {
+          emptyMarkets.push(marketId)
+          console.log(`🗑️ Deleted empty market: ${marketId}`)
+        }
+      }
+    }
+    
+    // Remove deleted markets from affected markets list for recalculation
+    const marketsToRecalculate = Array.from(affectedMarkets).filter(marketId => 
+      !emptyMarkets.includes(marketId)
+    )
+
+    // Trigger market recalculation for remaining affected markets
     const marketRecalcResults: { [key: string]: boolean } = {}
 
-    if (affectedMarkets.size > 0) {
-      console.log(`🔄 Triggering recalculation for ${affectedMarkets.size} affected markets`)
+    if (marketsToRecalculate.length > 0) {
+      console.log(`🔄 Triggering recalculation for ${marketsToRecalculate.length} remaining markets`)
       
       try {
         const { MarketRecalculator } = await import('@/lib/market-recalculator')
         const recalculator = new MarketRecalculator(supabaseAdmin)
         
-        // Recalculate each affected market
-        for (const marketId of Array.from(affectedMarkets)) {
+        // Recalculate each remaining market
+        for (const marketId of marketsToRecalculate) {
           try {
             await recalculator.recalculateMarket(
               marketId as string, 
@@ -150,6 +204,7 @@ export async function POST(request: NextRequest) {
           title: p.title
         })),
         affectedMarkets: Array.from(affectedMarkets),
+        emptyMarketsDeleted: emptyMarkets,
         marketRecalcResults,
         cacheCleared,
         statistics: {
@@ -157,6 +212,7 @@ export async function POST(request: NextRequest) {
           found: productsToDelete.length,
           deleted: productsToDelete.length,
           marketsAffected: affectedMarkets.size,
+          emptyMarketsDeleted: emptyMarkets.length,
           marketsRecalculated: Object.values(marketRecalcResults).filter(Boolean).length
         }
       }

@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import { ProgressDisplayController } from "@/lib/progress-display-controller"
 import { IconSearch, IconBarcode, IconCheck, IconX, IconLoader2, IconChevronDown, IconChevronRight } from "@tabler/icons-react"
+import { getStatusIcon, getResearchPhaseIcon } from "@/lib/icons"
+import { IbmWatsonDiscovery, BusinessMetrics, IbmDataProductExchange, IbmWatsonxCodeAssistantForZValidationAssistant, RecordingFilledAlt, ChartRelationship, DoubleAxisChartColumn } from "@carbon/icons-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -66,31 +68,31 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
       return {
         color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
         status: 'Excellent',
-        icon: '🏆'
+        icon: getStatusIcon('excellent', 16)
       }
     } else if (gradeUpper.startsWith('B')) {
       return {
         color: 'bg-blue-100 text-blue-800 border-blue-200',
         status: 'Good',
-        icon: '📈'
+        icon: getStatusIcon('good', 16)
       }
     } else if (gradeUpper.startsWith('C')) {
       return {
         color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
         status: 'Average',
-        icon: '📊'
+        icon: getStatusIcon('average', 16)
       }
     } else if (gradeUpper.startsWith('D')) {
       return {
         color: 'bg-orange-100 text-orange-800 border-orange-200',
         status: 'Poor',
-        icon: '📉'
+        icon: getStatusIcon('poor', 16)
       }
     } else {
       return {
         color: 'bg-red-100 text-red-800 border-red-200',
         status: 'Failed',
-        icon: '❌'
+        icon: getStatusIcon('failed', 16)
       }
     }
   }
@@ -239,16 +241,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     const { currentPhase, phaseMessage, phaseData, progress, stepType, showProgress } = displayState
     
     const getPhaseIcon = () => {
-      switch (currentPhase) {
-        case 'marketplace_analysis':
-          return '🔍'
-        case 'validating_market':
-          return '✅'
-        case 'complete':
-          return '🎉'
-        default:
-          return '⚡'
-      }
+      return getResearchPhaseIcon(currentPhase, 24)
     }
 
     const renderPhaseDetails = () => {
@@ -257,7 +250,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
           return (
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="text-2xl animate-pulse">🔍</div>
+                <div className="animate-pulse"><IbmWatsonDiscovery size={24} className="text-black" /></div>
                 <div className="flex-1">
                   <div className="text-sm font-medium">{phaseMessage}</div>
                   {phaseData && (
@@ -293,27 +286,27 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
               {/* Visual Analysis Steps */}
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { icon: '🔍', label: 'Scan' },
-                  { icon: '💰', label: 'Pricing' },
-                  { icon: '📦', label: 'Products' },
-                  { icon: '📊', label: 'Sales' },
-                  { icon: '🎯', label: 'Saturation' },
-                  { icon: '⭐', label: 'Opportunity' },
-                  { icon: '📝', label: 'Reviews' },
-                  { icon: '✅', label: 'Selection' }
+                  { icon: <IbmWatsonDiscovery size={16} className="text-black" />, label: 'Scan' },
+                  { icon: <BusinessMetrics size={16} className="text-black" />, label: 'Pricing' },
+                  { icon: <IbmDataProductExchange size={16} className="text-black" />, label: 'Products' },
+                  { icon: <BusinessMetrics size={16} className="text-black" />, label: 'Sales' },
+                  { icon: <RecordingFilledAlt size={16} className="text-black" />, label: 'Saturation' },
+                  { icon: <DoubleAxisChartColumn size={16} className="text-black" />, label: 'Opportunity' },
+                  { icon: <IbmWatsonxCodeAssistantForZValidationAssistant size={16} className="text-black" />, label: 'Reviews' },
+                  { icon: <ChartRelationship size={16} className="text-black" />, label: 'Selection' }
                 ].map((item, i) => (
                   <div
                     key={i}
                     className={`p-2 rounded text-center text-xs relative ${
                       i < (phaseData?.currentStep || 0)
-                        ? 'bg-blue-100 text-blue-700'
+                        ? 'bg-blue-100 text-black'
                         : i === (phaseData?.currentStep || 0) - 1
-                        ? 'bg-blue-50 text-blue-600 animate-pulse'
-                        : 'bg-gray-50 text-gray-400'
+                        ? 'bg-blue-50 text-black animate-pulse'
+                        : 'bg-gray-50 text-black'
                     }`}
                   >
-                    <div className="text-lg">{item.icon}</div>
-                    <div>{item.label}</div>
+                    <div className="flex justify-center">{item.icon}</div>
+                    <div className="text-black">{item.label}</div>
                   </div>
                 ))}
               </div>
@@ -334,10 +327,10 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
           return (
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="text-2xl animate-pulse">✅</div>
+                <div className="animate-pulse">{getResearchPhaseIcon('validating_market', 24)}</div>
                 <div className="flex-1">
                   <div className="text-sm font-medium">{phaseMessage}</div>
-                  {phaseData && phaseData.currentItem && (
+                  {phaseData && phaseData.currentItem > 0 && (
                     <div className="text-xs text-muted-foreground mt-1">
                       Verifying {phaseData.currentItem} of {phaseData.totalItems} products
                     </div>
@@ -401,7 +394,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
                   <div className="flex items-center justify-center space-x-2 p-2 bg-blue-100 rounded">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                     <span className="text-xs text-blue-700 font-medium">
-                      Validating all products with SellerSprite in parallel...
+                      Validating all products with advanced analytics...
                     </span>
                   </div>
                 </div>
@@ -413,7 +406,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
           return (
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
-                <div className="text-2xl animate-pulse">🎯</div>
+                <div className="animate-pulse">{getResearchPhaseIcon('applying_grading', 24)}</div>
                 <div className="flex-1">
                   <div className="text-sm font-medium">{phaseMessage}</div>
                   {phaseData && (
@@ -464,21 +457,6 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
 
     return (
       <div className="space-y-6 py-4">
-        {/* Progress Bar - Only show for determinate steps */}
-        {showProgress && stepType === 'determinate' && (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Verification Progress</span>
-              <span className="text-sm text-muted-foreground">{progress}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-2 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
 
         {/* Phase-Specific UI */}
         <div className={`border rounded-lg p-4 ${

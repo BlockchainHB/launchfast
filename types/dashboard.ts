@@ -139,15 +139,15 @@ export function transformMarketToTableRow(market: MarketWithProducts): MarketTab
   
   // Calculate consistency mode (most common)
   const consistencies = products.map(p => p.aiAnalysis?.consistencyRating || 'Unknown')
-  const consistencyMode = consistencies.reduce((a, b, i, arr) => 
+  const consistencyMode = consistencies.length > 0 ? consistencies.reduce((a, b, i, arr) => 
     arr.filter(v => v === a).length >= arr.filter(v => v === b).length ? a : b
-  )
+  ) : 'No Data'
   
   // Calculate risk mode (most common)
   const risks = products.map(p => p.aiAnalysis?.riskClassification || 'Unknown')
-  const riskMode = risks.reduce((a, b, i, arr) => 
+  const riskMode = risks.length > 0 ? risks.reduce((a, b, i, arr) => 
     arr.filter(v => v === a).length >= arr.filter(v => v === b).length ? a : b
-  )
+  ) : 'No Data'
   
   // Calculate actual averages from products
   const avgPrice = productCount > 0 ? products.reduce((sum, p) => sum + (p.price || 0), 0) / productCount : 0
@@ -189,9 +189,9 @@ export function transformMarketToTableRow(market: MarketWithProducts): MarketTab
     launchBudget: avgLaunchBudget,
     profitPerUnit: avgProfitPerUnit,
     
-    // Market-specific (use most common values from products)
-    consistency: consistencyMode,
-    riskType: riskMode,
+    // Market-specific (use database values, which include overrides)
+    consistency: market.market_consistency_rating,
+    riskType: market.market_risk_classification,
     opportunityScore: market.opportunity_score,
     productsAnalyzed: productCount, // Use actual product count
     

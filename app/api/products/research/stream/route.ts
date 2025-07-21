@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
       // Show all products spinning simultaneously from the start
       sendEvent({
         phase: 'validating_market',
-        message: 'Verifying all products with SellerSprite...',
+        message: 'Verifying all products with advanced analytics...',
         progress: 0,
         data: { 
           stepType: 'determinate',
@@ -234,42 +234,92 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      // Process all products in parallel but don't send individual updates
-      for (let index = 0; index < topProducts.length; index++) {
-        const product = topProducts[index]
+      // Industry-grade parallel processing with proper batching, timeouts, and error isolation
+      const BATCH_SIZE = 3 // Process products in batches to avoid rate limits
+      const OPERATION_TIMEOUT = 30000 // 30 second timeout per product
+      const MAX_RETRIES = 2
+      
+      const processProductWithTimeout = async (product: any, retryCount = 0): Promise<any | null> => {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Operation timeout')), OPERATION_TIMEOUT)
+        )
         
         try {
-          const [sellerSpriteSales, keywordData] = await Promise.all([
-            sellerSpriteClient.salesPrediction(product.asin).catch(() => null),
-            sellerSpriteClient.reverseASIN(product.asin, 1, 10).catch(() => [])
+          const result = await Promise.race([
+            (async () => {
+              // Parallel SellerSprite API calls
+              const [sellerSpriteSales, keywordData] = await Promise.all([
+                sellerSpriteClient.salesPrediction(product.asin).catch(() => null),
+                sellerSpriteClient.reverseASIN(product.asin, 1, 10).catch(() => [])
+              ])
+
+              if (!sellerSpriteSales) return null
+
+              const productData = apifyClient.mapToProductData(product)
+              const aiAnalysis = await analyzeProductWithReviews(productData, product.reviews)
+              const scoring = scoreProduct(productData, sellerSpriteSales, aiAnalysis, keywordData)
+              const calculatedMetrics = calculateAllMetrics({
+                id: product.asin, asin: product.asin, title: product.title, brand: product.brand || 'Unknown',
+                price: product.price.value, bsr: product.bestSellersRank, reviews: product.reviewsCount,
+                rating: product.stars, images: product.images, dimensions: product.dimensions,
+                reviewsData: product.reviews, salesData: sellerSpriteSales, aiAnalysis,
+                keywords: keywordData.slice(0, 10), grade: scoring.grade, apifySource: true,
+                sellerSpriteVerified: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+              }, product)
+
+              return {
+                id: product.asin, asin: product.asin, title: product.title, brand: product.brand || 'Unknown',
+                price: product.price.value, bsr: product.bestSellersRank, reviews: product.reviewsCount,
+                rating: product.stars, images: product.images, dimensions: product.dimensions,
+                reviewsData: product.reviews, salesData: sellerSpriteSales, aiAnalysis,
+                keywords: keywordData.slice(0, 10), grade: scoring.grade, apifySource: true,
+                sellerSpriteVerified: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+                calculatedMetrics, competitiveIntelligence: formatCompetitiveIntelligence(aiAnalysis.competitiveDifferentiation)
+              }
+            })(),
+            timeoutPromise
           ])
-
-          if (!sellerSpriteSales) continue
-
-          const productData = apifyClient.mapToProductData(product)
-          const aiAnalysis = await analyzeProductWithReviews(productData, product.reviews)
-          const scoring = scoreProduct(productData, sellerSpriteSales, aiAnalysis, keywordData)
-          const calculatedMetrics = calculateAllMetrics({
-            id: product.asin, asin: product.asin, title: product.title, brand: product.brand || 'Unknown',
-            price: product.price.value, bsr: product.bestSellersRank, reviews: product.reviewsCount,
-            rating: product.stars, images: product.images, dimensions: product.dimensions,
-            reviewsData: product.reviews, salesData: sellerSpriteSales, aiAnalysis,
-            keywords: keywordData.slice(0, 10), grade: scoring.grade, apifySource: true,
-            sellerSpriteVerified: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-          }, product)
-
-          verifiedProducts.push({
-            id: product.asin, asin: product.asin, title: product.title, brand: product.brand || 'Unknown',
-            price: product.price.value, bsr: product.bestSellersRank, reviews: product.reviewsCount,
-            rating: product.stars, images: product.images, dimensions: product.dimensions,
-            reviewsData: product.reviews, salesData: sellerSpriteSales, aiAnalysis,
-            keywords: keywordData.slice(0, 10), grade: scoring.grade, apifySource: true,
-            sellerSpriteVerified: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-            calculatedMetrics, competitiveIntelligence: formatCompetitiveIntelligence(aiAnalysis.competitiveDifferentiation)
-          })
+          
+          return result
         } catch (error) {
-          Logger.error(`Product verification failed for ${product.asin}`, error)
-          continue
+          if (retryCount < MAX_RETRIES && !(error instanceof Error && error.message === 'Operation timeout')) {
+            Logger.dev.warn(`Retrying product ${product.asin}, attempt ${retryCount + 1}`)
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))) // Exponential backoff
+            return processProductWithTimeout(product, retryCount + 1)
+          }
+          
+          Logger.error(`Product verification failed for ${product.asin} after ${retryCount + 1} attempts`, error)
+          return null
+        }
+      }
+      
+      // Process products in parallel batches
+      const batches = []
+      for (let i = 0; i < topProducts.length; i += BATCH_SIZE) {
+        batches.push(topProducts.slice(i, i + BATCH_SIZE))
+      }
+      
+      Logger.dev.info(`Processing ${topProducts.length} products in ${batches.length} parallel batches of ${BATCH_SIZE}`)
+      
+      for (const batch of batches) {
+        // Process entire batch in parallel with Promise.allSettled for error isolation
+        const batchResults = await Promise.allSettled(
+          batch.map(product => processProductWithTimeout(product))
+        )
+        
+        // Collect successful results
+        batchResults.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value) {
+            verifiedProducts.push(result.value)
+            Logger.dev.trace(`✅ Product ${batch[index].asin} verified successfully`)
+          } else if (result.status === 'rejected') {
+            Logger.dev.warn(`❌ Product ${batch[index].asin} batch processing failed:`, result.reason)
+          }
+        })
+        
+        // Small delay between batches to respect rate limits
+        if (batches.indexOf(batch) < batches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500))
         }
       }
 

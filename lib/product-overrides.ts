@@ -263,7 +263,7 @@ export function mergeProductsWithOverrides(
  */
 export async function fetchUserOverrides(userId: string): Promise<ProductOverride[]> {
   try {
-    const response = await fetch(`/api/product-overrides/batch?user_id=${userId}`)
+    const response = await fetch('/api/product-overrides/batch')
     if (!response.ok) {
       throw new Error('Failed to fetch overrides')
     }
@@ -388,7 +388,7 @@ export function mergeMarketsWithOverrides(markets: any[], overrides: MarketOverr
  */
 export async function fetchUserMarketOverrides(userId: string): Promise<MarketOverride[]> {
   try {
-    const response = await fetch(`/api/market-overrides?user_id=${userId}`)
+    const response = await fetch('/api/market-overrides')
     if (!response.ok) {
       throw new Error('Failed to fetch market overrides')
     }

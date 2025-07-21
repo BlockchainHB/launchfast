@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { MarketRecalculator } from '@/lib/market-recalculator'
 import { mergeProductsWithOverrides } from '@/lib/product-overrides'
 import { cache } from '@/lib/cache'
+import { createServerClient } from '@supabase/ssr'
 import type { EnhancedProduct } from '@/types'
 
 // Transform database product to table format (copied from dashboard API)
@@ -113,6 +114,29 @@ interface BatchOverrideRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    const userId = user.id
     const body: BatchOverrideRequest = await request.json()
     const { overrides } = body
 
@@ -123,15 +147,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate that all overrides have required fields
-    for (const override of overrides) {
-      if (!override.product_id || !override.asin || !override.user_id || !override.override_reason) {
-        return NextResponse.json(
-          { error: 'Missing required fields in override data' },
-          { status: 400 }
-        )
+    // Validate that all overrides have required fields and set user_id from session
+    const validatedOverrides = overrides.map(override => {
+      if (!override.product_id || !override.asin || !override.override_reason) {
+        throw new Error('Missing required fields in override data')
       }
-    }
+      // Override the user_id from the request body with the authenticated user's ID
+      return { ...override, user_id: userId }
+    })
 
     // Validate and sanitize integer fields to prevent type errors
     const sanitizeInteger = (value: any): number | null => {
@@ -141,7 +164,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Sanitize overrides to ensure proper data types
-    const sanitizedOverrides = overrides.map(override => ({
+    const sanitizedOverrides = validatedOverrides.map(override => ({
       ...override,
       variations: sanitizeInteger(override.variations),
       reviews: sanitizeInteger(override.reviews),
@@ -149,8 +172,7 @@ export async function POST(request: NextRequest) {
     }))
 
     // Check if any overrides already exist (for debugging re-override scenarios)
-    const productIds = overrides.map(override => override.product_id)
-    const userId = overrides[0].user_id
+    const productIds = validatedOverrides.map(override => override.product_id)
     
     const { data: existingOverrides } = await supabaseAdmin
       .from('product_overrides')
@@ -181,7 +203,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Successfully upserted ${data?.length || 0} product overrides (${existingCount} updates, ${(data?.length || 0) - existingCount} new)`)
 
     // Fetch original products with complete data to return merged data
-    const overrideReason = overrides[0].override_reason
+    const overrideReason = validatedOverrides[0].override_reason
 
     const { data: originalProducts, error: productsError } = await supabaseAdmin
       .from('products')
@@ -321,15 +343,29 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (!userId) {
+    if (userError || !user) {
       return NextResponse.json(
-        { error: 'user_id is required' },
-        { status: 400 }
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
       )
     }
+
+    const userId = user.id
 
     const { data, error } = await supabaseAdmin
       .from('product_overrides')
@@ -364,16 +400,31 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
-    const productId = searchParams.get('product_id')
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (!userId) {
+    if (userError || !user) {
       return NextResponse.json(
-        { error: 'user_id is required' },
-        { status: 400 }
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
       )
     }
+
+    const userId = user.id
+    const { searchParams } = new URL(request.url)
+    const productId = searchParams.get('product_id')
 
     let query = supabaseAdmin
       .from('product_overrides')

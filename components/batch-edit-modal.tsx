@@ -366,7 +366,6 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
     return {
       product_id: product.id,
       asin: product.asin,
-      user_id: userId,
       override_reason: form.notes || `Batch edit - ${product.title.slice(0, 50)}`,
       notes: form.notes,
       

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,21 +16,44 @@ const supabaseAdmin = createClient(
 
 interface BatchDeleteRequest {
   marketIds: string[]
-  userId: string
 }
 
 // POST /api/markets/batch-delete - Delete multiple markets
 export async function POST(request: NextRequest) {
   try {
-    const body: BatchDeleteRequest = await request.json()
-    const { marketIds, userId } = body
+    // Get authenticated user from session
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // Note: We can't set cookies in API routes, but this prevents the warning
+          },
+          remove(name: string, options: any) {
+            // Note: We can't remove cookies in API routes, but this prevents the warning
+          },
+        },
+      }
+    )
 
-    if (!userId) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
       return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized - please login' },
+        { status: 401 }
       )
     }
+
+    const userId = user.id
+    
+    const body: BatchDeleteRequest = await request.json()
+    const { marketIds } = body
 
     if (!marketIds || !Array.isArray(marketIds) || marketIds.length === 0) {
       return NextResponse.json(

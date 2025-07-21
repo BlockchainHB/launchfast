@@ -173,10 +173,10 @@ CREATE INDEX IF NOT EXISTS idx_product_overrides_created_at ON product_overrides
 ALTER TABLE product_overrides ENABLE ROW LEVEL SECURITY;
 
 -- Policies for product_overrides (user-specific access)
-CREATE POLICY "Users can read their own overrides" ON product_overrides FOR SELECT USING (true); -- Temp public access
-CREATE POLICY "Users can insert their own overrides" ON product_overrides FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update their own overrides" ON product_overrides FOR UPDATE USING (true);
-CREATE POLICY "Users can delete their own overrides" ON product_overrides FOR DELETE USING (true);
+CREATE POLICY "Users can read their own overrides" ON product_overrides FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "Users can insert their own overrides" ON product_overrides FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "Users can update their own overrides" ON product_overrides FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "Users can delete their own overrides" ON product_overrides FOR DELETE USING (auth.uid()::text = user_id);
 
 -- Trigger for overrides updated_at
 CREATE TRIGGER update_product_overrides_updated_at 
@@ -233,10 +233,10 @@ CREATE INDEX IF NOT EXISTS idx_market_overrides_created_at ON market_overrides(c
 ALTER TABLE market_overrides ENABLE ROW LEVEL SECURITY;
 
 -- Policies for market_overrides (user-specific access)
-CREATE POLICY "Users can read their own market overrides" ON market_overrides FOR SELECT USING (true); -- Temp public access
-CREATE POLICY "Users can insert their own market overrides" ON market_overrides FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update their own market overrides" ON market_overrides FOR UPDATE USING (true);
-CREATE POLICY "Users can delete their own market overrides" ON market_overrides FOR DELETE USING (true);
+CREATE POLICY "Users can read their own market overrides" ON market_overrides FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "Users can insert their own market overrides" ON market_overrides FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "Users can update their own market overrides" ON market_overrides FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "Users can delete their own market overrides" ON market_overrides FOR DELETE USING (auth.uid()::text = user_id);
 
 -- Trigger for market_overrides updated_at
 CREATE TRIGGER update_market_overrides_updated_at 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,16 +19,30 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const marketId = params.id
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
 
-    if (!userId) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
       return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized - please login' },
+        { status: 401 }
       )
     }
+
+    const userId = user.id
+    const marketId = params.id
 
     if (!marketId) {
       return NextResponse.json(

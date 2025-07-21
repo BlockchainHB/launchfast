@@ -609,16 +609,6 @@ export function MarketDataTable({
     if (selectedRows.length === 0) return
 
     try {
-      // Get user profile for authentication
-      const userResponse = await fetch('/api/user/profile')
-      const userData = await userResponse.json()
-      
-      if (!userData.success || !userData.data?.id) {
-        toast.error('Authentication required')
-        return
-      }
-      
-      const userId = userData.data.id
       const marketIds = selectedRows.map(row => row.original.id)
       
       // Show loading toast
@@ -628,7 +618,7 @@ export function MarketDataTable({
       const response = await fetch('/api/markets/batch-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ marketIds, userId }),
+        body: JSON.stringify({ marketIds }),
       })
       
       const result = await response.json()

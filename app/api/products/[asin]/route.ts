@@ -4,6 +4,7 @@ import { analyzeProduct } from '@/lib/openai'
 import { scoreProduct } from '@/lib/scoring'
 import { supabaseAdmin } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
+import { createServerClient } from '@supabase/ssr'
 import type { ProcessedProduct } from '@/types'
 
 // GET single product analysis
@@ -239,20 +240,34 @@ export async function DELETE(
   { params }: { params: Promise<{ asin: string }> }
 ) {
   try {
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    const userId = user.id
     const { asin } = await params
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('user_id')
 
     if (!asin || asin.length !== 10) {
       return NextResponse.json(
         { error: 'Valid ASIN is required' },
-        { status: 400 }
-      )
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'User ID is required' },
         { status: 400 }
       )
     }
