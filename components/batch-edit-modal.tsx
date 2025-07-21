@@ -71,6 +71,7 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
       // Reset form for new product
       setForm({})
       setEnabledFields({})
+      console.log(`🔄 Reset form for product ${currentProductIndex + 1}: ${currentProduct.title}`)
     }
   }, [currentProductIndex, currentProduct, open])
 
@@ -287,14 +288,8 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
         console.log(`🔄 ${marketRecalculations} markets recalculated - will refresh at completion`)
       }
       
-      // Show success toast with market recalculation info
-      const successToastId = toast.success(`Updated ${currentProduct.title.slice(0, 20)}`, {
-        id: loadingToast,
-        description: `${enabledOverrides.length} fields`
-      })
-      
-      // Store the toast ID for potential dismissal
-      ;(window as any).lastProductToastId = successToastId
+      // Dismiss loading toast without showing individual success (only show final completion toast)
+      toast.dismiss(loadingToast)
 
       return true
 
@@ -315,11 +310,6 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
       setCompletedProducts(prev => new Set([...prev, currentProductIndex]))
       
       if (isLastProduct) {
-        // Dismiss the last individual product toast before showing completion
-        if ((window as any).lastProductToastId) {
-          toast.dismiss((window as any).lastProductToastId)
-        }
-        
         // All done! Trigger final dashboard refresh for market recalculations
         if (onDashboardRefresh) {
           console.log(`🔄 Triggering final dashboard refresh after batch completion`)
