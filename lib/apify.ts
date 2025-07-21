@@ -82,7 +82,7 @@ export class ApifyAmazonCrawler {
         scrapeProductDetails: true,
         scrapeProductVariantPrices: false,
         scrapeSellers: false,
-        useCaptchaSolver: false
+        useCaptchaSolver: true
       }
 
       const response = await axios.post(
@@ -157,7 +157,7 @@ export class ApifyAmazonCrawler {
         scrapeProductDetails: true,                  // Need for BSR, dimensions, etc.
         scrapeProductVariantPrices: false,
         scrapeSellers: false,
-        useCaptchaSolver: false
+        useCaptchaSolver: true
       }
 
       // Make Apify API call with extended timeout and retry logic
