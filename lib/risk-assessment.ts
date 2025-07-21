@@ -62,7 +62,7 @@ export function assessProductRisk(product: ProductData): RiskAssessment {
   }
   
   // F-grade products are algorithmically risky
-  if (product.grade?.toUpperCase().startsWith('F')) {
+  if (typeof product.grade === 'string' && product.grade.toUpperCase().startsWith('F')) {
     riskFactors.push('F-GRADE: Failed A10 algorithm completely')
   }
   

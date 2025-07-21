@@ -88,16 +88,21 @@ export const cache = {
   },
 
   async del(key: string): Promise<void> {
+    // Always delete from memory cache
+    memoryCache.delete(key)
+    console.log(`🗑️ Deleted from memory cache: ${key}`)
+    
     if (!redis) {
-      memoryCache.delete(key)
+      console.log('📢 Redis not available, only memory cache cleared')
       return
     }
 
     try {
       await redis.del(key)
+      console.log(`🗑️ Deleted from Redis cache: ${key}`)
     } catch (error) {
-      console.warn('Redis unavailable, using memory cache:', error.message)
-      memoryCache.delete(key)
+      console.warn('Redis unavailable during deletion:', error.message)
+      console.log('📢 Memory cache cleared, Redis deletion failed')
     }
   },
 

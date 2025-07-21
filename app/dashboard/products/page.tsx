@@ -151,7 +151,7 @@ export default function Page() {
                   </div>
                 </div>
               ) : (
-                <DataTable data={dashboardData.legacyProducts} />
+                <DataTable data={dashboardData.legacyProducts} onDashboardRefresh={fetchDashboardData} />
               )}
             </div>
           </div>

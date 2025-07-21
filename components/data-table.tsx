@@ -25,6 +25,7 @@ import {
   IconDownload,
   IconEye,
   IconExternalLink,
+  IconEdit,
 } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -66,6 +67,8 @@ import {
 } from "@/components/ui/tooltip"
 import type { EnhancedProduct } from "@/types"
 import { formatDimensions, formatWeight, getRiskColor, getConsistencyColor } from "@/lib/calculations"
+import { BatchEditModal } from "@/components/batch-edit-modal"
+import { OverrideIndicator, OverrideRowIndicator } from "@/components/override-indicator"
 import { 
   getPriceColor, 
   getMonthlyRevenueColor, 
@@ -137,9 +140,15 @@ const columns: ColumnDef<EnhancedProduct>[] = [
                   <IconExternalLink className="h-3 w-3" />
                 </Button>
               </div>
-              {product.brand && (
-                <span className="text-xs text-muted-foreground">{product.brand}</span>
-              )}
+              <div className="flex items-center space-x-2">
+                {product.brand && (
+                  <span className="text-xs text-muted-foreground">{product.brand}</span>
+                )}
+                <OverrideRowIndicator 
+                  hasOverrides={!!product.hasOverrides}
+                  overrideReason={product.overrideInfo?.override_reason}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -469,10 +478,12 @@ const columns: ColumnDef<EnhancedProduct>[] = [
 
 export function DataTable({
   data: initialData,
+  onDashboardRefresh,
 }: {
   data: EnhancedProduct[]
+  onDashboardRefresh?: () => void
 }) {
-  const [data] = React.useState(() => initialData)
+  const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -484,6 +495,7 @@ export function DataTable({
     pageIndex: 0,
     pageSize: 10,
   })
+  const [batchEditOpen, setBatchEditOpen] = React.useState(false)
 
   const table = useReactTable({
     data,
@@ -510,6 +522,35 @@ export function DataTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
+  const selectedRows = table.getFilteredSelectedRowModel().rows
+  const selectedProducts = selectedRows.map(row => row.original)
+  const hasSelection = selectedRows.length > 0
+
+  const handleBatchEdit = () => {
+    if (hasSelection) {
+      setBatchEditOpen(true)
+    }
+  }
+
+  const handleProductsUpdated = (updatedProducts: EnhancedProduct[]) => {
+    console.log(`🔄 Updating ${updatedProducts.length} products in DataTable`)
+    
+    // Create a map of updated products by ID for quick lookup
+    const updatedProductsMap = new Map(updatedProducts.map(p => [p.id, p]))
+    
+    // Update the data array by replacing matching products
+    setData(prevData => 
+      prevData.map(product => {
+        const updatedProduct = updatedProductsMap.get(product.id)
+        return updatedProduct || product
+      })
+    )
+    
+    // Clear row selection after update
+    setRowSelection({})
+    
+    console.log(`✅ Updated DataTable with ${updatedProducts.length} modified products`)
+  }
 
   return (
     <div className="w-full px-4 lg:px-6">
@@ -558,6 +599,16 @@ export function DataTable({
           <Button variant="outline" size="sm">
             <IconDownload className="mr-2 h-4 w-4" />
             Export
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleBatchEdit}
+            disabled={!hasSelection}
+            className={hasSelection ? "border-primary text-primary" : ""}
+          >
+            <IconEdit className="mr-2 h-4 w-4" />
+            Edit Selected ({selectedRows.length})
           </Button>
         </div>
       </div>
@@ -704,6 +755,15 @@ export function DataTable({
           </div>
         </div>
       </div>
+
+      {/* Batch Edit Modal */}
+      <BatchEditModal
+        open={batchEditOpen}
+        onClose={() => setBatchEditOpen(false)}
+        selectedProducts={selectedProducts}
+        onProductsUpdated={handleProductsUpdated}
+        onDashboardRefresh={onDashboardRefresh}
+      />
     </div>
   )
 }

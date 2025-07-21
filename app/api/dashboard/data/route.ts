@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { cache, CACHE_TTL } from '@/lib/cache'
 import { createServerClient } from '@supabase/ssr'
+import { mergeProductsWithOverrides, mergeMarketsWithOverrides, type ProductOverride, type MarketOverride } from '@/lib/product-overrides'
 
 // TypeScript interfaces for the response
 interface DashboardStats {
@@ -94,37 +95,62 @@ export async function GET(request: NextRequest) {
 
     // Check cache first for performance
     const cacheKey = `dashboard_data_${userId}`
+    console.log(`🔍 Checking cache for key: ${cacheKey}`)
+    
+    const cacheExists = await cache.exists(cacheKey)
+    console.log(`🔍 Cache exists: ${cacheExists}`)
+    
     const cached = await cache.get<DashboardData>(cacheKey)
     if (cached) {
       console.log('📋 Using cached data - markets:', cached.markets?.length || 0)
+      console.log('📋 Cache timestamp check - data created at:', cached.markets?.[0]?.research_date)
       return NextResponse.json({
         success: true,
         data: cached,
-        cached: true
+        cached: true,
+        debug: {
+          cacheKey,
+          cacheExists: true,
+          timestamp: new Date().toISOString()
+        }
       })
     }
 
     console.log('🏃‍♂️ Fetching complete dashboard data for user:', userId)
 
-    // Fetch user profile, markets, and legacy products first
-    const [userProfile, marketsWithProducts, legacyProducts] = await Promise.all([
+    // Fetch user profile, markets, legacy products, and both override types
+    const [userProfile, marketsWithProducts, legacyProducts, productOverrides, marketOverrides] = await Promise.all([
       fetchUserProfile(userId),
       fetchMarketsWithProducts(userId), 
-      fetchLegacyProducts(userId)
+      fetchLegacyProducts(userId),
+      fetchUserProductOverrides(userId),
+      fetchUserMarketOverrides(userId)
     ])
 
-    // Calculate market-centric stats using the fetched markets data
-    const marketStats = await calculateMarketStats(userId, marketsWithProducts)
+    // Apply product overrides first
+    const marketsWithOverriddenProducts = marketsWithProducts.map(market => ({
+      ...market,
+      products: mergeProductsWithOverrides(market.products, productOverrides)
+    }))
+
+    const legacyProductsWithOverrides = mergeProductsWithOverrides(legacyProducts, productOverrides)
+
+    // Apply market overrides to the markets themselves
+    const marketsWithAllOverrides = mergeMarketsWithOverrides(marketsWithOverriddenProducts, marketOverrides)
+
+    // Calculate override-aware stats using both markets and products with overrides applied
+    const marketStats = await calculateOverrideAwareStats(userId, marketsWithAllOverrides, legacyProductsWithOverrides)
 
     const dashboardData: DashboardData = {
       user: userProfile,
       stats: marketStats,
-      markets: marketsWithProducts,
-      legacyProducts: legacyProducts
+      markets: marketsWithAllOverrides,
+      legacyProducts: legacyProductsWithOverrides
     }
 
     // Cache for 5 minutes to improve performance
     await cache.set(cacheKey, dashboardData, 300) // 5 minutes
+    console.log(`🔄 Cached fresh data with key: ${cacheKey} for 5 minutes`)
 
     console.log(`✅ Dashboard data loaded: ${marketsWithProducts.length} markets, ${legacyProducts.length} legacy products`)
 
@@ -132,6 +158,11 @@ export async function GET(request: NextRequest) {
       success: true,
       data: dashboardData,
       cached: false,
+      debug: {
+        cacheKey,
+        freshDataGenerated: new Date().toISOString(),
+        cacheSet: true
+      },
       stats: {
         markets_count: marketsWithProducts.length,
         legacy_products_count: legacyProducts.length,
@@ -388,65 +419,96 @@ function transformProductForTable(product: any) {
 }
 
 /**
- * Calculate comprehensive user statistics
+ * Calculate comprehensive user statistics with override awareness
+ * Uses both override-adjusted markets data and override-adjusted products data
  */
-async function calculateMarketStats(userId: string, marketsData: MarketWithProducts[]): Promise<DashboardStats> {
+async function calculateOverrideAwareStats(
+  userId: string, 
+  marketsData: MarketWithProducts[], 
+  legacyProducts: EnhancedProduct[]
+): Promise<DashboardStats> {
   try {
-    // Market-centric calculations
+    console.log(`📊 Calculating override-aware stats for ${marketsData.length} markets and ${legacyProducts.length} products`)
+    
+    // Market-centric calculations (using override-adjusted market data)
     const marketsAnalyzed = marketsData.length
     
-    // Count all products across all markets + legacy products
-    const { data: allProducts, error: productsError } = await supabaseAdmin
-      .from('products')
-      .select('grade, monthly_revenue, profit_estimate, created_at, market_id')
-      .eq('user_id', userId)
-    
-    if (productsError) {
-      console.error('Products count error:', productsError)
-    }
-    
-    const totalProducts = (allProducts || []).length
-    
-    // High-grade markets (markets with grade A1-B10)
+    // High-grade markets (markets with override-adjusted grades)
     const highGradeMarkets = marketsData.filter(market => {
       const grade = market.market_grade?.toUpperCase()
-      return grade?.startsWith('A') || grade?.startsWith('B')
+      const isHighGrade = grade?.startsWith('A') || grade?.startsWith('B')
+      if (isHighGrade) {
+        console.log(`📊 High-grade market found: ${market.keyword} (${grade})`)
+      }
+      return isHighGrade
     }).length
     
-    // Average market revenue (calculated from market averages)
+    // Average market revenue (calculated from override-adjusted market averages)
     const avgMarketRevenue = marketsData.length > 0
       ? marketsData.reduce((sum, market) => sum + (market.avg_monthly_revenue || 0), 0) / marketsData.length
       : 0
     
-    // Legacy stats for backward compatibility
-    const products = allProducts || []
-    const highGradeProducts = products.filter(p => {
+    console.log(`📊 Market stats: ${highGradeMarkets}/${marketsAnalyzed} high-grade, avg revenue: $${Math.round(avgMarketRevenue)}`)
+    
+    // Product-centric calculations (using override-adjusted product data)
+    const totalProducts = legacyProducts.length
+    
+    // Count all products from markets + standalone products, using override-adjusted data
+    const allProductsWithOverrides: EnhancedProduct[] = [
+      // Products from markets (already have overrides applied)
+      ...marketsData.flatMap(market => market.products || []),
+      // Legacy products (already have overrides applied)
+      ...legacyProducts
+    ]
+    
+    // Remove duplicates based on product ID
+    const uniqueProducts = allProductsWithOverrides.reduce((acc, product) => {
+      if (!acc.find(p => p.id === product.id)) {
+        acc.push(product)
+      }
+      return acc
+    }, [] as EnhancedProduct[])
+    
+    const highGradeProducts = uniqueProducts.filter(p => {
       const grade = p.grade?.toUpperCase()
       return grade?.startsWith('A') || grade?.startsWith('B')
     }).length
     
-    const revenueValues = products
-      .map(p => p.monthly_revenue || 0)
+    // Use override-adjusted revenue values
+    const revenueValues = uniqueProducts
+      .map(p => {
+        // Try salesData first (override-aware), then legacy fields
+        const revenue = p.salesData?.monthlyRevenue || p.monthlyRevenue || 0
+        return revenue
+      })
       .filter(revenue => revenue > 0)
+    
     const avgMonthlyRevenue = revenueValues.length > 0 
       ? revenueValues.reduce((sum, revenue) => sum + revenue, 0) / revenueValues.length
       : 0
     
-    const totalProfitPotential = products
-      .reduce((sum, p) => sum + (p.profit_estimate || 0), 0)
+    // Use override-adjusted profit values
+    const totalProfitPotential = uniqueProducts
+      .reduce((sum, p) => {
+        const profit = p.salesData?.monthlyProfit || p.profitEstimate || 0
+        return sum + profit
+      }, 0)
     
+    // Recent activity (based on creation date, not affected by overrides)
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    const recentActivity = products.filter(p => 
-      new Date(p.created_at) > sevenDaysAgo
+    const recentActivity = uniqueProducts.filter(p => 
+      p.createdAt && new Date(p.createdAt) > sevenDaysAgo
     ).length
+    
+    console.log(`📊 Product stats: ${highGradeProducts}/${totalProducts} high-grade, avg revenue: $${Math.round(avgMonthlyRevenue)}, total profit: $${Math.round(totalProfitPotential)}`)
     
     return {
       marketsAnalyzed,
       totalProducts,
       highGradeMarkets,
       avgMarketRevenue: Math.round(avgMarketRevenue),
-      // Legacy stats
+      // Legacy stats (using override-adjusted product data)
       highGradeProducts,
       highGradePercentage: totalProducts > 0 ? Math.round((highGradeProducts / totalProducts) * 100) : 0,
       avgMonthlyRevenue: Math.round(avgMonthlyRevenue),
@@ -544,5 +606,49 @@ async function calculateUserStats(userId: string): Promise<DashboardStats> {
       totalProfitPotential: 0,
       recentActivity: 0
     }
+  }
+}
+
+/**
+ * Fetch user's product overrides
+ */
+async function fetchUserProductOverrides(userId: string): Promise<ProductOverride[]> {
+  try {
+    const { data: overrides, error } = await supabaseAdmin
+      .from('product_overrides')
+      .select('*')
+      .eq('user_id', userId)
+
+    if (error) {
+      console.error('Error fetching product overrides:', error)
+      return []
+    }
+
+    return overrides || []
+  } catch (error) {
+    console.error('Error fetching user product overrides:', error)
+    return []
+  }
+}
+
+/**
+ * Fetch user's market overrides
+ */
+async function fetchUserMarketOverrides(userId: string): Promise<MarketOverride[]> {
+  try {
+    const { data: overrides, error } = await supabaseAdmin
+      .from('market_overrides')
+      .select('*')
+      .eq('user_id', userId)
+
+    if (error) {
+      console.error('Error fetching market overrides:', error)
+      return []
+    }
+
+    return overrides || []
+  } catch (error) {
+    console.error('Error fetching user market overrides:', error)
+    return []
   }
 }

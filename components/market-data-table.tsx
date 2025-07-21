@@ -29,6 +29,7 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { GradeBadge } from "@/components/ui/grade-badge"
+import { MarketOverrideIndicator } from "@/components/market-override-indicator"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -256,6 +257,12 @@ function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketT
                 <Badge variant="secondary" className="text-xs">
                   {market.products.length} products
                 </Badge>
+                <MarketOverrideIndicator
+                  hasOverrides={!!market.hasOverrides}
+                  keyword={market.keyword}
+                  recalculationDate={market.overrideInfo?.recalculation_date}
+                  overrideReason={market.overrideInfo?.override_reason}
+                />
               </div>
               <div className="flex items-center space-x-2">
                 <Button

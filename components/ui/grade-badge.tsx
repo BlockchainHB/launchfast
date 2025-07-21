@@ -47,7 +47,7 @@ export function GradeBadge({ grade, children, className, isRisky = false, hasWar
   const baseStyles = "inline-flex items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 transition-[color,box-shadow,border-color] overflow-hidden"
   
   // Generate grade class name
-  const gradeClass = `grade-${grade.toLowerCase()}`
+  const gradeClass = `grade-${(grade || 'F1').toLowerCase()}`
   
   // Risk-aware styling
   const riskStyles = isRisky ? "ring-2 ring-red-500 ring-opacity-50 animate-pulse" : ""
