@@ -3,8 +3,22 @@ import { Redis } from '@upstash/redis'
 // Upstash Redis client setup with error handling
 const createRedisClient = () => {
   try {
-    // Upstash Redis automatically uses environment variables from Vercel
-    return Redis.fromEnv()
+    // Handle both development and production environment variable naming
+    const url = process.env.REDIS_KV_REST_API_URL || process.env.KV_REST_API_URL
+    const token = process.env.REDIS_KV_REST_API_TOKEN || process.env.KV_REST_API_TOKEN
+    
+    if (!url || !token) {
+      console.warn('Upstash Redis environment variables not found, using memory cache only')
+      console.warn('Expected: REDIS_KV_REST_API_URL + REDIS_KV_REST_API_TOKEN (Vercel) or KV_REST_API_URL + KV_REST_API_TOKEN (local)')
+      return null
+    }
+    
+    console.log('🔗 Connecting to Upstash Redis:', url.substring(0, 30) + '...')
+    
+    return new Redis({
+      url,
+      token,
+    })
   } catch (error) {
     console.warn('Failed to create Upstash Redis client, using memory cache only:', error.message)
     return null
