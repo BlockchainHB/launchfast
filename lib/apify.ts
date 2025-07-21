@@ -95,15 +95,17 @@ export class ApifyAmazonCrawler {
         useCaptchaSolver: false
       }
 
-      // Make Apify API call
+      // Make Apify API call with extended timeout and retry logic
       const response = await axios.post(
         `${this.baseURL}?token=${this.apiToken}`,
         requestPayload,
         {
-          timeout: 120000, // 2 minutes for Apify
+          timeout: 300000, // 5 minutes for Apify (increased from 2 minutes)
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          maxRedirects: 5,
+          validateStatus: (status) => status < 500 // Allow 4xx errors to be handled
         }
       )
 

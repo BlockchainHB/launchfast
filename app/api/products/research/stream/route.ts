@@ -149,6 +149,7 @@ export async function GET(request: NextRequest) {
 
       // Continue marketplace analysis during the Apify wait
       let stepIndex = 1 // Start from step 2 since we already sent step 1
+      let warningShown = false
       const progressInterval = setInterval(() => {
         if (stepIndex < marketplaceSteps.length) {
           const step = marketplaceSteps[stepIndex]
@@ -169,11 +170,32 @@ export async function GET(request: NextRequest) {
         }
       }, 4000) // Slower steps to spread across full Apify wait time (~32 seconds for 8 steps)
 
+      // Show warning after 2 minutes if Apify is still running
+      const warningTimeout = setTimeout(() => {
+        if (!warningShown) {
+          warningShown = true
+          sendEvent({
+            phase: 'marketplace_analysis',
+            message: 'Server requests are high, may take a bit longer...',
+            progress: 0,
+            data: {
+              currentStep: stepIndex + 1,
+              totalSteps: marketplaceSteps.length,
+              step: 'high_load_warning',
+              keyword,
+              stepType: 'warning' // UI can show this differently
+            },
+            timestamp: new Date().toISOString()
+          })
+        }
+      }, 120000) // 2 minutes
+
       // Wait for Apify to complete
       const apifyProducts = await apifyPromise
       
-      // Clear the progress interval
+      // Clear the intervals and timeout
       clearInterval(progressInterval)
+      clearTimeout(warningTimeout)
 
       if (!apifyProducts || apifyProducts.length === 0) {
         sendEvent({
@@ -299,7 +321,7 @@ export async function GET(request: NextRequest) {
         batches.push(topProducts.slice(i, i + BATCH_SIZE))
       }
       
-      Logger.dev.info(`Processing ${topProducts.length} products in ${batches.length} parallel batches of ${BATCH_SIZE}`)
+      Logger.dev.trace(`Processing ${topProducts.length} products in ${batches.length} parallel batches of ${BATCH_SIZE}`)
       
       for (const batch of batches) {
         // Process entire batch in parallel with Promise.allSettled for error isolation

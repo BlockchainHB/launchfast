@@ -98,11 +98,27 @@ export async function POST(request: NextRequest) {
       // Continue anyway, this is just for logging
     }
 
-    console.log(`📊 ${marketsToDelete.length} markets will affect ${totalProductCount || 0} products (converting to legacy)`)
+    console.log(`📊 ${marketsToDelete.length} markets will affect ${totalProductCount || 0} products (deleting all)`)
+
+    // First delete all products associated with these markets
+    const { error: deleteProductsError } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('user_id', userId)
+      .in('market_id', marketIds)
+
+    if (deleteProductsError) {
+      console.error('Error deleting products:', deleteProductsError)
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete products' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`🗑️ Deleted ${totalProductCount || 0} products associated with markets`)
 
     // Delete all markets in batch
     // This will trigger CASCADE DELETE on market_overrides
-    // and SET NULL on products.market_id (making them legacy products)
     const { error: deleteError } = await supabaseAdmin
       .from('markets')
       .delete()
@@ -118,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`✅ Batch deleted ${marketsToDelete.length} markets`)
-    console.log(`🏷️ ${totalProductCount || 0} products converted to legacy status`)
+    console.log(`🗑️ ${totalProductCount || 0} products deleted along with markets`)
 
     // Log each deleted market
     marketsToDelete.forEach(market => {
@@ -151,7 +167,7 @@ export async function POST(request: NextRequest) {
           keyword: m.keyword,
           totalProductsAnalyzed: m.total_products_analyzed
         })),
-        productsConvertedToLegacy: totalProductCount || 0,
+        productsDeleted: totalProductCount || 0,
         cacheCleared,
         statistics: {
           requested: marketIds.length,

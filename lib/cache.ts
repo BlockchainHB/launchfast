@@ -4,24 +4,30 @@ import Redis from 'ioredis'
 const createRedisClient = () => {
   const redisUrl = process.env.REDIS_URL
   
-  if (!redisUrl) {
-    console.warn('REDIS_URL not found, Redis will be disabled')
+  if (!redisUrl || redisUrl.trim() === '') {
+    console.warn('REDIS_URL not found or empty, using memory cache only')
     return null
   }
 
-  return new Redis(redisUrl, {
-    retryDelayOnFailover: 100,
-    maxRetriesPerRequest: 3,
-    lazyConnect: true,
-    enableOfflineQueue: false,
-    connectTimeout: 10000,
-    commandTimeout: 5000,
-    ...(redisUrl.startsWith('rediss://') && { 
-      tls: {
-        checkServerIdentity: () => undefined
-      } 
+  try {
+    return new Redis(redisUrl, {
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 2,
+      lazyConnect: true,
+      enableOfflineQueue: false,
+      connectTimeout: 5000,
+      commandTimeout: 3000,
+      showFriendlyErrorStack: true,
+      ...(redisUrl.startsWith('rediss://') && { 
+        tls: {
+          checkServerIdentity: () => undefined
+        } 
+      })
     })
-  })
+  } catch (error) {
+    console.warn('Failed to create Redis client, using memory cache only:', error.message)
+    return null
+  }
 }
 
 const redis = createRedisClient()
@@ -30,10 +36,28 @@ const redis = createRedisClient()
 if (redis) {
   redis.on('error', (error) => {
     console.warn('Redis connection error (cache disabled):', error.message)
+    // Don't throw or propagate the error - just use memory cache
   })
 
   redis.on('connect', () => {
     console.log('Redis connected successfully')
+  })
+
+  redis.on('ready', () => {
+    console.log('Redis connection ready')
+  })
+
+  redis.on('close', () => {
+    console.warn('Redis connection closed - using memory cache fallback')
+  })
+
+  redis.on('reconnecting', () => {
+    console.log('Redis attempting to reconnect...')
+  })
+
+  // Handle connection errors during startup
+  redis.on('end', () => {
+    console.warn('Redis connection ended - memory cache active')
   })
 }
 
