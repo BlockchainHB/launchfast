@@ -183,19 +183,42 @@ export async function GET(request: NextRequest) {
               totalSteps: marketplaceSteps.length,
               step: 'high_load_warning',
               keyword,
-              stepType: 'warning' // UI can show this differently
+              stepType: 'warning'
             },
             timestamp: new Date().toISOString()
           })
         }
       }, 120000) // 2 minutes
 
+      // Show timeout options after 4 minutes if still running
+      const timeoutOptionsTimeout = setTimeout(() => {
+        sendEvent({
+          phase: 'marketplace_analysis', 
+          message: 'Research is taking longer than expected',
+          progress: 0,
+          data: {
+            step: 'timeout_options',
+            keyword,
+            stepType: 'timeout_options',
+            options: [
+              { action: 'continue', label: 'Continue waiting (up to 2 more minutes)' },
+              { action: 'retry', label: 'Try again with same keyword' },
+              { action: 'modify', label: 'Try a more specific keyword' },
+              { action: 'cancel', label: 'Cancel and try later' }
+            ],
+            message: 'Amazon servers may be experiencing high load. What would you like to do?'
+          },
+          timestamp: new Date().toISOString()
+        })
+      }, 240000) // 4 minutes
+
       // Wait for Apify to complete
       const apifyProducts = await apifyPromise
       
-      // Clear the intervals and timeout
+      // Clear the intervals and timeouts
       clearInterval(progressInterval)
       clearTimeout(warningTimeout)
+      clearTimeout(timeoutOptionsTimeout)
 
       if (!apifyProducts || apifyProducts.length === 0) {
         sendEvent({
@@ -424,10 +447,35 @@ export async function GET(request: NextRequest) {
 
     } catch (error) {
       Logger.error('SSE Research stream error', error)
+      
+      // Provide user-friendly error messages based on error type
+      let userMessage = 'Research failed'
+      let suggestion = ''
+      
+      if (error instanceof Error) {
+        if (error.message.includes('timeout') || error.message.includes('ECONNABORTED')) {
+          userMessage = 'Research timed out due to high server load'
+          suggestion = 'Try again in a few minutes, or use a more specific keyword'
+        } else if (error.message.includes('ENOTFOUND') || error.message.includes('network')) {
+          userMessage = 'Network connection issue'
+          suggestion = 'Check your internet connection and try again'
+        } else if (error.message.includes('401') || error.message.includes('403')) {
+          userMessage = 'Service temporarily unavailable'
+          suggestion = 'Please try again in a few minutes'
+        } else {
+          userMessage = error.message
+        }
+      }
+      
       sendEvent({
         phase: 'error',
-        message: error instanceof Error ? error.message : 'Research failed',
+        message: userMessage,
         progress: 0,
+        data: {
+          suggestion,
+          canRetry: true,
+          errorType: error instanceof Error && error.message.includes('timeout') ? 'timeout' : 'general'
+        },
         timestamp: new Date().toISOString()
       })
     } finally {
