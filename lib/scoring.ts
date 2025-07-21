@@ -454,3 +454,105 @@ export const scoringUtils = {
     return monthlyHours > 0 ? monthlyProfit / monthlyHours : 0
   }
 }
+
+// Grade filter utility functions
+export interface GradeFilterOption {
+  label: string
+  value: string
+  color: string
+}
+
+// Grade colors for filter options (matching grade-badge CSS)
+const GRADE_COLORS = {
+  'A10': '#16a34a',
+  'A9': '#16a34a', 
+  'A8': '#16a34a',
+  'A7': '#16a34a',
+  'A6': '#059669',
+  'A5': '#059669',
+  'A4': '#059669',
+  'A3': '#059669',
+  'A2': '#059669',
+  'A1': '#059669',
+  'B10': '#84cc16',
+  'B9': '#84cc16',
+  'B8': '#84cc16',
+  'B7': '#84cc16',
+  'B6': '#65a30d',
+  'B5': '#65a30d',
+  'B4': '#65a30d',
+  'B3': '#65a30d',
+  'B2': '#65a30d',
+  'B1': '#65a30d',
+  'C10': '#eab308',
+  'C9': '#eab308',
+  'C8': '#eab308',
+  'C7': '#eab308',
+  'C6': '#ca8a04',
+  'C5': '#ca8a04',
+  'C4': '#ca8a04',
+  'C3': '#ca8a04',
+  'C2': '#ca8a04',
+  'C1': '#ca8a04',
+  'D10': '#f97316',
+  'D9': '#f97316',
+  'D8': '#f97316',
+  'D7': '#f97316',
+  'D6': '#ea580c',
+  'D5': '#ea580c',
+  'D4': '#ea580c',
+  'D3': '#ea580c',
+  'D2': '#ea580c',
+  'D1': '#ea580c',
+  'F1': '#ef4444'
+}
+
+/**
+ * Get standardized grade options for filter dropdowns
+ * Returns grades in order from best (A10) to worst (F1)
+ */
+export function getGradeFilterOptions(): GradeFilterOption[] {
+  const gradeOrder = Object.keys(GRADE_MAPPING)
+  
+  return gradeOrder.map(grade => ({
+    label: grade === 'A10' ? 'A10 - GOLDMINE' : grade === 'F1' ? 'F1 - AVOID' : grade,
+    value: grade,
+    color: GRADE_COLORS[grade as keyof typeof GRADE_COLORS] || '#6b7280'
+  }))
+}
+
+/**
+ * Compare two grades - returns negative if gradeA is better, positive if gradeB is better, 0 if equal
+ */
+export function compareGrades(gradeA: string, gradeB: string): number {
+  const gradeOrder = Object.keys(GRADE_MAPPING)
+  const indexA = gradeOrder.indexOf(gradeA)
+  const indexB = gradeOrder.indexOf(gradeB)
+  
+  // Handle invalid grades
+  if (indexA === -1 && indexB === -1) return 0
+  if (indexA === -1) return 1 // gradeA is invalid, gradeB is better
+  if (indexB === -1) return -1 // gradeB is invalid, gradeA is better
+  
+  return indexA - indexB // Lower index = better grade
+}
+
+/**
+ * Check if a product grade is equal to or better than the minimum grade
+ * Used for "minimum grade" filtering logic
+ */
+export function isGradeEqualOrBetter(productGrade: string | null | undefined, minGrade: string): boolean {
+  if (!productGrade) return false
+  return compareGrades(productGrade, minGrade) <= 0
+}
+
+/**
+ * Custom filter function for minimum grade filtering
+ * Shows products with the selected grade OR better grades
+ */
+export function minGradeFilter(row: any, columnId: string, filterValue: string): boolean {
+  if (!filterValue) return true // No filter selected, show all
+  
+  const productGrade = row.getValue(columnId)
+  return isGradeEqualOrBetter(productGrade, filterValue)
+}

@@ -95,6 +95,7 @@ import {
   getRatingColor 
 } from "@/lib/metric-colors"
 import { assessProductRisk, getRiskTooltip } from "@/lib/risk-assessment"
+import { getGradeFilterOptions, minGradeFilter } from "@/lib/scoring"
 
 const columns: ColumnDef<EnhancedProduct>[] = [
   // 1. Select + Product (Combined)
@@ -195,7 +196,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
       )
     },
     size: 80,
-    filterFn: 'equalsString',
+    filterFn: 'minGrade',
   },
   // 4. Consistency
   {
@@ -629,7 +630,9 @@ export function DataTable({
         if (min !== undefined && numValue < min) return false
         if (max !== undefined && numValue > max) return false
         return true
-      }
+      },
+      // Custom filter for minimum grade filtering
+      minGrade: minGradeFilter
     }
   })
 
@@ -706,19 +709,9 @@ export function DataTable({
   const filterConfigs = [
     {
       column: 'grade',
-      label: 'Grade',
+      label: 'Minimum Grade',
       type: 'select' as const,
-      options: [
-        { label: 'A+', value: 'A+', color: '#10b981' },
-        { label: 'A', value: 'A', color: '#059669' },
-        { label: 'B+', value: 'B+', color: '#84cc16' },
-        { label: 'B', value: 'B', color: '#65a30d' },
-        { label: 'C+', value: 'C+', color: '#eab308' },
-        { label: 'C', value: 'C', color: '#ca8a04' },
-        { label: 'D+', value: 'D+', color: '#f97316' },
-        { label: 'D', value: 'D', color: '#ea580c' },
-        { label: 'F', value: 'F', color: '#ef4444' }
-      ]
+      options: getGradeFilterOptions()
     },
     {
       column: 'aiAnalysis.riskClassification',

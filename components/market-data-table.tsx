@@ -91,6 +91,7 @@ import {
   getRatingColor 
 } from "@/lib/metric-colors"
 import { TableFilters } from "@/components/ui/table-filters"
+import { getGradeFilterOptions, minGradeFilter } from "@/lib/scoring"
 
 // Product sub-row component
 function ProductSubRow({ product, isLast }: { product: EnhancedProduct; isLast: boolean }) {
@@ -343,6 +344,7 @@ function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketT
       </div>
     ),
     size: 80,
+    filterFn: 'minGrade',
   },
   // 4. Consistency (Market Average)
   {
@@ -727,6 +729,10 @@ export function MarketDataTable({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    filterFns: {
+      // Custom filter for minimum grade filtering
+      minGrade: minGradeFilter
+    },
     meta: {
       toggleRowExpansion: (rowId: string) => {
         setExpandedRows(prev => ({
@@ -750,19 +756,9 @@ export function MarketDataTable({
   const marketFilters = [
     {
       column: "market_grade",
-      label: "Market Grade",
+      label: "Minimum Market Grade",
       type: "select" as const,
-      options: [
-        { label: "A1 - Excellent", value: "A1", color: "#16a34a" },
-        { label: "A2 - Excellent", value: "A2", color: "#16a34a" },
-        { label: "B1 - Good", value: "B1", color: "#eab308" },
-        { label: "B2 - Good", value: "B2", color: "#eab308" },
-        { label: "C1 - Fair", value: "C1", color: "#f97316" },
-        { label: "C2 - Fair", value: "C2", color: "#f97316" },
-        { label: "D1 - Poor", value: "D1", color: "#dc2626" },
-        { label: "D2 - Poor", value: "D2", color: "#dc2626" },
-        { label: "F1 - Avoid", value: "F1", color: "#7f1d1d" },
-      ]
+      options: getGradeFilterOptions()
     },
     {
       column: "market_risk_classification",
