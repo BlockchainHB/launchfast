@@ -75,7 +75,7 @@ export class ApifyAmazonCrawler {
       console.log(`🔍 Searching Amazon via Apify for: "${keyword}"`)
       console.log(`📍 Search URL: ${searchUrl}`)
 
-      // Prepare Apify request payload with enhanced data extraction
+      // Prepare Apify request payload optimized for speed
       const requestPayload = {
         categoryOrProductUrls: [
           {
@@ -83,13 +83,13 @@ export class ApifyAmazonCrawler {
             method: "GET"
           }
         ],
-        ensureLoadedProductDescriptionFields: true,  // Extract dimensions/weight
-        includeReviews: true,                        // Include reviews for analysis
-        maxReviews: 50,                              // Get recent reviews
-        maxItemsPerStartUrl: maxItems,
+        ensureLoadedProductDescriptionFields: true,  // Need for dimensions/weight
+        includeReviews: true,                        // Keep for AI analysis
+        maxReviews: 10,                              // Get recent reviews (reduced for speed)
+        maxItemsPerStartUrl: Math.min(maxItems, 10), // Limit search results for speed
         maxOffers: 0,
-        proxyCountry: "AUTO_SELECT_PROXY_COUNTRY",
-        scrapeProductDetails: true,
+        proxyCountry: "US",                          // Use specific proxy instead of auto-select
+        scrapeProductDetails: true,                  // Need for BSR, dimensions, etc.
         scrapeProductVariantPrices: false,
         scrapeSellers: false,
         useCaptchaSolver: false

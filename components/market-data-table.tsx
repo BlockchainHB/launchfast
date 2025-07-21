@@ -626,7 +626,7 @@ export function MarketDataTable({
       if (result.success) {
         toast.success(`Successfully deleted ${result.data.statistics.deleted} markets`, {
           id: loadingToast,
-          description: `${result.data.productsConvertedToLegacy} products converted to legacy`
+          description: `${result.data.productsDeleted} associated products also deleted`
         })
         // Refresh the page to update the data
         window.location.reload()
@@ -945,7 +945,7 @@ export function MarketDataTable({
                     <strong>This will:</strong>
                     <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
                       <li>Permanently delete {table.getFilteredSelectedRowModel().rows.length} market{table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''} from your research</li>
-                      <li>Convert all products in these markets to legacy status</li>
+                      <li>Delete all products associated with these markets</li>
                       <li>Remove all market overrides and recalculations</li>
                     </ul>
                     <br />
