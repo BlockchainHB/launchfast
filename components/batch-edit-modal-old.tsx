@@ -111,16 +111,18 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
     
     try {
       // Get user ID from auth
-      const userResponse = await fetch('/api/user/profile')
+      const userResponse = await fetch('/api/user/profile', {
+        credentials: 'include'
+      })
       const userData = await userResponse.json()
       
-      if (!userData.success || !userData.data?.id) {
+      if (!userData.id) {
         alert('Authentication required. Please refresh and try again.')
         setIsSubmitting(false)
         return
       }
       
-      const userId = userData.data.id
+      const userId = userData.id
 
       // Transform form data to database schema format
       // Include ALL values for enabled fields (both changed and unchanged)
@@ -237,6 +239,7 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ overrides }),
+        credentials: 'include',
       })
 
       if (!response.ok) {

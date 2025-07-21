@@ -148,13 +148,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate that all overrides have required fields and set user_id from session
-    const validatedOverrides = overrides.map(override => {
-      if (!override.product_id || !override.asin || !override.override_reason) {
-        throw new Error('Missing required fields in override data')
-      }
-      // Override the user_id from the request body with the authenticated user's ID
-      return { ...override, user_id: userId }
-    })
+    let validatedOverrides
+    try {
+      validatedOverrides = overrides.map(override => {
+        if (!override.product_id || !override.asin || !override.override_reason) {
+          throw new Error(`Missing required fields in override data: product_id=${override.product_id}, asin=${override.asin}, override_reason=${override.override_reason}`)
+        }
+        // Override the user_id from the request body with the authenticated user's ID
+        return { ...override, user_id: userId }
+      })
+    } catch (validationError) {
+      console.error('Validation error:', validationError)
+      return NextResponse.json(
+        { error: validationError instanceof Error ? validationError.message : 'Validation failed' },
+        { status: 400 }
+      )
+    }
 
     // Validate and sanitize integer fields to prevent type errors
     const sanitizeInteger = (value: any): number | null => {

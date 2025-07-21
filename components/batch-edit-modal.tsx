@@ -233,18 +233,23 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ overrides: allOverrides }),
+        credentials: 'include',
         signal: controller.signal
       })
       
       clearTimeout(timeoutId)
       
       if (!response.ok) {
-        throw new Error('Failed to save overrides')
+        const errorText = await response.text()
+        console.error('API Response Error:', response.status, errorText)
+        throw new Error(`Failed to save overrides: ${response.status} ${errorText}`)
       }
       
       const result = await response.json()
+      console.log('API Response:', result)
       
       if (!result.success) {
+        console.error('API Error:', result.error)
         throw new Error(result.error || 'Failed to save overrides')
       }
       
@@ -288,14 +293,16 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
 
   const createProductOverride = async (product: EnhancedProduct, form: ProductEditForm, enabledFields: Record<string, boolean>) => {
     // Get user ID
-    const userResponse = await fetch('/api/user/profile')
+    const userResponse = await fetch('/api/user/profile', {
+      credentials: 'include'
+    })
     const userData = await userResponse.json()
     
-    if (!userData.success || !userData.data?.id) {
+    if (!userData.id) {
       throw new Error('Authentication required')
     }
     
-    const userId = userData.data.id
+    const userId = userData.id
 
     // Helper functions (same as original)
     const getCurrentValue = (field: string): any => {
