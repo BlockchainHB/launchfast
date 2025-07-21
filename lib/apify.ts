@@ -59,6 +59,71 @@ export class ApifyAmazonCrawler {
   }
 
   /**
+   * Scrape a single product by its Amazon URL (for ASIN research)
+   */
+  async scrapeProductByUrl(amazonUrl: string): Promise<ApifyProduct | null> {
+    try {
+      console.log(`🔍 Scraping Amazon product via Apify: ${amazonUrl}`)
+
+      // Prepare Apify request payload for single product
+      const requestPayload = {
+        categoryOrProductUrls: [
+          {
+            url: amazonUrl,
+            method: "GET"
+          }
+        ],
+        ensureLoadedProductDescriptionFields: true,
+        includeReviews: true,
+        maxReviews: 10, // Get recent reviews for AI analysis
+        maxItemsPerStartUrl: 1, // Single product
+        maxOffers: 0,
+        proxyCountry: "US",
+        scrapeProductDetails: true,
+        scrapeProductVariantPrices: false,
+        scrapeSellers: false,
+        useCaptchaSolver: false
+      }
+
+      const response = await axios.post(
+        `${this.baseURL}?token=${this.apiToken}`,
+        requestPayload,
+        {
+          timeout: 60000, // 60 seconds for single product
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          maxRedirects: 5,
+          validateStatus: (status) => status < 500
+        }
+      )
+
+      if (!response.data || response.data.length === 0) {
+        console.log(`❌ No product found at URL: ${amazonUrl}`)
+        return null
+      }
+
+      const product = response.data[0]
+      const enhancedProduct = this.enhanceProductData(product)
+
+      if (!this.isValidProduct(enhancedProduct)) {
+        console.log(`❌ Invalid product data for URL: ${amazonUrl}`)
+        return null
+      }
+
+      console.log(`✅ Successfully scraped product: ${enhancedProduct.title}`)
+      return enhancedProduct
+
+    } catch (error) {
+      console.error('Apify single product scraping error:', error)
+      if (axios.isAxiosError(error)) {
+        console.error('Apify API response:', error.response?.data)
+      }
+      return null
+    }
+  }
+
+  /**
    * Search Amazon products using Apify crawler
    */
   async searchProducts(keyword: string, options: ApifySearchOptions = {}): Promise<ApifyProduct[]> {

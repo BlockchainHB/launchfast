@@ -170,6 +170,84 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     }
   }
 
+  const handleAsinSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!asin.trim()) return
+
+    const asinValue = asin.trim().toUpperCase()
+    
+    // Validate ASIN format
+    const asinRegex = /^[A-Z0-9]{10}$/
+    if (!asinRegex.test(asinValue)) {
+      setError("Invalid ASIN format. Must be 10 alphanumeric characters (e.g., B0XXXXXXXXX)")
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+    setResults([])
+    setMarketAnalysis(null)
+    setDisplayState({
+      currentPhase: '',
+      phaseMessage: '',
+      phaseData: null,
+      progress: 0,
+      canAdvance: false,
+      stepType: 'indeterminate',
+      showProgress: false
+    })
+    
+    try {
+      console.log("Starting SSE research for ASIN:", asinValue)
+      
+      const params = new URLSearchParams({
+        asin: asinValue
+      })
+      
+      const eventSource = new EventSource(`/api/products/research/asin/stream?${params}`)
+
+      eventSource.onmessage = (event) => {
+        try {
+          const progressEvent = JSON.parse(event.data)
+          console.log("ASIN Progress event:", progressEvent)
+          
+          // Send event to display controller
+          displayControllerRef.current?.handleBackendEvent(progressEvent)
+          
+          if (progressEvent.phase === 'complete') {
+            if (progressEvent.data.products && progressEvent.data.products.length > 0) {
+              setResults(progressEvent.data.products)
+              // ASIN research doesn't produce market analysis
+              setMarketAnalysis(null)
+            } else {
+              setError(progressEvent.data.message || "ASIN not found or invalid")
+            }
+            setIsLoading(false)
+            eventSource.close()
+          } else if (progressEvent.phase === 'error') {
+            setError(progressEvent.message)
+            setIsLoading(false)
+            eventSource.close()
+          }
+        } catch (parseError) {
+          console.error("Failed to parse ASIN progress event:", parseError)
+        }
+      }
+
+      eventSource.onerror = (error) => {
+        console.error("ASIN SSE error:", error)
+        setError("Connection error during ASIN research")
+        setIsLoading(false)
+        eventSource.close()
+      }
+      
+    } catch (error) {
+      console.error("ASIN Research failed:", error)
+      setError(error instanceof Error ? error.message : "Failed to analyze ASIN")
+      setIsLoading(false)
+    }
+  }
+
   const handleSaveResults = async () => {
     if (!results || results.length === 0) return
     
@@ -444,6 +522,66 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
             </div>
           )
 
+        case 'product_analysis':
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="animate-pulse"><IconBarcode size={24} className="text-black" /></div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{phaseMessage}</div>
+                  {phaseData?.asin && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Analyzing ASIN: {phaseData.asin}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* ASIN Analysis Steps */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { icon: <IconBarcode size={16} className="text-black" />, label: 'Product Data' },
+                  { icon: <IbmWatsonDiscovery size={16} className="text-black" />, label: 'Amazon Info' },
+                  { icon: <BusinessMetrics size={16} className="text-black" />, label: 'Sales Data' }
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    className="p-2 rounded text-center text-xs bg-blue-50 text-black animate-pulse"
+                  >
+                    <div className="flex justify-center">{item.icon}</div>
+                    <div className="text-black">{item.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+
+        case 'validating_data':
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="animate-pulse">{getResearchPhaseIcon('validating_market', 24)}</div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{phaseMessage}</div>
+                  {phaseData?.asin && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Validating ASIN: {phaseData.asin}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="bg-emerald-50 p-3 rounded border">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+                  <span className="text-xs text-emerald-700 font-medium">
+                    Verifying with SellerSprite analytics...
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+
         default:
           // Fallback for initial state - should immediately be replaced by first SSE event
           return (
@@ -464,6 +602,10 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
             ? 'bg-gradient-to-r from-emerald-50 to-green-50' 
             : currentPhase === 'applying_grading'
             ? 'bg-gradient-to-r from-purple-50 to-blue-50'
+            : currentPhase === 'validating_data'
+            ? 'bg-gradient-to-r from-emerald-50 to-green-50'
+            : currentPhase === 'product_analysis'
+            ? 'bg-gradient-to-r from-orange-50 to-yellow-50'
             : 'bg-gradient-to-r from-blue-50 to-indigo-50'
         }`}>
           {renderPhaseDetails()}
@@ -709,36 +851,39 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
         </TabsContent>
         
         <TabsContent value="asin" className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="asin">ASIN</Label>
-            <div className="relative">
-              <IconBarcode className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="asin"
-                placeholder="e.g., B0XXXXXXXXX"
-                value={asin}
-                onChange={(e) => setAsin(e.target.value)}
-                className="pl-10"
-                disabled={isLoading}
-              />
+          <form onSubmit={handleAsinSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="asin">ASIN</Label>
+              <div className="relative">
+                <IconBarcode className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="asin"
+                  placeholder="e.g., B0XXXXXXXXX"
+                  value={asin}
+                  onChange={(e) => setAsin(e.target.value)}
+                  className="pl-10"
+                  disabled={isLoading}
+                />
+              </div>
             </div>
-          </div>
-          
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={isLoading || !asin.trim()}
-            >
-              {isLoading ? "Analyzing..." : "Start Research"}
-            </Button>
-          </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading || !asin.trim()}
+              >
+                {isLoading ? "Analyzing..." : "Start Research"}
+              </Button>
+            </div>
+          </form>
         </TabsContent>
       </Tabs>
     )

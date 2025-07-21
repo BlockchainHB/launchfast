@@ -1,5 +1,5 @@
 interface ProgressEvent {
-  phase: 'marketplace_analysis' | 'validating_market' | 'applying_grading' | 'complete' | 'error'
+  phase: 'marketplace_analysis' | 'validating_market' | 'applying_grading' | 'product_analysis' | 'validating_data' | 'complete' | 'error'
   message: string
   progress: number
   data?: {
@@ -8,6 +8,7 @@ interface ProgressEvent {
     totalSteps?: number
     currentItem?: number
     totalItems?: number
+    asin?: string
     [key: string]: any
   }
   timestamp: string
