@@ -75,7 +75,7 @@ export class ApifyAmazonCrawler {
         ],
         ensureLoadedProductDescriptionFields: true,
         includeReviews: true,
-        maxReviews: 10, // Get recent reviews for AI analysis
+        maxReviews: 3, // Get recent reviews for AI analysis
         maxItemsPerStartUrl: 1, // Single product
         maxOffers: 0,
         proxyCountry: "US",
@@ -150,7 +150,7 @@ export class ApifyAmazonCrawler {
         ],
         ensureLoadedProductDescriptionFields: true,  // Need for dimensions/weight
         includeReviews: true,                        // Keep for AI analysis
-        maxReviews: 10,                              // Get recent reviews (reduced for speed)
+        maxReviews: 3,                               // Get recent reviews (reduced for speed)
         maxItemsPerStartUrl: Math.min(maxItems, 10), // Limit search results for speed
         maxOffers: 0,
         proxyCountry: "US",                          // Use specific proxy instead of auto-select
