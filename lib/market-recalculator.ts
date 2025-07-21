@@ -229,7 +229,7 @@ export class MarketRecalculator {
       avg_reviews,
       avg_rating: Math.round(avg_rating * 100) / 100,
       avg_bsr,
-      avg_cpc: Math.round(avg_cpc * 100) / 100,
+      avg_cpc: Number(avg_cpc.toFixed(2)),
       avg_launch_budget: Math.round(avg_launch_budget * 100) / 100,
       market_grade: marketScoring.grade,
       market_consistency_rating: marketScoring.consistencyRating,

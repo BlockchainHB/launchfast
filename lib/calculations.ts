@@ -89,7 +89,7 @@ export function calculateLaunchBudget(keywords: KeywordData[]): number {
   if (validKeywords.length === 0) return 0
 
   const avgCpc = validKeywords.reduce((sum, kw) => sum + kw.cpc, 0) / validKeywords.length
-  return Math.round((avgCpc * 20) * 100) / 100
+  return Number((avgCpc * 20).toFixed(2))
 }
 
 /**

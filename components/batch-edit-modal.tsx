@@ -131,10 +131,18 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
       case 'rating':
         return currentProduct.rating || 0
       case 'avgCpc':
+        // Check for existing CPC override first
+        if (currentProduct.hasOverrides && currentProduct.overrideInfo?.avg_cpc) {
+          return Number(currentProduct.overrideInfo.avg_cpc.toFixed(2))
+        }
+        // Fall back to keyword average, formatted to 2 decimals
         const keywords = currentProduct.keywords || []
         if (keywords.length > 0) {
           const validCpcs = keywords.map(kw => kw.cpc).filter(cpc => cpc && cpc > 0)
-          return validCpcs.length > 0 ? validCpcs.reduce((sum, cpc) => sum + cpc, 0) / validCpcs.length : null
+          if (validCpcs.length > 0) {
+            const avgCpc = validCpcs.reduce((sum, cpc) => sum + cpc, 0) / validCpcs.length
+            return Number(avgCpc.toFixed(2))
+          }
         }
         return null
       case 'weight':
@@ -334,10 +342,18 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
         case 'rating':
           return product.rating || 0
         case 'avgCpc':
+          // Check for existing CPC override first
+          if (product.hasOverrides && product.overrideInfo?.avg_cpc) {
+            return Number(product.overrideInfo.avg_cpc.toFixed(2))
+          }
+          // Fall back to keyword average, formatted to 2 decimals
           const keywords = product.keywords || []
           if (keywords.length > 0) {
             const validCpcs = keywords.map(kw => kw.cpc).filter(cpc => cpc && cpc > 0)
-            return validCpcs.length > 0 ? validCpcs.reduce((sum, cpc) => sum + cpc, 0) / validCpcs.length : null
+            if (validCpcs.length > 0) {
+              const avgCpc = validCpcs.reduce((sum, cpc) => sum + cpc, 0) / validCpcs.length
+              return Number(avgCpc.toFixed(2))
+            }
           }
           return null
         case 'weight':
@@ -389,7 +405,7 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
       variations: ensureInteger(getFieldValue('variations')),
       reviews: ensureInteger(getFieldValue('reviews')),
       rating: ensureDecimal(getFieldValue('rating')),
-      ...(getFieldValue('avgCpc') !== null && { avg_cpc: ensureDecimal(getFieldValue('avgCpc')) }),
+      avg_cpc: ensureDecimal(getFieldValue('avgCpc')) ? Number(ensureDecimal(getFieldValue('avgCpc')).toFixed(2)) : null,
       weight: ensureDecimal(getFieldValue('weight'))
     }
   }
