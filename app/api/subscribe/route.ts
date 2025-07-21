@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1RnAzBDWe1hjENeanxDVA8lw', // LaunchFast Pro $50/month
+          price: 'price_1RnAMaDWe1hjENea37Yg5myP', // LaunchFast Pro $50/month
           quantity: 1,
         },
       ],
