@@ -159,7 +159,7 @@ export default function WaitlistPage() {
       <VideoModal
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
-        videoSrc="/demo.mp4"
+        videoSrc="https://www.w3schools.com/html/mov_bbb.mp4"
         title="LaunchFast Demo"
       />
     </>

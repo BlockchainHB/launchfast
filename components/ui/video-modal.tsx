@@ -25,6 +25,12 @@ export function VideoModal({ isOpen, onClose, videoSrc, title = "Demo Video" }: 
             height="100%"
             controls={true}
             playing={isOpen}
+            onError={(error) => {
+              console.error('Video loading error:', error)
+            }}
+            onReady={() => {
+              console.log('Video ready:', videoSrc)
+            }}
             config={{
               file: {
                 attributes: {
