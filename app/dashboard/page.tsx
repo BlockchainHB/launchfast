@@ -5,6 +5,7 @@ import { MarketDataTable } from "@/components/market-data-table"
 import { MarketTableSkeleton } from "@/components/market-table-skeleton"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
+import { WelcomeModal } from "@/components/ui/welcome-modal"
 import {
   SidebarInset,
   SidebarProvider,
@@ -16,11 +17,21 @@ export default function Page() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
 
   useEffect(() => {
     // Update document title
     document.title = "Dashboard - LaunchFast"
     fetchDashboardData()
+    
+    // Check if this is the user's first time visiting the dashboard
+    const hasBeenWelcomed = localStorage.getItem('launchfast_welcomed')
+    if (!hasBeenWelcomed) {
+      // Small delay to let the dashboard load first
+      setTimeout(() => {
+        setShowWelcomeModal(true)
+      }, 1000)
+    }
   }, [])
 
   const fetchDashboardData = async () => {
@@ -105,6 +116,10 @@ export default function Page() {
             </div>
           </div>
         </SidebarInset>
+        <WelcomeModal
+          isOpen={showWelcomeModal}
+          onClose={() => setShowWelcomeModal(false)}
+        />
       </SidebarProvider>
     )
   }
@@ -157,6 +172,10 @@ export default function Page() {
           </div>
         </div>
       </SidebarInset>
+      <WelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
+      />
     </SidebarProvider>
   )
 }

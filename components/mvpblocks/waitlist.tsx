@@ -1,9 +1,11 @@
 'use client';
 
 import type React from 'react';
+import { useState } from 'react';
 import { ArrowRight, Target, DollarSign, Shield, TrendingUp, BarChart3, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/ui/navbar';
+import { VideoModal } from '@/components/ui/video-modal';
 import { cn } from '@/lib/utils';
 
 // Product metrics for social proof
@@ -14,7 +16,7 @@ const metrics = [
 ];
 
 export default function WaitlistPage() {
-
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
 
   return (
@@ -120,7 +122,11 @@ export default function WaitlistPage() {
             className="text-center mb-16"
           >
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button className="px-8 py-4 border border-border text-foreground font-bold rounded-xl hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-300 text-lg flex items-center gap-2 tracking-tight" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}>
+              <button 
+                onClick={() => setIsVideoModalOpen(true)}
+                className="px-8 py-4 border border-border text-foreground font-bold rounded-xl hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-300 text-lg flex items-center gap-2 tracking-tight" 
+                style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}
+              >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z"/>
                 </svg>
@@ -149,6 +155,13 @@ export default function WaitlistPage() {
           </motion.div>
         </div>
       </main>
+      
+      <VideoModal
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        videoSrc="/demo.mp4"
+        title="LaunchFast Demo"
+      />
     </>
   );
 }

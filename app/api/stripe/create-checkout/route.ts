@@ -9,6 +9,31 @@ interface CreateCheckoutRequest {
   cancelUrl?: string
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const plan = searchParams.get('plan') as SubscriptionPlan
+    const successUrl = searchParams.get('successUrl')
+    const cancelUrl = searchParams.get('cancelUrl')
+
+    // Validate plan
+    if (!plan || !SUBSCRIPTION_PLANS[plan]) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}?error=invalid_plan`)
+    }
+
+    const result = await createCheckoutSession({ plan, successUrl, cancelUrl }, request)
+    
+    if ('url' in result && result.url) {
+      return NextResponse.redirect(result.url)
+    } else {
+      return result as NextResponse
+    }
+  } catch (error) {
+    console.error('Stripe checkout creation error:', error)
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}?error=checkout_failed`)
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { plan, successUrl, cancelUrl }: CreateCheckoutRequest = await request.json()
@@ -21,105 +46,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const subscriptionPlan = SUBSCRIPTION_PLANS[plan]
-
-    // Get authenticated user
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-        },
-      }
-    )
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized - please login' },
-        { status: 401 }
-      )
-    }
-
-    // Get user profile with Stripe customer ID
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
-      )
-    }
-
-    let customerId = profile.stripe_customer_id
-
-    // Create Stripe customer if doesn't exist
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: profile.full_name || undefined,
-        metadata: {
-          supabase_user_id: user.id,
-          subscription_tier: profile.subscription_tier || 'free'
-        }
-      })
-
-      customerId = customer.id
-
-      // Update profile with customer ID
-      await supabaseAdmin
-        .from('user_profiles')
-        .update({
-          stripe_customer_id: customerId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
-    }
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: subscriptionPlan.stripeId, // Using lookup key: 'launchfastpro'
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/pricing?canceled=true`,
-      metadata: {
-        supabase_user_id: user.id,
-        plan: plan
-      },
-      subscription_data: {
-        metadata: {
-          supabase_user_id: user.id,
-          plan: plan
-        }
-      },
-      allow_promotion_codes: true,
-      billing_address_collection: 'auto',
-      customer_update: {
-        address: 'auto',
-        name: 'auto'
-      }
-    })
-
-    return NextResponse.json({
-      success: true,
-      sessionId: session.id,
-      url: session.url
-    })
+    return await createCheckoutSession({ plan, successUrl, cancelUrl }, request)
 
   } catch (error) {
     console.error('Stripe checkout creation error:', error)
@@ -132,4 +59,109 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+async function createCheckoutSession(
+  { plan, successUrl, cancelUrl }: CreateCheckoutRequest,
+  request: NextRequest
+) {
+  const subscriptionPlan = SUBSCRIPTION_PLANS[plan]
+
+  // Get authenticated user
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+      },
+    }
+  )
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  
+  if (userError || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized - please login' },
+      { status: 401 }
+    )
+  }
+
+  // Get user profile with Stripe customer ID
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from('user_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile) {
+    return NextResponse.json(
+      { error: 'User profile not found' },
+      { status: 404 }
+    )
+  }
+
+  let customerId = profile.stripe_customer_id
+
+  // Create Stripe customer if doesn't exist
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      email: user.email,
+      name: profile.full_name || undefined,
+      metadata: {
+        supabase_user_id: user.id,
+        subscription_tier: profile.subscription_tier || 'free'
+      }
+    })
+
+    customerId = customer.id
+
+    // Update profile with customer ID
+    await supabaseAdmin
+      .from('user_profiles')
+      .update({
+        stripe_customer_id: customerId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id)
+  }
+
+  // Create Stripe checkout session
+  const session = await stripe.checkout.sessions.create({
+    customer: customerId,
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price: subscriptionPlan.stripeId, // Using lookup key: 'launchfastpro'
+        quantity: 1,
+      },
+    ],
+    mode: 'subscription',
+    success_url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}?canceled=true`,
+    metadata: {
+      supabase_user_id: user.id,
+      plan: plan
+    },
+    subscription_data: {
+      metadata: {
+        supabase_user_id: user.id,
+        plan: plan
+      }
+    },
+    allow_promotion_codes: true,
+    billing_address_collection: 'auto',
+    customer_update: {
+      address: 'auto',
+      name: 'auto'
+    }
+  })
+
+  return NextResponse.json({
+    success: true,
+    sessionId: session.id,
+    url: session.url
+  })
 }
