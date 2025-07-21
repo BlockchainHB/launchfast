@@ -1,65 +1,17 @@
-import Redis from 'ioredis'
+import { Redis } from '@upstash/redis'
 
-// Redis client setup with connection error handling
+// Upstash Redis client setup with error handling
 const createRedisClient = () => {
-  const redisUrl = process.env.REDIS_URL
-  
-  if (!redisUrl || redisUrl.trim() === '') {
-    console.warn('REDIS_URL not found or empty, using memory cache only')
-    return null
-  }
-
   try {
-    return new Redis(redisUrl, {
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 2,
-      lazyConnect: true,
-      enableOfflineQueue: false,
-      connectTimeout: 5000,
-      commandTimeout: 3000,
-      showFriendlyErrorStack: true,
-      ...(redisUrl.startsWith('rediss://') && { 
-        tls: {
-          checkServerIdentity: () => undefined
-        } 
-      })
-    })
+    // Upstash Redis automatically uses environment variables from Vercel
+    return Redis.fromEnv()
   } catch (error) {
-    console.warn('Failed to create Redis client, using memory cache only:', error.message)
+    console.warn('Failed to create Upstash Redis client, using memory cache only:', error.message)
     return null
   }
 }
 
 const redis = createRedisClient()
-
-// Handle Redis connection errors gracefully
-if (redis) {
-  redis.on('error', (error) => {
-    console.warn('Redis connection error (cache disabled):', error.message)
-    // Don't throw or propagate the error - just use memory cache
-  })
-
-  redis.on('connect', () => {
-    console.log('Redis connected successfully')
-  })
-
-  redis.on('ready', () => {
-    console.log('Redis connection ready')
-  })
-
-  redis.on('close', () => {
-    console.warn('Redis connection closed - using memory cache fallback')
-  })
-
-  redis.on('reconnecting', () => {
-    console.log('Redis attempting to reconnect...')
-  })
-
-  // Handle connection errors during startup
-  redis.on('end', () => {
-    console.warn('Redis connection ended - memory cache active')
-  })
-}
 
 // In-memory fallback cache when Redis is unavailable
 const memoryCache = new Map<string, { data: any, expires: number }>()
@@ -76,10 +28,10 @@ export const cache = {
     }
 
     try {
-      const data = await redis.get(key)
-      return data ? JSON.parse(data) : null
+      const data = await redis.get<T>(key)
+      return data
     } catch (error) {
-      console.warn('Redis unavailable, using memory cache:', error.message)
+      console.warn('Upstash Redis unavailable, using memory cache:', error.message)
       // Fallback to memory cache
       const cached = memoryCache.get(key)
       if (cached && cached.expires > Date.now()) {
@@ -100,9 +52,9 @@ export const cache = {
     }
 
     try {
-      await redis.setex(key, ttl, JSON.stringify(value))
+      await redis.setex(key, ttl, value)
     } catch (error) {
-      console.warn('Redis unavailable, using memory cache:', error.message)
+      console.warn('Upstash Redis unavailable, using memory cache:', error.message)
       // Fallback to memory cache
       memoryCache.set(key, {
         data: value,
@@ -117,15 +69,15 @@ export const cache = {
     console.log(`🗑️ Deleted from memory cache: ${key}`)
     
     if (!redis) {
-      console.log('📢 Redis not available, only memory cache cleared')
+      console.log('📢 Upstash Redis not available, only memory cache cleared')
       return
     }
 
     try {
       await redis.del(key)
-      console.log(`🗑️ Deleted from Redis cache: ${key}`)
+      console.log(`🗑️ Deleted from Upstash Redis cache: ${key}`)
     } catch (error) {
-      console.warn('Redis unavailable during deletion:', error.message)
+      console.warn('Upstash Redis unavailable during deletion:', error.message)
       console.log('📢 Memory cache cleared, Redis deletion failed')
     }
   },
@@ -140,7 +92,7 @@ export const cache = {
       const result = await redis.exists(key)
       return result === 1
     } catch (error) {
-      console.warn('Redis unavailable, using memory cache:', error.message)
+      console.warn('Upstash Redis unavailable, using memory cache:', error.message)
       const cached = memoryCache.get(key)
       return cached ? cached.expires > Date.now() : false
     }

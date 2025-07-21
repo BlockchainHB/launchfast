@@ -338,15 +338,14 @@ export async function DELETE(
     const cacheKey = `dashboard_data_${userId}`
 
     try {
-      // Try Redis first (production)
-      const redis = await import('ioredis').then(Redis => new Redis.default(process.env.REDIS_URL))
-      await redis.del(cacheKey)
-      await redis.disconnect()
+      // Use the cache helper which handles Upstash Redis automatically
+      const { cache } = await import('@/lib/cache')
+      await cache.del(cacheKey)
       cacheCleared = true
-      console.log(`✅ Redis cache cleared: ${cacheKey}`)
-    } catch (redisError) {
-      // Fall back to memory cache clearing (development)
-      const { memoryCache } = await import('@/lib/cache')
+      console.log(`✅ Cache cleared: ${cacheKey}`)
+    } catch (cacheError) {
+      console.warn('Failed to clear cache:', cacheError)
+      // Continue anyway, cache clearing is not critical for the operation
       if (memoryCache.has(cacheKey)) {
         memoryCache.delete(cacheKey)
         cacheCleared = true
