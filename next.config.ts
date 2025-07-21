@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            value: 'camera=(self "https://*.loom.com" "https://*.zoom.us"), microphone=(self "https://*.loom.com" "https://*.zoom.us"), geolocation=()',
           },
         ],
       },
