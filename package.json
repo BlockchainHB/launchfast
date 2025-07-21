@@ -39,6 +39,7 @@
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-table": "^8.21.3",
     "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "apify-client": "^2.12.6",
     "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
