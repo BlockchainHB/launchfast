@@ -34,7 +34,7 @@ interface UserProfile {
 const defaultUser = {
   name: "Launch Fast User",
   email: "user@launchfast.com",
-  avatar: "/avatars/user.jpg",
+  avatar: "/avatars/user.svg",
 }
 
 const data = {

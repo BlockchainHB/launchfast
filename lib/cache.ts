@@ -186,4 +186,7 @@ export const cacheHelpers = {
   }
 }
 
+// Export memoryCache for direct access if needed
+export { memoryCache }
+
 export default cache
