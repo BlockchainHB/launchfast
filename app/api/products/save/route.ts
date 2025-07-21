@@ -105,114 +105,208 @@ export async function POST(request: NextRequest) {
       Logger.save.marketSaved(marketData.id)
     }
     
-    for (const product of products) {
-      try {
-        Logger.dev.trace(`Processing product: ${product.asin}`)
-        // Insert/update product with user_id
-        const productPayload = {
-          user_id: userId,
-          asin: product.asin,
-          title: product.title,
-          brand: product.brand || 'Unknown',
-          price: product.price,
-          bsr: product.bsr || null,
-          reviews: product.reviews || 0,
-          rating: product.rating || null,
-          monthly_sales: product.salesData?.monthlySales || null,
-          monthly_revenue: product.salesData?.monthlyRevenue || null,
-          profit_estimate: product.salesData?.monthlyProfit || null,
-          grade: product.grade ? product.grade.substring(0, 2) : null, // Truncate to 2 chars for database
-          // Enhanced fields
-          images: product.images || [],
-          dimensions: product.dimensions || {},
-          reviews_data: product.reviewsData || {},
-          sales_data: product.salesData || {},
-          competitive_intelligence: product.competitiveIntelligence || '',
-          apify_source: product.apifySource || false,
-          seller_sprite_verified: product.sellerSpriteVerified || false,
-          calculated_metrics: product.calculatedMetrics || {},
-          // Market relationship fields
-          market_id: savedMarket?.id || null,
-          is_market_representative: products.indexOf(product) === 0, // First product is representative
-          analysis_rank: products.indexOf(product) + 1
+    // BATCH OPTIMIZATION: Replace 66 individual calls with 4 batch operations
+    Logger.dev.trace(`Starting batch save for ${products.length} products`)
+    
+    try {
+      // 1. Batch insert products (1 call instead of N calls)
+      const productPayloads = products.map((product, index) => ({
+        user_id: userId,
+        asin: product.asin,
+        title: product.title,
+        brand: product.brand || 'Unknown',
+        price: product.price,
+        bsr: product.bsr || null,
+        reviews: product.reviews || 0,
+        rating: product.rating || null,
+        monthly_sales: product.salesData?.monthlySales || null,
+        monthly_revenue: product.salesData?.monthlyRevenue || null,
+        profit_estimate: product.salesData?.monthlyProfit || null,
+        grade: product.grade ? product.grade.substring(0, 2) : null,
+        images: product.images || [],
+        dimensions: product.dimensions || {},
+        reviews_data: product.reviewsData || {},
+        sales_data: product.salesData || {},
+        competitive_intelligence: product.competitiveIntelligence || '',
+        apify_source: product.apifySource || false,
+        seller_sprite_verified: product.sellerSpriteVerified || false,
+        calculated_metrics: product.calculatedMetrics || {},
+        market_id: savedMarket?.id || null,
+        is_market_representative: index === 0,
+        analysis_rank: index + 1
+      }))
+
+      const { data: batchSavedProducts, error: batchProductError } = await supabaseAdmin
+        .from('products')
+        .upsert(productPayloads, { onConflict: 'user_id,asin' })
+        .select()
+
+      if (batchProductError) {
+        console.error('Batch product save error:', batchProductError)
+        throw new Error('Failed to save products in batch')
+      }
+
+      savedProducts.push(...batchSavedProducts)
+      Logger.save.productsBatchSaved(batchSavedProducts.length)
+
+      // 2. Batch insert AI analyses (1 call instead of N calls)
+      const aiAnalysesPayloads = batchSavedProducts
+        .map((savedProduct, index) => {
+          const product = products[index]
+          return product.aiAnalysis ? {
+            user_id: userId,
+            product_id: savedProduct.id,
+            risk_classification: product.aiAnalysis.riskClassification,
+            consistency_rating: product.aiAnalysis.consistencyRating,
+            estimated_dimensions: product.aiAnalysis.estimatedDimensions,
+            estimated_weight: product.aiAnalysis.estimatedWeight,
+            opportunity_score: product.aiAnalysis.opportunityScore,
+            market_insights: product.aiAnalysis.marketInsights,
+            risk_factors: product.aiAnalysis.riskFactors
+          } : null
+        })
+        .filter(Boolean)
+
+      if (aiAnalysesPayloads.length > 0) {
+        const { error: aiError } = await supabaseAdmin
+          .from('ai_analysis')
+          .upsert(aiAnalysesPayloads, { onConflict: 'product_id' })
+
+        if (aiError) {
+          console.warn('Batch AI analysis save warning:', aiError)
+        } else {
+          Logger.save.aiAnalysesBatchSaved(aiAnalysesPayloads.length)
         }
+      }
 
-        Logger.dev.trace(`Saving product: ${product.asin}`)
+      // 3. Batch insert unique keywords (1 call instead of N×M calls)
+      const allKeywords = []
+      const productKeywordMappings = []
 
-        const { data: productData, error: productError } = await supabaseAdmin
-          .from('products')
-          .upsert(productPayload)
-          .select()
-          .single()
-
-        if (productError) {
-          console.error('Product save error for', product.asin, ':', productError)
-          continue
-        }
-
-        Logger.save.productSaved(product.asin)
-
-        // Insert AI analysis
-        if (product.aiAnalysis) {
-          await supabaseAdmin
-            .from('ai_analysis')
-            .upsert({
-              user_id: userId,
-              product_id: productData.id,
-              risk_classification: product.aiAnalysis.riskClassification,
-              consistency_rating: product.aiAnalysis.consistencyRating,
-              estimated_dimensions: product.aiAnalysis.estimatedDimensions,
-              estimated_weight: product.aiAnalysis.estimatedWeight,
-              opportunity_score: product.aiAnalysis.opportunityScore,
-              market_insights: product.aiAnalysis.marketInsights,
-              risk_factors: product.aiAnalysis.riskFactors
-            }, {
-              onConflict: 'product_id'
-            })
-        }
-
-        // Insert keywords
+      batchSavedProducts.forEach((savedProduct, productIndex) => {
+        const product = products[productIndex]
         if (product.keywords && product.keywords.length > 0) {
-          for (const keyword of product.keywords.slice(0, 10)) {
-            // Insert or get existing keyword
-            const { data: keywordData, error: keywordError } = await supabaseAdmin
-              .from('keywords')
-              .upsert({
+          product.keywords.slice(0, 10).forEach(keyword => {
+            // Collect unique keywords
+            if (!allKeywords.some(k => k.keyword === keyword.keyword)) {
+              allKeywords.push({
                 user_id: userId,
                 keyword: keyword.keyword,
                 search_volume: keyword.searchVolume,
                 competition_score: keyword.competitionScore,
                 avg_cpc: keyword.cpc
-              }, {
-                onConflict: 'keyword'
               })
-              .select()
-              .single()
-
-            if (keywordError) {
-              console.warn('Failed to insert keyword:', keywordError)
-              continue
             }
+            
+            // Map product-keyword relationships (we'll resolve IDs after keyword insert)
+            productKeywordMappings.push({
+              product_id: savedProduct.id,
+              keyword: keyword.keyword,
+              ranking_position: keyword.rankingPosition,
+              traffic_percentage: keyword.trafficPercentage
+            })
+          })
+        }
+      })
 
-            // Insert product-keyword relationship
-            await supabaseAdmin
-              .from('product_keywords')
-              .upsert({
-                product_id: productData.id,
-                keyword_id: keywordData.id,
-                ranking_position: keyword.rankingPosition,
-                traffic_percentage: keyword.trafficPercentage
-              }, {
-                onConflict: 'product_id,keyword_id'
-              })
+      let keywordIdMap = {}
+      if (allKeywords.length > 0) {
+        const { data: batchSavedKeywords, error: keywordError } = await supabaseAdmin
+          .from('keywords')
+          .upsert(allKeywords, { onConflict: 'keyword' })
+          .select('id, keyword')
+
+        if (keywordError) {
+          console.warn('Batch keyword save warning:', keywordError)
+        } else {
+          // Create keyword mapping for relationships
+          keywordIdMap = batchSavedKeywords.reduce((acc, kw) => {
+            acc[kw.keyword] = kw.id
+            return acc
+          }, {})
+          Logger.save.keywordsBatchSaved(batchSavedKeywords.length)
+        }
+      }
+
+      // 4. Batch insert product-keyword relationships (1 call instead of N×M calls)
+      if (productKeywordMappings.length > 0 && Object.keys(keywordIdMap).length > 0) {
+        const productKeywordRelations = productKeywordMappings
+          .map(mapping => ({
+            product_id: mapping.product_id,
+            keyword_id: keywordIdMap[mapping.keyword],
+            ranking_position: mapping.ranking_position,
+            traffic_percentage: mapping.traffic_percentage
+          }))
+          .filter(relation => relation.keyword_id) // Only include valid keyword IDs
+
+        if (productKeywordRelations.length > 0) {
+          const { error: relationError } = await supabaseAdmin
+            .from('product_keywords')
+            .upsert(productKeywordRelations, { onConflict: 'product_id,keyword_id' })
+
+          if (relationError) {
+            console.warn('Batch product-keyword relation save warning:', relationError)
+          } else {
+            Logger.save.productKeywordRelationsBatchSaved(productKeywordRelations.length)
           }
         }
+      }
 
-        savedProducts.push(productData)
+      Logger.save.batchSaveCompleted(products.length, allKeywords.length, productKeywordMappings.length)
 
-      } catch (error) {
-        console.error(`Error saving product ${product.asin}:`, error)
-        continue
+    } catch (error) {
+      console.error('Batch save operation failed:', error)
+      // Fallback to individual saves if batch fails
+      console.log('Falling back to individual saves...')
+      
+      for (const product of products) {
+        try {
+          // Original individual save logic as fallback...
+          Logger.dev.trace(`Fallback: Processing product: ${product.asin}`)
+          const productPayload = {
+            user_id: userId,
+            asin: product.asin,
+            title: product.title,
+            brand: product.brand || 'Unknown',
+            price: product.price,
+            bsr: product.bsr || null,
+            reviews: product.reviews || 0,
+            rating: product.rating || null,
+            monthly_sales: product.salesData?.monthlySales || null,
+            monthly_revenue: product.salesData?.monthlyRevenue || null,
+            profit_estimate: product.salesData?.monthlyProfit || null,
+            grade: product.grade ? product.grade.substring(0, 2) : null,
+            images: product.images || [],
+            dimensions: product.dimensions || {},
+            reviews_data: product.reviewsData || {},
+            sales_data: product.salesData || {},
+            competitive_intelligence: product.competitiveIntelligence || '',
+            apify_source: product.apifySource || false,
+            seller_sprite_verified: product.sellerSpriteVerified || false,
+            calculated_metrics: product.calculatedMetrics || {},
+            market_id: savedMarket?.id || null,
+            is_market_representative: products.indexOf(product) === 0,
+            analysis_rank: products.indexOf(product) + 1
+          }
+
+          const { data: productData, error: productError } = await supabaseAdmin
+            .from('products')
+            .upsert(productPayload)
+            .select()
+            .single()
+
+          if (productError) {
+            console.error('Fallback product save error for', product.asin, ':', productError)
+            continue
+          }
+
+          savedProducts.push(productData)
+          Logger.save.productSaved(product.asin)
+
+        } catch (fallbackError) {
+          console.error(`Fallback error saving product ${product.asin}:`, fallbackError)
+          continue
+        }
       }
     }
 

@@ -510,6 +510,50 @@ export function DataTable({
     pageSize: 10,
   })
   const [batchEditOpen, setBatchEditOpen] = React.useState(false)
+  const [isExporting, setIsExporting] = React.useState(false)
+
+  const handleExportCSV = async () => {
+    let loadingToastId: string | number | undefined
+    try {
+      setIsExporting(true)
+      loadingToastId = toast.loading('Exporting products to CSV...')
+      
+      const response = await fetch('/api/export/csv?type=products&includeOverrides=true')
+      
+      if (!response.ok) {
+        throw new Error('Failed to export CSV')
+      }
+      
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('content-disposition')
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
+        : `launchfast-products-${new Date().toISOString().split('T')[0]}.csv`
+      
+      // Download the file
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      toast.success('Products exported successfully!', {
+        id: loadingToastId
+      })
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Failed to export CSV', {
+        id: loadingToastId,
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const table = useReactTable({
     data,
@@ -659,9 +703,14 @@ export function DataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleExportCSV}
+            disabled={isExporting}
+          >
             <IconDownload className="mr-2 h-4 w-4" />
-            Export
+            {isExporting ? 'Exporting...' : 'Export'}
           </Button>
           <Button 
             variant="outline" 

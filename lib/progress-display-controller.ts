@@ -2,7 +2,14 @@ interface ProgressEvent {
   phase: 'marketplace_analysis' | 'validating_market' | 'applying_grading' | 'complete' | 'error'
   message: string
   progress: number
-  data?: any
+  data?: {
+    stepType?: 'indeterminate' | 'determinate' | 'final'
+    currentStep?: number
+    totalSteps?: number
+    currentItem?: number
+    totalItems?: number
+    [key: string]: any
+  }
   timestamp: string
 }
 
@@ -12,10 +19,12 @@ interface DisplayState {
   phaseData: any
   progress: number
   canAdvance: boolean
+  stepType: 'indeterminate' | 'determinate' | 'final'
+  showProgress: boolean
 }
 
 export class ProgressDisplayController {
-  private minDisplayTime = 2000 // 2 seconds minimum per phase
+  private minDisplayTime = 500 // 500ms minimum per phase - just enough for smooth UX
   private currentPhaseStartTime = 0
   private queuedEvents: ProgressEvent[] = []
   private currentDisplayState: DisplayState
@@ -29,7 +38,9 @@ export class ProgressDisplayController {
       phaseMessage: '',
       phaseData: null,
       progress: 0,
-      canAdvance: false
+      canAdvance: false,
+      stepType: 'indeterminate',
+      showProgress: false
     }
   }
 
@@ -77,13 +88,18 @@ export class ProgressDisplayController {
     // Get the next event from queue
     const nextEvent = this.queuedEvents.shift()!
     
-    // Update display state
+    // Update display state with new step-based logic
+    const stepType = nextEvent.data?.stepType || 'indeterminate'
+    const showProgress = stepType === 'determinate' || stepType === 'final'
+    
     this.currentDisplayState = {
       currentPhase: nextEvent.phase,
       phaseMessage: nextEvent.message,
       phaseData: nextEvent.data,
       progress: nextEvent.progress,
-      canAdvance: this.queuedEvents.length > 0
+      canAdvance: this.queuedEvents.length > 0,
+      stepType: stepType,
+      showProgress: showProgress
     }
 
     // Mark when this phase started

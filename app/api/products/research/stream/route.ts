@@ -113,28 +113,29 @@ export async function GET(request: NextRequest) {
         return
       }
 
-      // Phase 1: Marketplace Analysis (0-85%) - Runs DURING Apify search
+      // Phase 1: Marketplace Analysis - Industry-standard step progression
       const marketplaceSteps = [
-        { message: `Scanning Amazon catalog for "${keyword}"`, progress: 10, step: 'catalog_scan' },
-        { message: 'Analyzing competitor pricing patterns', progress: 20, step: 'pricing_analysis' },
-        { message: 'Discovering product variations and features', progress: 30, step: 'product_discovery' },
-        { message: 'Evaluating sales performance indicators', progress: 40, step: 'sales_analysis' },
-        { message: 'Assessing market saturation levels', progress: 50, step: 'saturation_check' },
-        { message: 'Identifying high-opportunity products', progress: 60, step: 'opportunity_scan' },
-        { message: 'Analyzing review patterns and ratings', progress: 70, step: 'review_analysis' },
-        { message: 'Finalizing product selection criteria', progress: 80, step: 'selection_finalize' }
+        { message: `Scanning Amazon catalog for "${keyword}"`, step: 'catalog_scan' },
+        { message: 'Analyzing competitor pricing patterns', step: 'pricing_analysis' },
+        { message: 'Discovering product variations and features', step: 'product_discovery' },
+        { message: 'Evaluating sales performance indicators', step: 'sales_analysis' },
+        { message: 'Assessing market saturation levels', step: 'saturation_check' },
+        { message: 'Identifying high-opportunity products', step: 'opportunity_scan' },
+        { message: 'Analyzing review patterns and ratings', step: 'review_analysis' },
+        { message: 'Finalizing product selection criteria', step: 'selection_finalize' }
       ]
 
       // Start with first marketplace step immediately
       sendEvent({
         phase: 'marketplace_analysis',
         message: marketplaceSteps[0].message,
-        progress: marketplaceSteps[0].progress,
+        progress: 0, // No fake progress - just step tracking
         data: {
           currentStep: 1,
           totalSteps: marketplaceSteps.length,
           step: marketplaceSteps[0].step,
-          keyword
+          keyword,
+          stepType: 'indeterminate' // UI should show spinner, not progress bar
         },
         timestamp: new Date().toISOString()
       })
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest) {
         minRating: filters?.minRating || 3.0
       })
 
-      // Continue marketplace analysis during the 60-second Apify wait
+      // Continue marketplace analysis during the Apify wait
       let stepIndex = 1 // Start from step 2 since we already sent step 1
       const progressInterval = setInterval(() => {
         if (stepIndex < marketplaceSteps.length) {
@@ -154,18 +155,19 @@ export async function GET(request: NextRequest) {
           sendEvent({
             phase: 'marketplace_analysis',
             message: step.message,
-            progress: step.progress,
+            progress: 0, // No fake progress
             data: {
               currentStep: stepIndex + 1,
               totalSteps: marketplaceSteps.length,
               step: step.step,
-              keyword
+              keyword,
+              stepType: 'indeterminate' // Keep showing spinner
             },
             timestamp: new Date().toISOString()
           })
           stepIndex++
         }
-      }, 7000) // ~7 seconds per step = 56 seconds total
+      }, 4000) // Slower steps to spread across full Apify wait time (~32 seconds for 8 steps)
 
       // Wait for Apify to complete
       const apifyProducts = await apifyPromise
@@ -187,14 +189,17 @@ export async function GET(request: NextRequest) {
 
       Logger.research.apifyFound(apifyProducts.length)
 
-      // Phase 2: Validating Market Data (85-95%)
+      // Phase 2: Validating Market Data - Real progress based on actual work
       sendEvent({
         phase: 'validating_market',
         message: 'Validating product data and calculating market analysis',
-        progress: 85,
+        progress: 0, // Will be updated as we process each product
         data: { 
           productsFound: apifyProducts.length,
-          keyword
+          keyword,
+          stepType: 'determinate', // UI should show real progress
+          totalItems: Math.min(5, apifyProducts.length), // We'll process top 5
+          currentItem: 0
         },
         timestamp: new Date().toISOString()
       })
@@ -208,26 +213,31 @@ export async function GET(request: NextRequest) {
       const topProducts = scoredProducts.sort((a, b) => b.preliminaryScore - a.preliminaryScore).slice(0, 5)
       const verifiedProducts: EnhancedProduct[] = []
       
-      // Send verification events for each product immediately
-      topProducts.forEach((product, index) => {
-        sendEvent({
-          phase: 'validating_market',
-          message: `Verifying product: ${product.title?.substring(0, 50)}...`,
-          progress: 85 + (index + 1) * 2, // 85% to 95%
-          data: { 
-            currentProduct: index + 1,
-            totalProducts: topProducts.length,
-            productTitle: product.title,
-            asin: product.asin,
-            productImage: product.thumbnailImage || null,
-            keyword
-          },
-          timestamp: new Date().toISOString()
-        })
+      // Show all products spinning simultaneously from the start
+      sendEvent({
+        phase: 'validating_market',
+        message: 'Verifying all products with SellerSprite...',
+        progress: 0,
+        data: { 
+          stepType: 'determinate',
+          totalItems: topProducts.length,
+          currentItem: 0,
+          // All products start in "verifying" state to show simultaneous validation
+          allProducts: topProducts.map(p => ({
+            asin: p.asin,
+            title: p.title,
+            image: p.thumbnailImage,
+            status: 'verifying' // All spinning at once
+          })),
+          keyword
+        },
+        timestamp: new Date().toISOString()
       })
       
-      // Quick SellerSprite verification (parallel processing)
-      for (const product of topProducts) {
+      // Process all products in parallel but don't send individual updates
+      for (let index = 0; index < topProducts.length; index++) {
+        const product = topProducts[index]
+        
         try {
           const [sellerSpriteSales, keywordData] = await Promise.all([
             sellerSpriteClient.salesPrediction(product.asin).catch(() => null),
@@ -263,12 +273,13 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Phase 3: Apply A10 Grading Algorithm (95-99%)
+      // Phase 3: Apply A10 Grading Algorithm - Final completion phase
       sendEvent({
         phase: 'applying_grading',
         message: 'Applying A10 Grading Algorithm',
-        progress: 95,
+        progress: 90, // Near completion, but not 100% until truly done
         data: { 
+          stepType: 'final', // UI should show completion animation
           productsToGrade: verifiedProducts.length,
           keyword
         },

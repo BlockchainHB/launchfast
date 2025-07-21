@@ -598,6 +598,7 @@ export function MarketDataTable({
     pageSize: 10,
   })
   const [expandedRows, setExpandedRows] = React.useState<Record<string, boolean>>({})
+  const [isExporting, setIsExporting] = React.useState(false)
 
   // Create columns with access to expandedRows state
   const columns = React.useMemo(() => createColumns(expandedRows), [expandedRows])
@@ -649,6 +650,50 @@ export function MarketDataTable({
       toast.error('Failed to delete markets', {
         description: 'Network error occurred'
       })
+    }
+  }
+
+  const handleExportCSV = async () => {
+    let loadingToastId: string | number | undefined
+    try {
+      setIsExporting(true)
+      loadingToastId = toast.loading('Exporting markets to CSV...')
+      
+      const response = await fetch('/api/export/csv?type=markets&includeOverrides=true')
+      
+      if (!response.ok) {
+        throw new Error('Failed to export CSV')
+      }
+      
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('content-disposition')
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
+        : `launchfast-markets-${new Date().toISOString().split('T')[0]}.csv`
+      
+      // Download the file
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      toast.success('Markets exported successfully!', {
+        id: loadingToastId,
+        duration: 2000
+      })
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Failed to export CSV', {
+        id: loadingToastId,
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -738,9 +783,14 @@ export function MarketDataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportCSV}
+            disabled={isExporting}
+          >
             <IconDownload className="mr-2 h-4 w-4" />
-            Export
+            {isExporting ? 'Exporting...' : 'Export'}
           </Button>
         </div>
       </div>

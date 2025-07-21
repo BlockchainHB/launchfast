@@ -38,6 +38,22 @@ export const Logger = {
     },
     completed: (productCount: number, marketId?: string) => {
       console.log(`✅ [SAVE] Saved ${productCount} products${marketId ? ` to market ${marketId}` : ''}`)
+    },
+    // Batch operation logging
+    productsBatchSaved: (count: number) => {
+      console.log(`🚀 [BATCH] Products batch saved: ${count}`)
+    },
+    aiAnalysesBatchSaved: (count: number) => {
+      console.log(`🧠 [BATCH] AI analyses batch saved: ${count}`)
+    },
+    keywordsBatchSaved: (count: number) => {
+      console.log(`🔑 [BATCH] Keywords batch saved: ${count}`)
+    },
+    productKeywordRelationsBatchSaved: (count: number) => {
+      console.log(`🔗 [BATCH] Product-keyword relations batch saved: ${count}`)
+    },
+    batchSaveCompleted: (productCount: number, keywordCount: number, relationCount: number) => {
+      console.log(`⚡ [BATCH] Batch save completed: ${productCount} products, ${keywordCount} keywords, ${relationCount} relations`)
     }
   },
 

@@ -42,7 +42,9 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     phaseMessage: '',
     phaseData: null as Record<string, unknown> | null,
     progress: 0,
-    canAdvance: false
+    canAdvance: false,
+    stepType: 'indeterminate' as 'indeterminate' | 'determinate' | 'final',
+    showProgress: false
   })
 
   // Initialize display controller
@@ -106,7 +108,9 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
       phaseMessage: '',
       phaseData: null,
       progress: 0,
-      canAdvance: false
+      canAdvance: false,
+      stepType: 'indeterminate',
+      showProgress: false
     })
     
     try {
@@ -224,13 +228,15 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
       phaseMessage: '',
       phaseData: null,
       progress: 0,
-      canAdvance: false
+      canAdvance: false,
+      stepType: 'indeterminate',
+      showProgress: false
     })
   }
 
   // Render engaging progress UI for each phase
   const renderProgressPhase = () => {
-    const { currentPhase, phaseMessage, phaseData, progress } = displayState
+    const { currentPhase, phaseMessage, phaseData, progress, stepType, showProgress } = displayState
     
     const getPhaseIcon = () => {
       switch (currentPhase) {
@@ -298,7 +304,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
                 ].map((item, i) => (
                   <div
                     key={i}
-                    className={`p-2 rounded text-center text-xs ${
+                    className={`p-2 rounded text-center text-xs relative ${
                       i < (phaseData?.currentStep || 0)
                         ? 'bg-blue-100 text-blue-700'
                         : i === (phaseData?.currentStep || 0) - 1
@@ -311,66 +317,93 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
                   </div>
                 ))}
               </div>
+              
+              {/* Extra activity indicator for final step */}
+              {phaseData?.currentStep === 8 && (
+                <div className="flex items-center justify-center space-x-2 p-2 bg-blue-100 rounded">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <span className="text-xs text-blue-700 font-medium">
+                    Scanning Amazon catalog in progress...
+                  </span>
+                </div>
+              )}
             </div>
           )
 
         case 'validating_market':
           return (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="text-2xl animate-pulse">🔍</div>
+                <div className="text-2xl animate-pulse">✅</div>
                 <div className="flex-1">
                   <div className="text-sm font-medium">{phaseMessage}</div>
-                  {phaseData && phaseData.currentProduct && (
+                  {phaseData && phaseData.currentItem && (
                     <div className="text-xs text-muted-foreground mt-1">
-                      Product {phaseData.currentProduct} of {phaseData.totalProducts} • {phaseData.asin}
-                    </div>
-                  )}
-                  {phaseData && phaseData.productsFound && !phaseData.currentProduct && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Found {phaseData.productsFound} products for "{phaseData.keyword}"
+                      Verifying {phaseData.currentItem} of {phaseData.totalItems} products
                     </div>
                   )}
                 </div>
               </div>
               
-              {/* Show current product being verified */}
-              {phaseData && phaseData.productTitle && (
-                <div className="bg-blue-50 p-3 rounded border">
-                  <div className="flex items-start space-x-3">
-                    {phaseData.productImage && (
-                      <img 
-                        src={phaseData.productImage} 
-                        alt="Product" 
-                        className="w-12 h-12 object-cover rounded border bg-white flex-shrink-0"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs text-blue-600 font-medium">Currently Verifying</div>
-                      <div className="text-sm mt-1 line-clamp-2">{phaseData.productTitle}</div>
-                    </div>
+              {/* Show all products in compact grid with status indicators */}
+              {phaseData && phaseData.allProducts && (
+                <div className="space-y-3">
+                  <div className="text-xs text-muted-foreground font-medium">Products being verified:</div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {phaseData.allProducts.map((product: any, index: number) => {
+                      // All products should be spinning simultaneously during validation
+                      const isVerifying = product.status === 'verifying'
+                      
+                      return (
+                        <div
+                          key={product.asin}
+                          className={`flex items-center space-x-3 p-2 rounded border transition-all duration-300 ${
+                            isVerifying 
+                              ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200' 
+                              : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          {/* Product image */}
+                          {product.image ? (
+                            <img 
+                              src={product.image} 
+                              alt="Product" 
+                              className="w-8 h-8 object-cover rounded border bg-white flex-shrink-0"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 bg-gray-200 rounded border flex-shrink-0"></div>
+                          )}
+                          
+                          {/* Product info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium truncate">{product.title}</div>
+                            <div className="text-xs text-muted-foreground">{product.asin}</div>
+                          </div>
+                          
+                          {/* Status indicator - all spinning during verification */}
+                          <div className="flex-shrink-0">
+                            {isVerifying && (
+                              <div className="flex items-center space-x-1">
+                                <div className="animate-spin rounded-full h-3 w-3 border border-blue-600 border-t-transparent"></div>
+                                <span className="text-xs text-blue-600 font-medium">Verifying</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
-              )}
-              
-              {/* Progress indicators */}
-              {phaseData && phaseData.totalProducts && (
-                <div className="flex space-x-1">
-                  {[...Array(phaseData.totalProducts)].map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-2 flex-1 rounded ${
-                        i < (phaseData.currentProduct || 0)
-                          ? 'bg-emerald-500'
-                          : i === (phaseData.currentProduct || 1) - 1
-                          ? 'bg-blue-500 animate-pulse'
-                          : 'bg-gray-200'
-                      }`}
-                    />
-                  ))}
+                  
+                  {/* Show validation progress message */}
+                  <div className="flex items-center justify-center space-x-2 p-2 bg-blue-100 rounded">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-xs text-blue-700 font-medium">
+                      Validating all products with SellerSprite in parallel...
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -391,7 +424,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
                 </div>
               </div>
               
-              {/* Grading animation */}
+              {/* Final completion animation - no fake progress */}
               <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-3 rounded border">
                 <div className="flex items-center space-x-2">
                   <div className="text-xs font-medium text-purple-600">A10-F1 Algorithm Processing</div>
@@ -408,6 +441,13 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
                   </div>
                 </div>
               </div>
+              
+              {/* Show completion indicator for final phase */}
+              {stepType === 'final' && (
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                </div>
+              )}
             </div>
           )
 
@@ -424,22 +464,30 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
 
     return (
       <div className="space-y-6 py-4">
-        {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Research Progress</span>
-            <span className="text-sm text-muted-foreground">{progress}%</span>
+        {/* Progress Bar - Only show for determinate steps */}
+        {showProgress && stepType === 'determinate' && (
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Verification Progress</span>
+              <span className="text-sm text-muted-foreground">{progress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-2 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
+        )}
 
         {/* Phase-Specific UI */}
-        <div className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className={`border rounded-lg p-4 ${
+          currentPhase === 'validating_market' 
+            ? 'bg-gradient-to-r from-emerald-50 to-green-50' 
+            : currentPhase === 'applying_grading'
+            ? 'bg-gradient-to-r from-purple-50 to-blue-50'
+            : 'bg-gradient-to-r from-blue-50 to-indigo-50'
+        }`}>
           {renderPhaseDetails()}
         </div>
 
