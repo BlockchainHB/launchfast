@@ -67,13 +67,14 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
 
   // Initialize form when product changes
   React.useEffect(() => {
+    console.log(`🔄 useEffect triggered - currentProductIndex: ${currentProductIndex}, open: ${open}, currentProduct:`, currentProduct?.title)
     if (currentProduct && open) {
       // Reset form for new product
       setForm({})
       setEnabledFields({})
-      console.log(`🔄 Reset form for product ${currentProductIndex + 1}: ${currentProduct.title}`)
+      console.log(`✅ Form reset for product ${currentProductIndex + 1}: ${currentProduct.title}`)
     }
-  }, [currentProductIndex, currentProduct, open])
+  }, [currentProductIndex, open])
 
   // Reset when modal opens
   React.useEffect(() => {
@@ -322,6 +323,9 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
         onClose()
       } else {
         setCurrentProductIndex(prev => prev + 1)
+        // Force form reset for next product
+        setForm({})
+        setEnabledFields({})
       }
     }
   }
@@ -405,7 +409,7 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
 
         <div className="flex-1 overflow-y-auto px-1 py-2">
           {currentProduct && (
-            <div className="space-y-2">
+            <div key={`product-${currentProductIndex}-${currentProduct.id}`} className="space-y-2">
               {/* Current Product Info */}
               <div className="p-2 bg-blue-50 rounded border">
                 <div className="flex items-center space-x-2">
