@@ -240,6 +240,8 @@ export async function DELETE(
 ) {
   try {
     const { asin } = await params
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('user_id')
 
     if (!asin || asin.length !== 10) {
       return NextResponse.json(
@@ -248,32 +250,116 @@ export async function DELETE(
       )
     }
 
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`🗑️ Deleting product ${asin} for user ${userId}`)
+
+    // Fetch product details before deletion
+    const { data: productToDelete, error: fetchError } = await supabaseAdmin
+      .from('products')
+      .select('id, asin, title, market_id')
+      .eq('asin', asin)
+      .eq('user_id', userId)
+      .single()
+
+    if (fetchError || !productToDelete) {
+      console.error('Product not found:', fetchError)
+      return NextResponse.json(
+        { success: false, error: 'Product not found or access denied' },
+        { status: 404 }
+      )
+    }
+
+    const marketId = productToDelete.market_id
+
     // Delete from database (cascade will handle related records)
     const { error: deleteError } = await supabaseAdmin
       .from('products')
       .delete()
       .eq('asin', asin)
+      .eq('user_id', userId)
 
     if (deleteError) {
-      throw deleteError
+      console.error('Error deleting product:', deleteError)
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete product' },
+        { status: 500 }
+      )
     }
 
-    // Clear cache
+    console.log(`✅ Product deleted: ${productToDelete.title} (${asin})`)
+
+    // If product was part of a market, trigger market recalculation
+    if (marketId) {
+      console.log(`🔄 Triggering market recalculation for market ${marketId}`)
+      
+      try {
+        // Import and run market recalculation
+        const { MarketRecalculator } = await import('@/lib/market-recalculator')
+        const recalculator = new MarketRecalculator(supabaseAdmin)
+        await recalculator.recalculateMarket(marketId, userId, `Product ${asin} deleted`)
+        
+        console.log(`✅ Market ${marketId} recalculated after product deletion`)
+      } catch (recalcError) {
+        console.error('Error recalculating market:', recalcError)
+        // Don't fail the deletion if recalculation fails, just log it
+      }
+    }
+
+    // Clear product-specific cache
     await cacheHelpers.setSalesData(asin, null)
     await cacheHelpers.setKeywordsData(asin, null)
     await cacheHelpers.setAIAnalysis(asin, null)
 
+    // Invalidate dashboard cache
+    console.log(`🗑️ Invalidating dashboard cache for user ${userId}`)
+    
+    let cacheCleared = false
+    const cacheKey = `dashboard_data_${userId}`
+
+    try {
+      // Try Redis first (production)
+      const redis = await import('ioredis').then(Redis => new Redis.default(process.env.REDIS_URL))
+      await redis.del(cacheKey)
+      await redis.disconnect()
+      cacheCleared = true
+      console.log(`✅ Redis cache cleared: ${cacheKey}`)
+    } catch (redisError) {
+      // Fall back to memory cache clearing (development)
+      const { memoryCache } = await import('@/lib/cache')
+      if (memoryCache.has(cacheKey)) {
+        memoryCache.delete(cacheKey)
+        cacheCleared = true
+        console.log(`✅ Memory cache cleared: ${cacheKey}`)
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Product deleted successfully'
+      message: 'Product deleted successfully',
+      data: {
+        deletedProduct: {
+          id: productToDelete.id,
+          asin: productToDelete.asin,
+          title: productToDelete.title
+        },
+        marketRecalculated: !!marketId,
+        cacheCleared
+      }
     })
 
   } catch (error) {
-    console.error('Product deletion error:', error)
+    console.error('Unexpected error deleting product:', error)
     
     return NextResponse.json(
       { 
-        error: 'Failed to delete product',
+        success: false,
+        error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

@@ -39,15 +39,15 @@ export function OverrideIndicator({
         </TooltipTrigger>
         <TooltipContent className="max-w-xs">
           <div className="space-y-1 text-xs">
-            <div className="font-semibold text-blue-600">Manual Override</div>
-            {field && <div className="text-muted-foreground">Field: {field}</div>}
+            <div className="font-semibold text-primary-foreground">Manual Override</div>
+            {field && <div className="text-primary-foreground/80">Field: {field}</div>}
             {originalValue !== undefined && (
-              <div className="text-muted-foreground">
+              <div className="text-primary-foreground/80">
                 Original: {String(originalValue)}
               </div>
             )}
             {overrideReason && (
-              <div className="text-muted-foreground">
+              <div className="text-primary-foreground/80">
                 Reason: {overrideReason}
               </div>
             )}
@@ -84,9 +84,9 @@ export function OverrideRowIndicator({
         </TooltipTrigger>
         <TooltipContent>
           <div className="text-xs">
-            <div className="font-semibold">Manual Overrides Applied</div>
+            <div className="font-semibold text-primary-foreground">Manual Overrides Applied</div>
             {overrideReason && (
-              <div className="text-muted-foreground mt-1">
+              <div className="text-primary-foreground/80 mt-1">
                 Reason: {overrideReason}
               </div>
             )}

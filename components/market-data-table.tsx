@@ -25,6 +25,8 @@ import {
   IconDownload,
   IconChevronUp,
   IconExternalLink,
+  IconTrash,
+  IconDots,
 } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +39,8 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
@@ -60,6 +64,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
 import { getCachedColumnHeaderText } from "@/lib/table-utils"
 import { formatWholeNumber, formatAbbreviatedCurrency } from "@/lib/number-formatting"
 import type { MarketTableRow, EnhancedProduct } from "@/types/dashboard"
@@ -586,6 +602,56 @@ export function MarketDataTable({
   // Create columns with access to expandedRows state
   const columns = React.useMemo(() => createColumns(expandedRows), [expandedRows])
 
+  const handleBatchDeleteMarkets = async () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    if (selectedRows.length === 0) return
+
+    try {
+      // Get user profile for authentication
+      const userResponse = await fetch('/api/user/profile')
+      const userData = await userResponse.json()
+      
+      if (!userData.success || !userData.data?.id) {
+        toast.error('Authentication required')
+        return
+      }
+      
+      const userId = userData.data.id
+      const marketIds = selectedRows.map(row => row.original.id)
+      
+      // Show loading toast
+      const loadingToast = toast.loading(`Deleting ${selectedRows.length} selected markets...`)
+      
+      // Call batch delete API
+      const response = await fetch('/api/markets/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ marketIds, userId }),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        toast.success(`Successfully deleted ${result.data.statistics.deleted} markets`, {
+          id: loadingToast,
+          description: `${result.data.productsConvertedToLegacy} products converted to legacy`
+        })
+        // Refresh the page to update the data
+        window.location.reload()
+      } else {
+        toast.error('Failed to delete markets', {
+          id: loadingToast,
+          description: result.error || 'Please try again'
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting markets:', error)
+      toast.error('Failed to delete markets', {
+        description: 'Network error occurred'
+      })
+    }
+  }
+
   const table = useReactTable({
     data,
     columns,
@@ -768,9 +834,51 @@ export function MarketDataTable({
         </Table>
       </div>
       <div className="flex items-center justify-between pt-4">
-        <div className="text-muted-foreground text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} market(s) selected.
+        <div className="flex items-center space-x-4">
+          <div className="text-muted-foreground text-sm">
+            {table.getFilteredSelectedRowModel().rows.length} of{" "}
+            {table.getFilteredRowModel().rows.length} market(s) selected.
+          </div>
+          {table.getFilteredSelectedRowModel().rows.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-destructive text-destructive hover:bg-destructive/10"
+                >
+                  <IconTrash className="mr-2 h-4 w-4" />
+                  Delete Selected ({table.getFilteredSelectedRowModel().rows.length})
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Selected Markets</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete {table.getFilteredSelectedRowModel().rows.length} selected market{table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''}?
+                    <br /><br />
+                    <strong>This will:</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                      <li>Permanently delete {table.getFilteredSelectedRowModel().rows.length} market{table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''} from your research</li>
+                      <li>Convert all products in these markets to legacy status</li>
+                      <li>Remove all market overrides and recalculations</li>
+                    </ul>
+                    <br />
+                    <span className="text-destructive font-medium">This action cannot be undone.</span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleBatchDeleteMarkets}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete {table.getFilteredSelectedRowModel().rows.length} Market{table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
         <div className="flex items-center space-x-6 lg:space-x-8">
           <div className="flex items-center space-x-2">

@@ -31,20 +31,23 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupContent className="flex flex-col gap-2">
+      <SidebarGroupContent className="flex flex-col gap-1 px-2">
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
+          <SidebarMenuItem>
             <SidebarMenuButton
               tooltip="Quick Research"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
+              className="bg-primary hover:bg-primary/90 active:bg-primary/90 h-9 rounded-md transition-all duration-200 ease-out flex items-center justify-start gap-3 px-3"
               onClick={() => setIsModalOpen(true)}
             >
-              <IconCirclePlusFilled />
-              <span>Quick Research</span>
+              <IconCirclePlusFilled className="h-4 w-4" />
+              <span className="flex-1 sidebar-action-button">Quick Research</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <SidebarMenu>
+
+        <div className="h-2"></div>
+
+        <SidebarMenu className="space-y-1">
           {items.map((item) => {
             const isActive = pathname === item.url || (pathname === '/dashboard' && item.url === '/dashboard')
             const isDisabled = item.url === '#'
@@ -59,14 +62,16 @@ export function NavMain({
                     }
                   }}
                   className={`
-                    ${!isDisabled ? 'cursor-pointer' : 'cursor-default opacity-60'}
-                    ${isActive ? 'bg-primary/10 text-primary border-primary/20 border' : ''}
-                    ${!isDisabled && !isActive ? 'hover:bg-muted/50 hover:text-foreground transition-colors' : ''}
+                    h-9 rounded-md transition-all duration-200 ease-out px-3 flex items-center justify-start gap-3
+                    ${!isDisabled ? 'cursor-pointer' : 'cursor-default opacity-50'}
+                    ${isActive ? 'bg-secondary' : 'hover:bg-secondary/60'}
                   `}
                   data-active={isActive}
                 >
-                  {item.icon && <item.icon className={isActive ? 'text-primary' : ''} />}
-                  <span>{item.title}</span>
+                  {item.icon && <item.icon className="h-4 w-4" />}
+                  <span className={`flex-1 ${isActive ? 'sidebar-nav-item-active' : 'sidebar-nav-item'}`}>
+                    {item.title}
+                  </span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )

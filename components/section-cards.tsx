@@ -36,42 +36,33 @@ export function SectionCards({
   if (loading) {
     const skeletonCards = mode === 'market' 
       ? [
-          { title: 'Markets Analyzed', hasIcon: true },
-          { title: 'Products Analyzed', hasIcon: true },
-          { title: 'High-Grade Markets', hasIcon: true },
-          { title: 'Average Market Revenue', hasIcon: true }
+          { title: 'Markets Analyzed' },
+          { title: 'Products Analyzed' },
+          { title: 'High-Grade Markets' },
+          { title: 'Average Market Revenue' }
         ]
       : [
-          { title: 'Products Analyzed', hasIcon: true },
-          { title: 'High-Grade Products', hasIcon: true },
-          { title: 'Avg Monthly Revenue', hasIcon: true },
-          { title: 'Total Profit Potential', hasIcon: true }
+          { title: 'Products Analyzed' },
+          { title: 'High-Grade Products' },
+          { title: 'Avg Monthly Revenue' },
+          { title: 'Total Profit Potential' }
         ]
     
     return (
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 md:grid-cols-2 lg:grid-cols-4">
         {skeletonCards.map((card, i) => (
-          <Card key={i} className="@container/card">
-            <CardHeader>
-              <CardDescription>
+          <Card key={i} className="stats-card">
+            <div className="stats-card-header">
+              <div className="stats-card-title">
                 <div className="animate-pulse bg-muted rounded h-4 w-32"></div>
-              </CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                <div className="animate-pulse bg-muted rounded h-8 w-20"></div>
-              </CardTitle>
-              <CardAction>
-                <div className="animate-pulse bg-muted rounded-full h-6 w-20"></div>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                <div className="animate-pulse bg-muted rounded h-4 w-32"></div>
-                <div className="animate-pulse bg-muted rounded h-4 w-4"></div>
               </div>
-              <div className="text-muted-foreground">
-                <div className="animate-pulse bg-muted rounded h-3 w-40"></div>
-              </div>
-            </CardFooter>
+            </div>
+            <div className="stats-card-value">
+              <div className="animate-pulse bg-muted rounded h-8 w-20"></div>
+            </div>
+            <div className="stats-card-change">
+              <div className="animate-pulse bg-muted rounded h-3 w-24"></div>
+            </div>
           </Card>
         ))}
       </div>
@@ -80,14 +71,14 @@ export function SectionCards({
 
   if (!stats) {
     return (
-      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        <Card className="@container/card col-span-full">
-          <CardHeader>
-            <CardDescription>No data available</CardDescription>
-            <CardTitle className="text-lg text-muted-foreground">
-              Start researching to see your market statistics
-            </CardTitle>
-          </CardHeader>
+      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="stats-card col-span-full">
+          <div className="text-center">
+            <div className="empty-state-title mb-2">No data available</div>
+            <div className="empty-state-description">
+              Start researching to see your statistics
+            </div>
+          </div>
         </Card>
       </div>
     )
@@ -96,180 +87,136 @@ export function SectionCards({
   // Render market-centric cards
   if (mode === 'market') {
     return (
-      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Markets Analyzed</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+      <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="stats-card hover-lift">
+          <div className="stats-card-header">
+            <div className="stats-card-title">Markets Analyzed</div>
+            <Badge variant="outline" className="badge-text">
+              <IconSearch className="w-3 h-3 mr-1" />
+              Active
+            </Badge>
+          </div>
+          <div className="stats-card-value">
             {stats.marketsAnalyzed.toLocaleString()}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconSearch />
-              Markets
+          </div>
+          <div className="stats-card-change">
+            Total markets researched
+          </div>
+        </Card>
+        <Card className="stats-card hover-lift">
+          <div className="stats-card-header">
+            <div className="stats-card-title">Products Analyzed</div>
+            <Badge variant="outline" className="badge-text">
+              <IconPackage className="w-3 h-3 mr-1" />
+              Total
             </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Market research completed <IconSearch className="size-4" />
           </div>
-          <div className="text-muted-foreground">
-            Total markets researched and analyzed
-          </div>
-        </CardFooter>
-      </Card>
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Products Analyzed</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <div className="stats-card-value">
             {stats.totalProducts.toLocaleString()}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconPackage />
-              Products
+          </div>
+          <div className="stats-card-change">
+            Across all markets
+          </div>
+        </Card>
+
+        <Card className="stats-card hover-lift">
+          <div className="stats-card-header">
+            <div className="stats-card-title">High-Grade Markets</div>
+            <Badge variant="outline" className="status-excellent badge-text">
+              <IconTrendingUp className="w-3 h-3 mr-1" />
+              A-B
             </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Individual products researched <IconPackage className="size-4" />
           </div>
-          <div className="text-muted-foreground">
-            Total products analyzed across all markets
-          </div>
-        </CardFooter>
-      </Card>
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>High-Grade Markets</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <div className="stats-card-value">
             {stats.highGradeMarkets.toLocaleString()}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline" className="grade-a10">
-              <IconTrendingUp />
-              A-B Grade
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Premium market opportunities <IconTrendingUp className="size-4" />
           </div>
-          <div className="text-muted-foreground">Markets with A & B grades identified</div>
-        </CardFooter>
-      </Card>
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Average Market Revenue</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <div className="stats-card-change">
+            Premium opportunities
+          </div>
+        </Card>
+
+        <Card className="stats-card hover-lift">
+          <div className="stats-card-header">
+            <div className="stats-card-title">Avg Market Revenue</div>
+            <Badge variant="outline" className="badge-text">
+              <IconTrendingUp className="w-3 h-3 mr-1" />
+              Monthly
+            </Badge>
+          </div>
+          <div className="stats-card-value">
             {formatCurrency(stats.avgMarketRevenue)}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              Per Market
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Average market performance <IconTrendingUp className="size-4" />
           </div>
-          <div className="text-muted-foreground">Monthly revenue across analyzed markets</div>
-        </CardFooter>
-      </Card>
+          <div className="stats-card-change">
+            Per market performance
+          </div>
+        </Card>
     </div>
     )
   }
 
   // Render product-centric cards (original version)
   return (
-    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Products Analyzed</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {stats.totalProducts.toLocaleString()}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              {stats.recentActivity > 0 ? `+${stats.recentActivity}` : '0'} recent
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            {stats.recentActivity > 0 ? 'New products added' : 'No recent activity'} <IconPackage className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Total products in your database
-          </div>
-        </CardFooter>
+    <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 md:grid-cols-2 lg:grid-cols-4">
+      <Card className="stats-card hover-lift">
+        <div className="stats-card-header">
+          <div className="stats-card-title">Products Analyzed</div>
+          <Badge variant="outline" className="badge-text">
+            <IconTrendingUp className="w-3 h-3 mr-1" />
+            {stats.recentActivity > 0 ? `+${stats.recentActivity}` : '0'}
+          </Badge>
+        </div>
+        <div className="stats-card-value">
+          {stats.totalProducts.toLocaleString()}
+        </div>
+        <div className="stats-card-change">
+          {stats.recentActivity > 0 ? 'New products added' : 'Total in database'}
+        </div>
       </Card>
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>High-Grade Products</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {stats.highGradeProducts}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline" className="grade-a10">
-              {stats.highGradePercentage}% A-B
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Premium opportunities found <IconTrendingUp className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            A & B grade products discovered
-          </div>
-        </CardFooter>
+      <Card className="stats-card hover-lift">
+        <div className="stats-card-header">
+          <div className="stats-card-title">High-Grade Products</div>
+          <Badge variant="outline" className="status-excellent badge-text">
+            {stats.highGradePercentage}% A-B
+          </Badge>
+        </div>
+        <div className="stats-card-value">
+          {stats.highGradeProducts}
+        </div>
+        <div className="stats-card-change">
+          Premium opportunities found
+        </div>
       </Card>
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Avg Monthly Revenue</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatCurrency(stats.avgMonthlyRevenue)}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              Per Product
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Average revenue potential <IconTrendingUp className="size-4" />
-          </div>
-          <div className="text-muted-foreground">From analyzed products</div>
-        </CardFooter>
+
+      <Card className="stats-card hover-lift">
+        <div className="stats-card-header">
+          <div className="stats-card-title">Avg Monthly Revenue</div>
+          <Badge variant="outline" className="badge-text">
+            <IconTrendingUp className="w-3 h-3 mr-1" />
+            Per Product
+          </Badge>
+        </div>
+        <div className="stats-card-value">
+          {formatCurrency(stats.avgMonthlyRevenue)}
+        </div>
+        <div className="stats-card-change">
+          Average revenue potential
+        </div>
       </Card>
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>Total Profit Potential</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {formatCurrency(stats.totalProfitPotential)}
-          </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              Monthly
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Combined profit potential <IconSearch className="size-4" />
-          </div>
-          <div className="text-muted-foreground">From all your products</div>
-        </CardFooter>
+
+      <Card className="stats-card hover-lift">
+        <div className="stats-card-header">
+          <div className="stats-card-title">Total Profit Potential</div>
+          <Badge variant="outline" className="badge-text">
+            <IconTrendingUp className="w-3 h-3 mr-1" />
+            Monthly
+          </Badge>
+        </div>
+        <div className="stats-card-value">
+          {formatCurrency(stats.totalProfitPotential)}
+        </div>
+        <div className="stats-card-change">
+          Combined profit potential
+        </div>
       </Card>
     </div>
   )

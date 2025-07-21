@@ -26,6 +26,8 @@ import {
   IconEye,
   IconExternalLink,
   IconEdit,
+  IconTrash,
+  IconDots,
 } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -65,6 +67,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
 import type { EnhancedProduct } from "@/types"
 import { formatDimensions, formatWeight, getRiskColor, getConsistencyColor } from "@/lib/calculations"
 import { BatchEditModal } from "@/components/batch-edit-modal"
@@ -532,6 +546,55 @@ export function DataTable({
     }
   }
 
+  const handleBatchDelete = async () => {
+    if (!hasSelection) return
+
+    try {
+      // Get user profile for authentication
+      const userResponse = await fetch('/api/user/profile')
+      const userData = await userResponse.json()
+      
+      if (!userData.success || !userData.data?.id) {
+        toast.error('Authentication required')
+        return
+      }
+      
+      const userId = userData.data.id
+      const asins = selectedProducts.map(p => p.asin)
+      
+      // Show loading toast
+      const loadingToast = toast.loading(`Deleting ${selectedProducts.length} selected products...`)
+      
+      // Call batch delete API
+      const response = await fetch('/api/products/batch-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ asins, userId }),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        toast.success(`Successfully deleted ${result.data.statistics.deleted} products`, {
+          id: loadingToast,
+          description: `${result.data.statistics.marketsAffected} markets affected`
+        })
+        // Refresh the page to update the data
+        window.location.reload()
+      } else {
+        toast.error('Failed to delete products', {
+          id: loadingToast,
+          description: result.error || 'Please try again'
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting products:', error)
+      toast.error('Failed to delete products', {
+        description: 'Network error occurred'
+      })
+    }
+  }
+
   const handleProductsUpdated = (updatedProducts: EnhancedProduct[]) => {
     console.log(`🔄 Updating ${updatedProducts.length} products in DataTable`)
     
@@ -610,6 +673,45 @@ export function DataTable({
             <IconEdit className="mr-2 h-4 w-4" />
             Edit Selected ({selectedRows.length})
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm"
+                disabled={!hasSelection}
+                className={hasSelection ? "border-destructive text-destructive hover:bg-destructive/10" : ""}
+              >
+                <IconTrash className="mr-2 h-4 w-4" />
+                Delete Selected ({selectedRows.length})
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Selected Products</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete {selectedRows.length} selected product{selectedRows.length > 1 ? 's' : ''}?
+                  <br /><br />
+                  <strong>This will:</strong>
+                  <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                    <li>Permanently delete {selectedRows.length} product{selectedRows.length > 1 ? 's' : ''} from your research</li>
+                    <li>Remove all product overrides and customizations</li>
+                    <li>Recalculate affected market data</li>
+                  </ul>
+                  <br />
+                  <span className="text-destructive font-medium">This action cannot be undone.</span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleBatchDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete {selectedRows.length} Product{selectedRows.length > 1 ? 's' : ''}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
       <div className="rounded-md border overflow-x-auto">

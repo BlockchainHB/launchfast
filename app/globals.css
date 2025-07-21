@@ -4,25 +4,26 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Fixed Notion-inspired palette with better contrast */
   --background: oklch(1.0000 0 0);
-  --foreground: oklch(0.3211 0 0);
+  --foreground: oklch(0.2157 0.0157 285.8294);
   --card: oklch(1.0000 0 0);
-  --card-foreground: oklch(0.3211 0 0);
+  --card-foreground: oklch(0.2157 0.0157 285.8294);
   --popover: oklch(1.0000 0 0);
-  --popover-foreground: oklch(0.3211 0 0);
-  --primary: oklch(0.6231 0.1880 259.8145);
+  --popover-foreground: oklch(0.2157 0.0157 285.8294);
+  --primary: oklch(0.5441 0.1481 251.8382);
   --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.9670 0.0029 264.5419);
-  --secondary-foreground: oklch(0.4461 0.0263 256.8018);
-  --muted: oklch(0.9846 0.0017 247.8389);
-  --muted-foreground: oklch(0.5510 0.0234 264.3637);
-  --accent: oklch(0.9514 0.0250 236.8242);
-  --accent-foreground: oklch(0.3791 0.1378 265.5222);
+  --secondary: oklch(0.9670 0.0157 285.8294);
+  --secondary-foreground: oklch(0.4706 0.0157 285.8294);
+  --muted: oklch(0.9670 0.0157 285.8294);
+  --muted-foreground: oklch(0.4706 0.0157 285.8294);
+  --accent: oklch(0.5441 0.1481 251.8382);
+  --accent-foreground: oklch(1.0000 0 0);
   --destructive: oklch(0.6368 0.2078 25.3313);
   --destructive-foreground: oklch(1.0000 0 0);
-  --border: oklch(0.9276 0.0058 264.5313);
-  --input: oklch(0.9276 0.0058 264.5313);
-  --ring: oklch(0.6231 0.1880 259.8145);
+  --border: oklch(0.9098 0.0157 285.8294);
+  --input: oklch(0.9670 0.0157 285.8294);
+  --ring: oklch(0.5441 0.1481 251.8382);
   --chart-1: oklch(0.6231 0.1880 259.8145);
   --chart-2: oklch(0.5461 0.2152 262.8809);
   --chart-3: oklch(0.4882 0.2172 264.3763);
@@ -36,9 +37,9 @@
   --sidebar-accent-foreground: oklch(0.3791 0.1378 265.5222);
   --sidebar-border: oklch(0.9276 0.0058 264.5313);
   --sidebar-ring: oklch(0.6231 0.1880 259.8145);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Source Serif 4, serif;
-  --font-mono: JetBrains Mono, monospace;
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, "SF Pro Display", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", Consolas, monospace;
   --radius: 0.375rem;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -53,25 +54,25 @@
 }
 
 .dark {
-  --background: oklch(0.2046 0 0);
+  --background: oklch(0.1569 0.0157 285.8294);
   --foreground: oklch(0.9219 0 0);
-  --card: oklch(0.2686 0 0);
+  --card: oklch(0.2000 0.0157 285.8294);
   --card-foreground: oklch(0.9219 0 0);
-  --popover: oklch(0.2686 0 0);
+  --popover: oklch(0.2000 0.0157 285.8294);
   --popover-foreground: oklch(0.9219 0 0);
-  --primary: oklch(0.6231 0.1880 259.8145);
+  --primary: oklch(0.6961 0.1481 251.8382);
   --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.2686 0 0);
-  --secondary-foreground: oklch(0.9219 0 0);
-  --muted: oklch(0.2686 0 0);
-  --muted-foreground: oklch(0.7155 0 0);
-  --accent: oklch(0.3791 0.1378 265.5222);
-  --accent-foreground: oklch(0.8823 0.0571 254.1284);
+  --secondary: oklch(0.1804 0.0157 285.8294);
+  --secondary-foreground: oklch(0.6824 0 0);
+  --muted: oklch(0.1804 0.0157 285.8294);
+  --muted-foreground: oklch(0.6824 0 0);
+  --accent: oklch(0.6961 0.1481 251.8382);
+  --accent-foreground: oklch(1.0000 0 0);
   --destructive: oklch(0.6368 0.2078 25.3313);
   --destructive-foreground: oklch(1.0000 0 0);
-  --border: oklch(0.3715 0 0);
-  --input: oklch(0.3715 0 0);
-  --ring: oklch(0.6231 0.1880 259.8145);
+  --border: oklch(0.2118 0.0157 285.8294);
+  --input: oklch(0.1804 0.0157 285.8294);
+  --ring: oklch(0.6961 0.1481 251.8382);
   --chart-1: oklch(0.7137 0.1434 254.6240);
   --chart-2: oklch(0.6231 0.1880 259.8145);
   --chart-3: oklch(0.5461 0.2152 262.8809);
@@ -85,9 +86,9 @@
   --sidebar-accent-foreground: oklch(0.8823 0.0571 254.1284);
   --sidebar-border: oklch(0.3715 0 0);
   --sidebar-ring: oklch(0.6231 0.1880 259.8145);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Source Serif 4, serif;
-  --font-mono: JetBrains Mono, monospace;
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-serif: ui-serif, "SF Pro Display", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", Consolas, monospace;
   --radius: 0.375rem;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
@@ -159,19 +160,68 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Notion-style custom scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.4706 0.0157 285.8294 / 0.2) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: oklch(0.4706 0.0157 285.8294 / 0.2);
+    border-radius: 20px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.4706 0.0157 285.8294 / 0.4);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
 @layer components {
+  /* Notion-inspired card styling */
   .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-lg transition-all duration-200;
   }
 
   .glass2 {
-    background: rgba(0, 0, 0, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    @apply bg-secondary border border-border rounded-lg shadow-sm hover:shadow-lg transition-all duration-200;
+  }
+
+  .stats-card {
+    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 p-5 space-y-3;
+  }
+
+  .stats-card-header {
+    @apply flex items-center justify-between;
+  }
+
+  .stats-card-title {
+    @apply text-sm font-medium text-muted-foreground;
+  }
+
+  .stats-card-value {
+    @apply text-2xl font-bold text-foreground;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .stats-card-change {
+    @apply text-sm text-muted-foreground;
   }
 
   /* Disable text selection for landing page elements */
@@ -203,6 +253,34 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  /* Professional animations */
+  @keyframes subtle-fade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes gentle-scale {
+    from { transform: scale(0.98); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .fade-in-subtle {
+    animation: subtle-fade 0.3s ease-out;
+  }
+
+  .scale-in-gentle {
+    animation: gentle-scale 0.2s ease-out;
+  }
+
+  /* Professional hover effects */
+  .hover-lift {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  .hover-subtle {
+    @apply transition-all duration-200 hover:bg-muted/50;
   }
 
   @keyframes float {
@@ -289,6 +367,98 @@
     50% {
       opacity: 0.7;
     }
+  }
+
+  /* ===== Notion-Style Status System ===== */
+  
+  /* Warm, sophisticated status colors like Notion */
+  .status-excellent { @apply bg-green-100 text-green-800 border-green-200 font-medium dark:bg-green-900/20 dark:text-green-400 dark:border-green-800/30; }
+  .status-good { @apply bg-blue-100 text-blue-800 border-blue-200 font-medium dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30; }
+  .status-warning { @apply bg-yellow-100 text-yellow-800 border-yellow-200 font-medium dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800/30; }
+  .status-critical { @apply bg-red-100 text-red-800 border-red-200 font-medium dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30; }
+
+  /* Notion-style colored backgrounds for different contexts */
+  .notion-blue { @apply bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/30; }
+  .notion-green { @apply bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800/30; }
+  .notion-orange { @apply bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800/30; }
+  .notion-purple { @apply bg-purple-50 border-purple-200 dark:bg-purple-950/30 dark:border-purple-800/30; }
+
+  /* Notion-style table enhancements */
+  .notion-table {
+    @apply bg-card border-none rounded-lg overflow-hidden shadow-sm;
+  }
+
+  .notion-table-header {
+    @apply bg-secondary/50 text-sm font-medium text-muted-foreground;
+  }
+
+  .notion-table-row {
+    @apply hover:bg-secondary/30 border-b border-border/10 last:border-b-0;
+  }
+
+  /* Sidebar Typography Classes */
+  .sidebar-nav-item {
+    @apply text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200;
+  }
+
+  .sidebar-nav-item-active {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .sidebar-action-button {
+    @apply text-sm font-medium text-primary-foreground;
+  }
+
+  .sidebar-section-title {
+    @apply text-xs font-medium text-muted-foreground uppercase tracking-wide;
+  }
+
+  /* Dashboard Typography System */
+  .dashboard-heading {
+    @apply text-2xl font-bold text-foreground tracking-tight;
+  }
+
+  .dashboard-subheading {
+    @apply text-lg font-semibold text-foreground;
+  }
+
+  .dashboard-section-title {
+    @apply text-base font-semibold text-foreground;
+  }
+
+  .dashboard-body {
+    @apply text-sm text-foreground leading-relaxed;
+  }
+
+  .dashboard-caption {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .dashboard-label {
+    @apply text-xs font-medium text-muted-foreground uppercase tracking-wide;
+  }
+
+  /* Empty State Typography */
+  .empty-state-title {
+    @apply text-lg font-semibold text-foreground;
+  }
+
+  .empty-state-description {
+    @apply text-sm text-muted-foreground mt-1 leading-relaxed;
+  }
+
+  /* Interactive Typography */
+  .link-primary {
+    @apply text-sm text-primary hover:underline cursor-pointer;
+  }
+
+  .link-destructive {
+    @apply text-sm text-destructive hover:underline cursor-pointer;
+  }
+
+  /* Badge Typography */
+  .badge-text {
+    @apply text-xs font-medium;
   }
 
   /* Special A10 Goldmine Treatment */

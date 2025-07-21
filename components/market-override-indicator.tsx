@@ -46,18 +46,18 @@ export function MarketOverrideIndicator({
         </TooltipTrigger>
         <TooltipContent className="max-w-xs">
           <div className="space-y-1 text-xs">
-            <div className="font-semibold text-orange-600">Market Recalculated</div>
-            {keyword && <div className="text-muted-foreground">Market: {keyword}</div>}
+            <div className="font-semibold text-primary-foreground">Market Recalculated</div>
+            {keyword && <div className="text-primary-foreground/80">Market: {keyword}</div>}
             {overriddenProductCount && overriddenProductCount > 0 && (
-              <div className="text-muted-foreground">
+              <div className="text-primary-foreground/80">
                 Based on {overriddenProductCount} overridden product{overriddenProductCount > 1 ? 's' : ''}
               </div>
             )}
-            <div className="text-muted-foreground">
+            <div className="text-primary-foreground/80">
               Recalculated: {formattedDate}
             </div>
             {overrideReason && (
-              <div className="text-muted-foreground border-t pt-1 mt-1">
+              <div className="text-primary-foreground/80 border-t border-primary-foreground/20 pt-1 mt-1">
                 Reason: {overrideReason}
               </div>
             )}
@@ -98,15 +98,15 @@ export function MarketFieldOverrideIndicator({
         </TooltipTrigger>
         <TooltipContent className="max-w-xs">
           <div className="space-y-1 text-xs">
-            <div className="font-semibold text-orange-600">Recalculated Value</div>
-            {field && <div className="text-muted-foreground">Field: {field}</div>}
+            <div className="font-semibold text-primary-foreground">Recalculated Value</div>
+            {field && <div className="text-primary-foreground/80">Field: {field}</div>}
             {originalValue !== undefined && (
-              <div className="text-muted-foreground">
+              <div className="text-primary-foreground/80">
                 Original: {String(originalValue)}
               </div>
             )}
             {overrideReason && (
-              <div className="text-muted-foreground">
+              <div className="text-primary-foreground/80">
                 Reason: {overrideReason}
               </div>
             )}

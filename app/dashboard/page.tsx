@@ -92,10 +92,10 @@ export default function Page() {
                 <SectionCards stats={dashboardData?.stats} loading={false} />
                 <div className="flex items-center justify-center py-8">
                   <div className="text-center">
-                    <p className="text-destructive mb-2">Error: {error}</p>
+                    <p className="link-destructive mb-2">Error: {error}</p>
                     <button 
                       onClick={fetchDashboardData}
-                      className="text-sm text-primary hover:underline"
+                      className="link-primary"
                     >
                       Try again
                     </button>
@@ -144,8 +144,8 @@ export default function Page() {
                         />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-semibold text-foreground">No Markets Analyzed</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <h3 className="empty-state-title">No Markets Analyzed</h3>
+                    <p className="empty-state-description">
                       Start researching to see your market analysis with expandable product details.
                     </p>
                   </div>

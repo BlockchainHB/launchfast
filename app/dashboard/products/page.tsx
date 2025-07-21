@@ -144,8 +144,8 @@ export default function Page() {
                         />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-semibold text-foreground">No Products Saved</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <h3 className="empty-state-title">No Products Saved</h3>
+                    <p className="empty-state-description">
                       Start researching to see your individual product analysis here.
                     </p>
                   </div>
