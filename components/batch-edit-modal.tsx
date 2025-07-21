@@ -281,17 +281,16 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
         onProductsUpdated(result.updatedProducts)
       }
       
-      // Trigger full dashboard refresh if markets were recalculated
+      // Store market recalculations info for final refresh (don't refresh after each individual product)
       const marketRecalculations = result.debug?.marketRecalculationResults || 0
-      if (marketRecalculations > 0 && onDashboardRefresh) {
-        console.log(`🔄 Triggering dashboard refresh after ${marketRecalculations} market recalculations`)
-        onDashboardRefresh()
+      if (marketRecalculations > 0) {
+        console.log(`🔄 ${marketRecalculations} markets recalculated - will refresh at completion`)
       }
       
       // Show success toast with market recalculation info
-      const successToastId = toast.success(`Successfully updated ${currentProduct.title.slice(0, 30)}`, {
+      const successToastId = toast.success(`Updated ${currentProduct.title.slice(0, 25)}`, {
         id: loadingToast,
-        description: `${enabledOverrides.length} fields overridden${marketRecalculations > 0 ? `, ${marketRecalculations} markets recalculated` : ''}`
+        description: `${enabledOverrides.length} fields updated`
       })
       
       // Store the toast ID for potential dismissal
@@ -321,7 +320,12 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
           toast.dismiss((window as any).lastProductToastId)
         }
         
-        // All done!
+        // All done! Trigger final dashboard refresh for market recalculations
+        if (onDashboardRefresh) {
+          console.log(`🔄 Triggering final dashboard refresh after batch completion`)
+          onDashboardRefresh()
+        }
+        
         toast.success(`Batch edit completed!`, {
           description: `${selectedProducts.length} products updated`
         })
