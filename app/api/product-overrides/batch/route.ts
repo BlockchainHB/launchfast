@@ -133,6 +133,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate and sanitize integer fields to prevent type errors
+    const sanitizeInteger = (value: any): number | null => {
+      if (value === null || value === undefined || value === '') return null
+      const num = parseInt(String(value), 10)
+      return isNaN(num) ? null : num
+    }
+
+    // Sanitize overrides to ensure proper data types
+    const sanitizedOverrides = overrides.map(override => ({
+      ...override,
+      variations: sanitizeInteger(override.variations),
+      reviews: sanitizeInteger(override.reviews),
+      monthly_sales: sanitizeInteger(override.monthly_sales)
+    }))
+
     // Check if any overrides already exist (for debugging re-override scenarios)
     const productIds = overrides.map(override => override.product_id)
     const userId = overrides[0].user_id
@@ -149,7 +164,7 @@ export async function POST(request: NextRequest) {
     // Use upsert to handle existing overrides (update) or create new ones
     const { data, error } = await supabaseAdmin
       .from('product_overrides')
-      .upsert(overrides, {
+      .upsert(sanitizedOverrides, {
         onConflict: 'user_id,product_id',
         ignoreDuplicates: false
       })

@@ -61,26 +61,40 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [completedProducts, setCompletedProducts] = React.useState<Set<number>>(new Set())
 
+  const isIntegerField = (field: string): boolean => {
+    return ['variations', 'reviews', 'monthlySales'].includes(field)
+  }
+  
+  // Storage for all product form data (true batch approach)
+  const [storedForms, setStoredForms] = React.useState<Map<number, ProductEditForm>>(new Map())
+  const [storedEnabledFields, setStoredEnabledFields] = React.useState<Map<number, Record<string, boolean>>>(new Map())
+
   const currentProduct = selectedProducts[currentProductIndex]
   const isLastProduct = currentProductIndex === selectedProducts.length - 1
   const isFirstProduct = currentProductIndex === 0
 
-  // Initialize form when product changes
+  // Initialize form when product changes - load stored data if available
   React.useEffect(() => {
     console.log(`🔄 useEffect triggered - currentProductIndex: ${currentProductIndex}, open: ${open}, currentProduct:`, currentProduct?.title)
     if (currentProduct && open) {
-      // Reset form for new product
-      setForm({})
-      setEnabledFields({})
-      console.log(`✅ Form reset for product ${currentProductIndex + 1}: ${currentProduct.title}`)
+      // Load stored form data if available, otherwise reset
+      const storedForm = storedForms.get(currentProductIndex) || {}
+      const storedEnabled = storedEnabledFields.get(currentProductIndex) || {}
+      
+      setForm(storedForm)
+      setEnabledFields(storedEnabled)
+      console.log(`✅ Form loaded for product ${currentProductIndex + 1}: ${currentProduct.title} (stored: ${Object.keys(storedForm).length} fields)`)
     }
-  }, [currentProductIndex, open])
+  }, [currentProductIndex, open, storedForms, storedEnabledFields])
 
   // Reset when modal opens
   React.useEffect(() => {
     if (open) {
       setCurrentProductIndex(0)
       setCompletedProducts(new Set())
+      setStoredForms(new Map())
+      setStoredEnabledFields(new Map())
+      console.log(`🔄 Reset all form storage for new batch edit session`)
     }
   }, [open])
 
@@ -150,197 +164,239 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  const saveCurrentProduct = async () => {
-    if (!currentProduct) return false
 
-    // Check if any fields are enabled
-    const enabledOverrides = Object.entries(enabledFields)
-      .filter(([_, enabled]) => enabled)
+  const storeCurrentForm = () => {
+    // Store current form data
+    setStoredForms(prev => new Map(prev.set(currentProductIndex, { ...form })))
+    setStoredEnabledFields(prev => new Map(prev.set(currentProductIndex, { ...enabledFields })))
+    console.log(`💾 Stored form data for product ${currentProductIndex + 1}`)
+  }
 
-    if (enabledOverrides.length === 0) {
-      // No overrides for this product, just move to next
-      return true
+  const handleNext = () => {
+    // Store current form data
+    storeCurrentForm()
+    
+    if (isLastProduct) {
+      // This is the finish button - save all products
+      handleFinish()
+    } else {
+      // Move to next product without saving
+      setCurrentProductIndex(prev => prev + 1)
+      console.log(`➡️ Moving to product ${currentProductIndex + 2} without saving`)
     }
+  }
 
+  const handleFinish = async () => {
+    // Store the current form before final save
+    storeCurrentForm()
+    
     try {
       setIsSubmitting(true)
       
-      // Show initial toast
-      const loadingToast = toast.loading(`Saving changes for ${currentProduct.title.slice(0, 30)}...`, {
-        description: "Step 1: Applying product overrides"
+      // Show loading toast for batch save
+      const loadingToast = toast.loading(`Saving ${selectedProducts.length} product edits...`, {
+        description: "Processing all changes"
       })
-
-      // Get user ID
-      const userResponse = await fetch('/api/user/profile')
-      const userData = await userResponse.json()
       
-      if (!userData.success || !userData.data?.id) {
-        toast.dismiss(loadingToast)
-        toast.error('Authentication required. Please refresh and try again.')
-        return false
-      }
+      // Prepare all overrides from stored forms
+      const allOverrides = []
       
-      const userId = userData.data.id
-
-      // Create complete product snapshot with overrides
-      // This ensures all fields maintain their values (original or overridden)
-      const getFieldValue = (field: string) => {
-        // If field is enabled and has a form value, use that
-        if (enabledFields[field] && form[field as keyof ProductEditForm] !== undefined) {
-          return form[field as keyof ProductEditForm]
-        }
-        // For dropdown fields (consistency, risk), if not enabled, preserve original value
-        const currentValue = getCurrentValue(field)
-        if (field === 'consistencyRating' || field === 'riskClassification') {
-          // Only return the original value if it exists, otherwise don't include in override
-          return currentValue
-        }
-        // For other fields, use current value
-        return currentValue
-      }
-
-      // Helper to ensure integer fields are properly converted
-      const ensureInteger = (value: any): number | null => {
-        if (value === null || value === undefined || value === '') return null
-        const num = Math.round(Number(value))
-        return isNaN(num) ? null : num
-      }
-
-      // Helper to ensure decimal fields are properly converted
-      const ensureDecimal = (value: any): number | null => {
-        if (value === null || value === undefined || value === '') return null
-        const num = Number(value)
-        return isNaN(num) ? null : num
-      }
-
-      // Map all fields to database format with complete snapshot
-      const override = {
-        product_id: currentProduct.id,
-        asin: currentProduct.asin,
-        user_id: userId,
-        override_reason: form.notes || `Individual product edit - ${currentProduct.title.slice(0, 50)}`,
-        notes: form.notes,
+      for (let i = 0; i < selectedProducts.length; i++) {
+        const product = selectedProducts[i]
+        // Use current form data if we're on the current product, otherwise use stored data
+        const productForm = i === currentProductIndex ? form : (storedForms.get(i) || {})
+        const productEnabledFields = i === currentProductIndex ? enabledFields : (storedEnabledFields.get(i) || {})
         
-        // Complete product data snapshot with proper type conversion
-        // Only include consistency/risk if they have actual values (not null)
-        ...(getFieldValue('consistencyRating') && { consistency_rating: getFieldValue('consistencyRating') }),
-        ...(getFieldValue('riskClassification') && { risk_classification: getFieldValue('riskClassification') }),
-        monthly_revenue: ensureDecimal(getFieldValue('monthlyRevenue')),
-        monthly_sales: ensureInteger(getFieldValue('monthlySales')), // INTEGER field
-        daily_revenue: ensureDecimal(getFieldValue('dailyRevenue')),
-        cogs: ensureDecimal(getFieldValue('cogs')),
-        margin: ensureDecimal(getFieldValue('margin')),
-        fulfillment_fees: ensureDecimal(getFieldValue('fulfillmentFees')),
-        launch_budget: ensureDecimal(getFieldValue('launchBudget')),
-        profit_per_unit_after_launch: ensureDecimal(getFieldValue('profitPerUnitAfterLaunch')),
-        variations: ensureInteger(getFieldValue('variations')), // INTEGER field
-        reviews: ensureInteger(getFieldValue('reviews')), // INTEGER field
-        rating: ensureDecimal(getFieldValue('rating')),
-        // Only include avgCpc if it has a value or is explicitly overridden
-        ...(getFieldValue('avgCpc') !== null && { avg_cpc: ensureDecimal(getFieldValue('avgCpc')) }),
-        weight: ensureDecimal(getFieldValue('weight'))
+        // Check if any fields are enabled for this product
+        const enabledOverrides = Object.entries(productEnabledFields).filter(([_, enabled]) => enabled)
+        
+        if (enabledOverrides.length > 0) {
+          // Create override for this product (using same logic as before)
+          const override = await createProductOverride(product, productForm, productEnabledFields)
+          if (override) {
+            allOverrides.push(override)
+          }
+        }
       }
-
-      // Update toast for market recalculation
-      toast.loading(`Processing ${currentProduct.title.slice(0, 30)}...`, {
-        id: loadingToast,
-        description: "Step 2: Recalculating affected markets"
-      })
+      
+      if (allOverrides.length === 0) {
+        toast.dismiss(loadingToast)
+        toast.error('No changes to save')
+        return
+      }
+      
+      // Save all overrides in one batch API call with timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
       
       const response = await fetch('/api/product-overrides/batch', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ overrides: [override] }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ overrides: allOverrides }),
+        signal: controller.signal
       })
-
+      
+      clearTimeout(timeoutId)
+      
       if (!response.ok) {
-        throw new Error('Failed to save override')
+        throw new Error('Failed to save overrides')
       }
-
+      
       const result = await response.json()
       
       if (!result.success) {
-        throw new Error(result.error || 'Failed to save override')
+        throw new Error(result.error || 'Failed to save overrides')
       }
       
-      // Update toast for completion
-      toast.loading(`Finalizing ${currentProduct.title.slice(0, 30)}...`, {
-        id: loadingToast,
-        description: "Step 3: Refreshing dashboard data"
-      })
-      
-      // Add delay to let market recalculation complete before UI update
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      console.log(`✅ Saved complete override snapshot for ${currentProduct.title}`)
-      console.log('Override fields:', enabledOverrides.map(([field]) => field))
-      console.log('Market recalculations:', result.debug?.marketRecalculationResults || 0)
-      
-      // Update immediate frontend if callback provided
+      // Update UI with results
       if (result.updatedProducts && onProductsUpdated) {
         onProductsUpdated(result.updatedProducts)
       }
       
-      // Store market recalculations info for final refresh (don't refresh after each individual product)
-      const marketRecalculations = result.debug?.marketRecalculationResults || 0
-      if (marketRecalculations > 0) {
-        console.log(`🔄 ${marketRecalculations} markets recalculated - will refresh at completion`)
+      // Trigger dashboard refresh
+      if (onDashboardRefresh) {
+        console.log(`🔄 Triggering dashboard refresh after batch completion`)
+        onDashboardRefresh()
       }
       
-      // Dismiss loading toast without showing individual success (only show final completion toast)
-      toast.dismiss(loadingToast)
-
-      return true
-
-    } catch (error) {
-      console.error('Error saving override:', error)
-      toast.error(`Failed to save changes for ${currentProduct.title.slice(0, 30)}`, {
-        description: error instanceof Error ? error.message : 'Please try again.'
+      // Show success toast
+      toast.success(`Batch edit completed!`, {
+        id: loadingToast,
+        description: `${allOverrides.length} products updated`
       })
-      return false
+      
+      onClose()
+      
+    } catch (error) {
+      console.error('Batch save error:', error)
+      toast.error('Failed to save changes', {
+        description: error instanceof Error ? error.message : 'Please try again'
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleNext = async () => {
-    const saved = await saveCurrentProduct()
-    if (saved) {
-      setCompletedProducts(prev => new Set([...prev, currentProductIndex]))
-      
-      if (isLastProduct) {
-        // All done! Trigger final dashboard refresh for market recalculations
-        if (onDashboardRefresh) {
-          console.log(`🔄 Triggering final dashboard refresh after batch completion`)
-          onDashboardRefresh()
-        }
-        
-        toast.success(`Batch edit completed!`, {
-          description: `${selectedProducts.length} products updated`
-        })
-        onClose()
-      } else {
-        setCurrentProductIndex(prev => prev + 1)
-        // Force form reset for next product
-        setForm({})
-        setEnabledFields({})
-      }
+  const handlePrevious = () => {
+    if (!isFirstProduct) {
+      // Store current form before moving
+      storeCurrentForm()
+      setCurrentProductIndex(prev => prev - 1)
+      console.log(`⬅️ Moving to previous product`)
     }
   }
 
-  const handlePrevious = () => {
-    if (!isFirstProduct) {
-      setCurrentProductIndex(prev => prev - 1)
+  const createProductOverride = async (product: EnhancedProduct, form: ProductEditForm, enabledFields: Record<string, boolean>) => {
+    // Get user ID
+    const userResponse = await fetch('/api/user/profile')
+    const userData = await userResponse.json()
+    
+    if (!userData.success || !userData.data?.id) {
+      throw new Error('Authentication required')
+    }
+    
+    const userId = userData.data.id
+
+    // Helper functions (same as original)
+    const getCurrentValue = (field: string): any => {
+      switch (field) {
+        case 'consistencyRating':
+          return product.aiAnalysis?.consistencyRating || null
+        case 'riskClassification':
+          return product.aiAnalysis?.riskClassification || null
+        case 'monthlyRevenue':
+          return product.salesData?.monthlyRevenue || product.monthlyRevenue || 0
+        case 'monthlySales':
+          return product.salesData?.monthlySales || product.monthlySales || 0
+        case 'cogs':
+          return product.salesData?.cogs || 0
+        case 'margin':
+          return product.salesData?.margin || 0
+        case 'dailyRevenue':
+          return product.calculatedMetrics?.dailyRevenue || 0
+        case 'fulfillmentFees':
+          return product.calculatedMetrics?.fulfillmentFees || 0
+        case 'launchBudget':
+          return product.calculatedMetrics?.launchBudget || 0
+        case 'profitPerUnitAfterLaunch':
+          return product.calculatedMetrics?.profitPerUnitAfterLaunch || 0
+        case 'variations':
+          return product.calculatedMetrics?.variations || 1
+        case 'reviews':
+          return product.reviews || 0
+        case 'rating':
+          return product.rating || 0
+        case 'avgCpc':
+          const keywords = product.keywords || []
+          if (keywords.length > 0) {
+            const validCpcs = keywords.map(kw => kw.cpc).filter(cpc => cpc && cpc > 0)
+            return validCpcs.length > 0 ? validCpcs.reduce((sum, cpc) => sum + cpc, 0) / validCpcs.length : null
+          }
+          return null
+        case 'weight':
+          return product.dimensions?.weight || 0
+        default:
+          return null
+      }
+    }
+
+    const getFieldValue = (field: string) => {
+      if (enabledFields[field] && form[field as keyof ProductEditForm] !== undefined) {
+        return form[field as keyof ProductEditForm]
+      }
+      const currentValue = getCurrentValue(field)
+      if (field === 'consistencyRating' || field === 'riskClassification') {
+        return currentValue
+      }
+      return currentValue
+    }
+
+    const ensureInteger = (value: any): number | null => {
+      if (value === null || value === undefined || value === '') return null
+      const num = parseInt(String(value), 10)
+      return isNaN(num) ? null : num
+    }
+
+    const ensureDecimal = (value: any): number | null => {
+      if (value === null || value === undefined || value === '') return null
+      const num = Number(value)
+      return isNaN(num) ? null : num
+    }
+
+    return {
+      product_id: product.id,
+      asin: product.asin,
+      user_id: userId,
+      override_reason: form.notes || `Batch edit - ${product.title.slice(0, 50)}`,
+      notes: form.notes,
+      
+      ...(getFieldValue('consistencyRating') && { consistency_rating: getFieldValue('consistencyRating') }),
+      ...(getFieldValue('riskClassification') && { risk_classification: getFieldValue('riskClassification') }),
+      monthly_revenue: ensureDecimal(getFieldValue('monthlyRevenue')),
+      monthly_sales: ensureInteger(getFieldValue('monthlySales')),
+      daily_revenue: ensureDecimal(getFieldValue('dailyRevenue')),
+      cogs: ensureDecimal(getFieldValue('cogs')),
+      margin: ensureDecimal(getFieldValue('margin')),
+      fulfillment_fees: ensureDecimal(getFieldValue('fulfillmentFees')),
+      launch_budget: ensureDecimal(getFieldValue('launchBudget')),
+      profit_per_unit_after_launch: ensureDecimal(getFieldValue('profitPerUnitAfterLaunch')),
+      variations: ensureInteger(getFieldValue('variations')),
+      reviews: ensureInteger(getFieldValue('reviews')),
+      rating: ensureDecimal(getFieldValue('rating')),
+      ...(getFieldValue('avgCpc') !== null && { avg_cpc: ensureDecimal(getFieldValue('avgCpc')) }),
+      weight: ensureDecimal(getFieldValue('weight'))
     }
   }
 
   const handleSkip = () => {
+    // Store current form before skipping (in case user returns)
+    storeCurrentForm()
+    
     if (isLastProduct) {
       onClose()
     } else {
       setCurrentProductIndex(prev => prev + 1)
+      console.log(`⏭️ Skipped product ${currentProductIndex + 1}`)
     }
   }
 
@@ -386,7 +442,7 @@ export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpda
                 value={value?.toString() || ''}
                 onChange={(e) => handleInputChange(
                   field, 
-                  type === 'number' ? parseFloat(e.target.value) || undefined : e.target.value
+                  type === 'number' ? (isIntegerField(field) ? parseInt(e.target.value) || undefined : parseFloat(e.target.value) || undefined) : e.target.value
                 )}
                 className="h-8 text-xs border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 step={field === 'margin' || field === 'rating' ? '0.01' : '1'}
