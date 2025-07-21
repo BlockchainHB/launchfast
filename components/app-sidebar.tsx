@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import {
   IconDashboard,
   IconFileAnalytics,
+  IconMail,
   IconSearch,
 } from "@tabler/icons-react"
 
@@ -48,6 +49,11 @@ const data = {
       title: "Product Search", 
       url: "/dashboard/products",
       icon: IconSearch,
+    },
+    {
+      title: "Contact",
+      url: "/dashboard/contact",
+      icon: IconMail,
     },
   ],
   navSecondary: [],
