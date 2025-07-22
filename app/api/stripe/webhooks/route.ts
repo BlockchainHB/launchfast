@@ -104,7 +104,8 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
   const planName = session.metadata?.plan
 
   if (!userId) {
-    console.error('No supabase_user_id in checkout session metadata')
+    console.error('No supabase_user_id in checkout session metadata - payment from non-authenticated user')
+    // TODO: Handle non-authenticated payments (could store pending subscriptions)
     return
   }
 
@@ -248,8 +249,8 @@ async function updateUserSubscription(
     }
   }
 
-  // Update user profile
-  const { error } = await supabaseAdmin
+  // Try to update existing profile first
+  const { error: updateError } = await supabaseAdmin
     .from('user_profiles')
     .update({
       subscription_tier: subscriptionTier,
@@ -264,10 +265,35 @@ async function updateUserSubscription(
     })
     .eq('id', userId)
 
-  if (error) {
-    console.error('Failed to update user subscription')
-    throw error
+  // If update failed because profile doesn't exist, create it
+  if (updateError && updateError.code === 'PGRST116') {
+    console.log('Profile not found, creating new profile for user:', userId)
+    const { error: insertError } = await supabaseAdmin
+      .from('user_profiles')
+      .insert({
+        id: userId,
+        full_name: 'Stripe Customer', // Temporary name
+        company: null,
+        invitation_code: null,
+        role: 'user',
+        subscription_tier: subscriptionTier,
+        subscription_status: status,
+        stripe_subscription_id: subscription.id,
+        subscription_current_period_start: currentPeriodStart.toISOString(),
+        subscription_current_period_end: currentPeriodEnd.toISOString(),
+        subscription_cancel_at_period_end: cancelAtPeriodEnd,
+        payment_method_last4: paymentMethodLast4,
+        payment_method_brand: paymentMethodBrand
+      })
+
+    if (insertError) {
+      console.error('Failed to create user profile:', insertError)
+      throw insertError
+    }
+  } else if (updateError) {
+    console.error('Failed to update user subscription:', updateError)
+    throw updateError
   }
 
-  console.log('Updated subscription successfully')
+  console.log('Updated subscription successfully for user:', userId)
 }
