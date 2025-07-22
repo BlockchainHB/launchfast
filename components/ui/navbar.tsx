@@ -26,7 +26,7 @@ export default function Navbar() {
               variant="ghost" 
               className="text-sm font-medium"
             >
-              <Link href="/api/subscribe">Sign Up</Link>
+              <Link href="/signup">Sign Up</Link>
             </Button>
             <Button 
               asChild 

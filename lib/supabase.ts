@@ -92,9 +92,17 @@ export interface UserProfile {
   id: string
   full_name: string
   company?: string
-  invitation_code: string
+  invitation_code?: string
   role: string
   subscription_tier: string
+  subscription_status?: string
+  stripe_customer_id?: string
+  stripe_subscription_id?: string
+  subscription_current_period_start?: string
+  subscription_current_period_end?: string
+  subscription_cancel_at_period_end?: boolean
+  payment_method_last4?: string
+  payment_method_brand?: string
   created_at: string
   updated_at: string
 }

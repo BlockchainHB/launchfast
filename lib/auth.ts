@@ -4,6 +4,51 @@ import { AuthError, User } from '@supabase/supabase-js'
 // Authentication helper functions
 export const authHelpers = {
 
+  // Sign up
+  async signUp(email: string, password: string, userData?: {
+    full_name?: string
+    company?: string
+  }): Promise<{
+    user?: User
+    error?: string
+  }> {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: userData?.full_name || '',
+            company: userData?.company || ''
+          }
+        }
+      })
+
+      if (error) {
+        return { error: error.message }
+      }
+
+      // If signup successful and user is confirmed, create profile
+      if (data.user) {
+        // Create user profile with free tier (will be upgraded after payment)
+        const profileResult = await this.upsertUserProfile(data.user.id, {
+          full_name: userData?.full_name || '',
+          company: userData?.company || '',
+          subscription_tier: 'free',
+          role: 'user'
+        })
+
+        if (profileResult.error) {
+          console.error('Failed to create user profile:', profileResult.error)
+          // Don't fail signup if profile creation fails, user can still pay
+        }
+      }
+
+      return { user: data.user }
+    } catch (error) {
+      return { error: 'Failed to sign up' }
+    }
+  },
 
   // Sign in
   async signIn(email: string, password: string): Promise<{
