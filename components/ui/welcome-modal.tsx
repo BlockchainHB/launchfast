@@ -2,7 +2,6 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import ReactPlayer from 'react-player'
 import { useState } from 'react'
 
 interface WelcomeModalProps {
@@ -77,20 +76,17 @@ export function WelcomeModal({ isOpen, onClose, userName }: WelcomeModalProps) {
             </DialogHeader>
             
             <div className="aspect-video w-full rounded-lg overflow-hidden bg-black mb-4">
-              <ReactPlayer
-                url="/demo.mp4"
-                width="100%"
+              <video 
+                controls 
+                width="100%" 
                 height="100%"
-                controls={true}
-                playing={true}
-                config={{
-                  file: {
-                    attributes: {
-                      controlsList: 'nodownload'
-                    }
-                  }
-                }}
-              />
+                autoPlay
+                className="w-full h-full"
+                controlsList="nodownload"
+              >
+                <source src="/demo.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
             </div>
             
             <div className="flex gap-3">
