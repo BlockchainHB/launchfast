@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     try {
       await resend.emails.send({
         from: 'Launch Fast <noreply@updates.launchfastlegacyx.com>',
-        to: ['hasaamb@gmail.com'],
+        to: ['launchfastlegacyx@gmail.com'],
         replyTo: email,
         subject: `Contact Form: ${categoryLabel} - ${name}`,
         html: `
