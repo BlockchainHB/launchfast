@@ -17,6 +17,14 @@ export const supabaseAdmin = typeof window === 'undefined' && supabaseUrl && pro
       auth: {
         autoRefreshToken: false,
         persistSession: false
+      },
+      db: {
+        schema: 'public'
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+        }
       }
     })
   : null

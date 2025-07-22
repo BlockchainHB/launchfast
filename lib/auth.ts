@@ -28,19 +28,53 @@ export const authHelpers = {
         return { error: error.message }
       }
 
-      // If signup successful and user is confirmed, create profile
+      // If signup successful, create profile via API endpoint
       if (data.user) {
-        // Create user profile with free tier (will be upgraded after payment)
-        const profileResult = await this.upsertUserProfile(data.user.id, {
-          full_name: userData?.full_name || '',
-          company: userData?.company || '',
-          subscription_tier: 'free',
-          role: 'user'
-        })
+        try {
+          // Call our server-side API to create the profile with admin privileges
+          const response = await fetch('/api/auth/create-profile', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: data.user.id,
+              full_name: userData?.full_name || '',
+              company: userData?.company || '',
+              email: data.user.email
+            })
+          })
 
-        if (profileResult.error) {
-          console.error('Failed to create user profile:', profileResult.error)
-          // Don't fail signup if profile creation fails, user can still pay
+          if (!response.ok) {
+            const errorData = await response.text()
+            console.error('Failed to create user profile via API:', errorData)
+            
+            // Retry once after a short delay
+            setTimeout(async () => {
+              try {
+                const retryResponse = await fetch('/api/auth/create-profile', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    userId: data.user.id,
+                    full_name: userData?.full_name || '',
+                    company: userData?.company || '',
+                    email: data.user.email
+                  })
+                })
+                if (!retryResponse.ok) {
+                  console.error('Profile creation retry also failed')
+                }
+              } catch (retryError) {
+                console.error('Profile creation retry error:', retryError)
+              }
+            }, 1000)
+          } else {
+            console.log('User profile created successfully during signup')
+          }
+        } catch (profileError) {
+          console.error('Error creating user profile:', profileError)
+          // Still don't fail signup completely, but try to handle it better
         }
       }
 
