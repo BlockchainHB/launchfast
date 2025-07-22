@@ -226,6 +226,13 @@ async function updateUserSubscription(
   const status = subscription.status
   const currentPeriodStart = new Date(subscription.current_period_start * 1000)
   const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+  
+  console.log('Raw timestamps from Stripe:')
+  console.log('current_period_start:', subscription.current_period_start)
+  console.log('current_period_end:', subscription.current_period_end)
+  console.log('Converted dates:')
+  console.log('currentPeriodStart:', currentPeriodStart)
+  console.log('currentPeriodEnd:', currentPeriodEnd)
   const cancelAtPeriodEnd = subscription.cancel_at_period_end
 
   // Determine subscription tier from plan name or price ID
@@ -275,8 +282,8 @@ async function updateUserSubscription(
       subscription_tier: subscriptionTier,
       subscription_status: status,
       stripe_subscription_id: subscription.id,
-      subscription_current_period_start: currentPeriodStart.toISOString(),
-      subscription_current_period_end: currentPeriodEnd.toISOString(),
+      subscription_current_period_start: isNaN(currentPeriodStart.getTime()) ? null : currentPeriodStart.toISOString(),
+      subscription_current_period_end: isNaN(currentPeriodEnd.getTime()) ? null : currentPeriodEnd.toISOString(),
       subscription_cancel_at_period_end: cancelAtPeriodEnd,
       payment_method_last4: paymentMethodLast4,
       payment_method_brand: paymentMethodBrand,
@@ -300,8 +307,8 @@ async function updateUserSubscription(
         subscription_tier: subscriptionTier,
         subscription_status: status,
         stripe_subscription_id: subscription.id,
-        subscription_current_period_start: currentPeriodStart.toISOString(),
-        subscription_current_period_end: currentPeriodEnd.toISOString(),
+        subscription_current_period_start: isNaN(currentPeriodStart.getTime()) ? null : currentPeriodStart.toISOString(),
+        subscription_current_period_end: isNaN(currentPeriodEnd.getTime()) ? null : currentPeriodEnd.toISOString(),
         subscription_cancel_at_period_end: cancelAtPeriodEnd,
         payment_method_last4: paymentMethodLast4,
         payment_method_brand: paymentMethodBrand
