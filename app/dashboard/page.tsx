@@ -27,6 +27,9 @@ export default function Page() {
     // Check if this is the user's first time visiting the dashboard
     const hasBeenWelcomed = localStorage.getItem('launchfast_welcomed')
     if (!hasBeenWelcomed) {
+      // Mark user as welcomed immediately to prevent showing again
+      localStorage.setItem('launchfast_welcomed', 'true')
+      
       // Small delay to let the dashboard load first
       setTimeout(() => {
         setShowWelcomeModal(true)

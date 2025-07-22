@@ -15,8 +15,7 @@ export function WelcomeModal({ isOpen, onClose, userName }: WelcomeModalProps) {
 
   const handleGetStarted = () => {
     onClose()
-    // Mark user as welcomed in localStorage to prevent showing again
-    localStorage.setItem('launchfast_welcomed', 'true')
+    // localStorage is already set when modal opens
   }
 
   const handleWatchDemo = () => {
