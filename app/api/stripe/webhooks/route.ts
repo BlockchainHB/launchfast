@@ -91,9 +91,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true })
 
   } catch (error) {
-    console.error('Webhook processing failed')
+    console.error('Webhook processing failed:', error)
+    console.error('Event type:', event.type)
+    console.error('Event data:', JSON.stringify(event.data, null, 2))
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      { error: 'Webhook processing failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
@@ -103,19 +105,31 @@ async function handleSubscriptionCheckout(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.supabase_user_id
   const planName = session.metadata?.plan
 
+  console.log('=== CHECKOUT SESSION HANDLER ===')
+  console.log('Session ID:', session.id)
+  console.log('Customer Email:', session.customer_email)
+  console.log('User ID from metadata:', userId)
+  console.log('Plan from metadata:', planName)
+  console.log('Session metadata:', JSON.stringify(session.metadata, null, 2))
+
   if (!userId) {
     console.error('No supabase_user_id in checkout session metadata - payment from non-authenticated user')
+    console.log('Full session object:', JSON.stringify(session, null, 2))
     // TODO: Handle non-authenticated payments (could store pending subscriptions)
     return
   }
 
   // Get the subscription from Stripe
   if (session.subscription) {
+    console.log('Processing subscription:', session.subscription)
     const subscription = await stripe.subscriptions.retrieve(
       session.subscription as string
     )
     
+    console.log('Subscription metadata:', JSON.stringify(subscription.metadata, null, 2))
     await updateUserSubscription(userId, subscription, planName)
+  } else {
+    console.error('No subscription found in session')
   }
 }
 
@@ -249,6 +263,11 @@ async function updateUserSubscription(
     }
   }
 
+  console.log('=== UPDATING USER SUBSCRIPTION ===')
+  console.log('User ID:', userId)
+  console.log('Subscription Tier:', subscriptionTier)
+  console.log('Subscription Status:', status)
+
   // Try to update existing profile first
   const { error: updateError } = await supabaseAdmin
     .from('user_profiles')
@@ -264,6 +283,8 @@ async function updateUserSubscription(
       updated_at: new Date().toISOString()
     })
     .eq('id', userId)
+
+  console.log('Update result - Error:', updateError)
 
   // If update failed because profile doesn't exist, create it
   if (updateError && updateError.code === 'PGRST116') {
