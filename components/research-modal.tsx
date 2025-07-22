@@ -298,11 +298,17 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save products to database')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || errorData.details || `HTTP ${response.status}: Failed to save products`
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
       console.log("Save successful:", data)
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Save operation was not successful')
+      }
       
       setSaveSuccess(true)
       
@@ -679,32 +685,36 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3">
           <Button 
             onClick={() => startResearch('refresh')}
-            className="h-auto p-4 flex-col items-start"
+            className="w-full h-auto p-6 flex items-center justify-start space-x-4 bg-blue-600 hover:bg-blue-700 text-white"
           >
-            <div className="flex items-center space-x-2 mb-2">
-              <IconSearch className="w-4 h-4" />
-              <span className="font-medium">Update Market</span>
+            <div className="p-2 bg-blue-500 rounded-lg">
+              <IconSearch className="w-5 h-5" />
             </div>
-            <span className="text-xs text-white/80 text-left">
-              Add new products to existing market
-            </span>
+            <div className="text-left">
+              <div className="font-semibold text-base">Update Existing Market</div>
+              <div className="text-sm text-blue-100 mt-1">
+                Add new products to "{existingMarket.keyword}" market
+              </div>
+            </div>
           </Button>
           
           <Button 
             variant="outline"
             onClick={() => startResearch('new')}
-            className="h-auto p-4 flex-col items-start"
+            className="w-full h-auto p-6 flex items-center justify-start space-x-4 border-2 hover:bg-gray-50"
           >
-            <div className="flex items-center space-x-2 mb-2">
-              <IconSearch className="w-4 h-4" />
-              <span className="font-medium">New Market</span>
+            <div className="p-2 bg-gray-100 rounded-lg">
+              <IconSearch className="w-5 h-5 text-gray-600" />
             </div>
-            <span className="text-xs text-muted-foreground text-left">
-              Create separate market analysis
-            </span>
+            <div className="text-left">
+              <div className="font-semibold text-base text-gray-900">Create New Market</div>
+              <div className="text-sm text-gray-600 mt-1">
+                Run separate analysis for "{keyword}"
+              </div>
+            </div>
           </Button>
         </div>
       </div>

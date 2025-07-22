@@ -1,4 +1,4 @@
-import { EnhancedProduct } from '@/types/product'
+import { EnhancedProduct } from '@/types'
 import { MarketStatistics } from '@/types/market'
 import { calculateGrade, type ScoringInputs } from '@/lib/scoring'
 
@@ -209,7 +209,7 @@ export function convertToOverrideData(marketStats: MarketStatistics): MarketOver
     market_grade: marketStats.market_grade,
     market_consistency_rating: marketStats.market_consistency_rating,
     market_risk_classification: marketStats.market_risk_classification,
-    opportunity_score: marketStats.opportunity_score,
+    opportunity_score: marketStats.opportunity_score || 0,
     total_products_analyzed: marketStats.total_products_analyzed,
     products_verified: marketStats.products_verified
   }

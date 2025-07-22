@@ -1,4 +1,4 @@
-import { EnhancedProduct } from '@/types/product'
+import { EnhancedProduct } from '@/types'
 import { MarketStatistics, MarketAnalysis } from '@/types/market'
 import { calculateGrade, type ScoringInputs } from '@/lib/scoring'
 

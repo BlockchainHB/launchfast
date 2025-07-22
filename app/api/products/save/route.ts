@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         monthly_sales: product.salesData?.monthlySales || null,
         monthly_revenue: product.salesData?.monthlyRevenue || null,
         profit_estimate: product.salesData?.monthlyProfit || null,
-        grade: product.grade ? product.grade.substring(0, 3) : null,
+        grade: product.grade ? product.grade.substring(0, 2) : null,
         images: product.images || [],
         dimensions: product.dimensions || {},
         reviews_data: product.reviewsData || {},
@@ -95,23 +95,34 @@ export async function POST(request: NextRequest) {
 
       if (productError) {
         Logger.error('New product insertion failed', productError)
-        throw productError
+        console.error('Product insertion error details:', productError)
+        throw new Error(`Failed to insert new products: ${productError.message}`)
       }
 
       savedProducts.push(...newProducts)
       newProductIds = newProducts.map(p => p.id)
 
       // 2. Update market metadata
-      await supabaseAdmin
+      // First get current counts
+      const { data: currentMarket } = await supabaseAdmin
         .from('markets')
-        .update({
-          total_products_analyzed: supabaseAdmin.raw('total_products_analyzed + ?', [products.length]),
-          products_verified: supabaseAdmin.raw('products_verified + ?', [products.length]),
-          updated_at: new Date().toISOString()
-        })
+        .select('total_products_analyzed, products_verified')
         .eq('id', existingMarketId)
+        .single()
+
+      if (currentMarket) {
+        await supabaseAdmin
+          .from('markets')
+          .update({
+            total_products_analyzed: (currentMarket.total_products_analyzed || 0) + products.length,
+            products_verified: (currentMarket.products_verified || 0) + products.length,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingMarketId)
+      }
 
       // 3. Trigger market recalculation with new products
+      console.log(`🔄 Starting market recalculation for market ${existingMarketId}`)
       const marketRecalculator = new MarketRecalculator()
       const recalculationResult = await marketRecalculator.recalculateMarket(
         existingMarketId,
@@ -121,6 +132,15 @@ export async function POST(request: NextRequest) {
 
       recalculationTriggered = !!recalculationResult
       console.log(`📊 Market recalculation ${recalculationTriggered ? 'successful' : 'failed'}`)
+      
+      if (recalculationResult) {
+        console.log(`✅ Recalculation result:`, {
+          marketId: recalculationResult.marketId,
+          keyword: recalculationResult.keyword,
+          overriddenProducts: recalculationResult.overriddenProductCount,
+          newGrade: recalculationResult.recalculatedData.market_grade
+        })
+      }
 
       // 4. Get updated market for response
       const { data: updatedMarket } = await supabaseAdmin

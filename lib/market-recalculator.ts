@@ -46,8 +46,9 @@ export class MarketRecalculator {
 
       console.log(`📊 Market ${market.keyword}: ${effectiveProducts.length} products, ${overriddenProductCount} with overrides`)
 
-      // Calculate aggregated metrics from effective product data
-      const recalculatedData = this.calculateMarketMetrics(effectiveProducts)
+      // Calculate aggregated metrics from effective product data using shared calculator
+      const calculationResult = calculateMarketMetrics(effectiveProducts)
+      const recalculatedData = convertToOverrideData(calculationResult.marketStats)
 
       // Save to market_overrides table
       await this.saveMarketOverride(marketId, userId, market.keyword, recalculatedData, overrideReason)
@@ -117,71 +118,7 @@ export class MarketRecalculator {
     }
   }
 
-  /**
-   * Calculate market metrics using EXACT SAME algorithm as original research
-   * This ensures algorithm consistency between initial research and recalculation
-   */
-  private calculateMarketMetrics(products: EnhancedProduct[]): MarketOverrideData {
-    console.log(`🔄 Recalculating market metrics using shared algorithm for ${products.length} products`)
-    
-    // Use the shared market calculator to ensure algorithm consistency
-    const calculationResult = calculateMarketMetrics(products)
-    
-    console.log(`📊 Shared calculator result: ${calculationResult.validProductCount}/${calculationResult.totalProductCount} valid products, grade: ${calculationResult.marketStats.market_grade}`)
-    
-    // Convert to override data format
-    return convertToOverrideData(calculationResult.marketStats)
-  }
-
-  // Market scoring methods removed - now using shared market calculator for consistency
-
-  /**
-   * Helper methods
-   */
-  private calculateAverage(values: number[]): number {
-    const validValues = values.filter(v => v && !isNaN(v))
-    return validValues.length > 0 ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length : 0
-  }
-
-  private estimateAverageCPC(products: EnhancedProduct[]): number {
-    // Try to get CPC from overrides first, then from keywords, then estimate
-    const cpcValues: number[] = []
-    
-    products.forEach(product => {
-      // Check if product has an average CPC override
-      if (product.hasOverrides && product.overrideInfo?.avg_cpc) {
-        cpcValues.push(product.overrideInfo.avg_cpc)
-        return
-      }
-      
-      // Check if product has keywords with CPC data
-      if (product.keywords && product.keywords.length > 0) {
-        const validCpcs = product.keywords
-          .map(kw => kw.cpc)
-          .filter(cpc => cpc && cpc > 0)
-        
-        if (validCpcs.length > 0) {
-          const avgCpc = validCpcs.reduce((sum, cpc) => sum + cpc, 0) / validCpcs.length
-          cpcValues.push(avgCpc)
-          return
-        }
-      }
-      
-      // Fallback: estimate based on category or price
-      // This is a simple estimation - you might have better logic
-      const price = product.price || 20
-      const estimatedCpc = Math.min(Math.max(price * 0.05, 0.5), 5.0) // 5% of price, between $0.50 and $5.00
-      cpcValues.push(estimatedCpc)
-    })
-    
-    return cpcValues.length > 0 ? this.calculateAverage(cpcValues) : 1.50
-  }
-
-  private estimateLaunchBudget(monthlyRevenue: number, cpc: number): number {
-    // Placeholder - implement your launch budget calculation
-    // Typically based on competition level, CPC, and target market share
-    return monthlyRevenue * 0.1 // 10% of monthly revenue as launch budget estimate
-  }
+  // All market calculations now use shared-market-calculator.ts for consistency
 
   /**
    * Fetch product overrides that affect this market
