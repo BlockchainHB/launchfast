@@ -4,10 +4,11 @@ import { extractMarketKeywords } from '@/lib/market-calculations'
 import { Logger } from '@/lib/logger'
 import { createServerClient } from '@supabase/ssr'
 import { cache } from '@/lib/cache'
+import { MarketRecalculator } from '@/lib/market-recalculator'
 
 export async function POST(request: NextRequest) {
   try {
-    const { products, marketAnalysis } = await request.json()
+    const { products, marketAnalysis, refreshMode, existingMarketId } = await request.json()
 
     if (!products || !Array.isArray(products)) {
       return NextResponse.json(
@@ -50,11 +51,90 @@ export async function POST(request: NextRequest) {
 
     const savedProducts = []
     let savedMarket = null
+    let recalculationTriggered = false
+    let newProductIds = []
     
     Logger.save.start(products.length, !!marketAnalysis)
     
-    // If market analysis is provided, save market data first
-    if (marketAnalysis) {
+    // Handle market refresh mode - add products to existing market
+    if (refreshMode === 'refresh' && existingMarketId) {
+      console.log(`🔄 Refresh mode: Adding ${products.length} products to existing market ${existingMarketId}`)
+      
+      // 1. Insert new products linked to existing market
+      const newProductInserts = products.map((product, index) => ({
+        user_id: userId,
+        market_id: existingMarketId,
+        asin: product.asin,
+        title: product.title,
+        brand: product.brand || 'Unknown',
+        price: product.price,
+        bsr: product.bsr || null,
+        reviews: product.reviews || 0,
+        rating: product.rating || null,
+        monthly_sales: product.salesData?.monthlySales || null,
+        monthly_revenue: product.salesData?.monthlyRevenue || null,
+        profit_estimate: product.salesData?.monthlyProfit || null,
+        grade: product.grade ? product.grade.substring(0, 3) : null,
+        images: product.images || [],
+        dimensions: product.dimensions || {},
+        reviews_data: product.reviewsData || {},
+        sales_data: product.salesData || {},
+        competitive_intelligence: product.competitiveIntelligence || '',
+        apify_source: product.apifySource || false,
+        seller_sprite_verified: product.sellerSpriteVerified || false,
+        calculated_metrics: product.calculatedMetrics || {},
+        is_market_representative: false, // New products don't represent the market
+        analysis_rank: index + 1, // Will be recalculated
+        created_at: new Date().toISOString()
+      }))
+
+      const { data: newProducts, error: productError } = await supabaseAdmin
+        .from('products')
+        .insert(newProductInserts)
+        .select()
+
+      if (productError) {
+        Logger.error('New product insertion failed', productError)
+        throw productError
+      }
+
+      savedProducts.push(...newProducts)
+      newProductIds = newProducts.map(p => p.id)
+
+      // 2. Update market metadata
+      await supabaseAdmin
+        .from('markets')
+        .update({
+          total_products_analyzed: supabaseAdmin.raw('total_products_analyzed + ?', [products.length]),
+          products_verified: supabaseAdmin.raw('products_verified + ?', [products.length]),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingMarketId)
+
+      // 3. Trigger market recalculation with new products
+      const marketRecalculator = new MarketRecalculator()
+      const recalculationResult = await marketRecalculator.recalculateMarket(
+        existingMarketId,
+        userId,
+        `Added ${products.length} new products via market refresh`
+      )
+
+      recalculationTriggered = !!recalculationResult
+      console.log(`📊 Market recalculation ${recalculationTriggered ? 'successful' : 'failed'}`)
+
+      // 4. Get updated market for response
+      const { data: updatedMarket } = await supabaseAdmin
+        .from('markets')
+        .select('*')
+        .eq('id', existingMarketId)
+        .single()
+
+      savedMarket = updatedMarket
+
+      // Skip normal market creation and go to product relationships
+    } 
+    // Normal market creation mode
+    else if (marketAnalysis) {
       Logger.save.marketAnalysisStart(marketAnalysis.keyword)
       
       const marketPayload = {
@@ -333,11 +413,22 @@ export async function POST(request: NextRequest) {
 
     const response: any = {
       success: true,
-      message: savedMarket 
-        ? `Successfully saved market analysis and ${savedProducts.length} products`
-        : `Successfully saved ${savedProducts.length} products`,
+      message: refreshMode === 'refresh' 
+        ? `Successfully added ${savedProducts.length} new products to existing market`
+        : savedMarket 
+          ? `Successfully saved market analysis and ${savedProducts.length} products`
+          : `Successfully saved ${savedProducts.length} products`,
       count: savedProducts.length,
-      products: savedProducts
+      products: savedProducts,
+      // Refresh mode specific data
+      mode: refreshMode || 'new',
+      newProductsAdded: refreshMode === 'refresh' ? savedProducts.length : 0,
+      totalProducts: refreshMode === 'refresh' && savedMarket ? savedMarket.total_products_analyzed : savedProducts.length,
+      recalculationTriggered,
+      marketGrade: savedMarket?.market_grade,
+      // Override-aware data
+      hasOverrides: recalculationTriggered,
+      overrideReason: recalculationTriggered ? `Added ${savedProducts.length} new products via market refresh` : null
     }
 
     if (savedMarket) {

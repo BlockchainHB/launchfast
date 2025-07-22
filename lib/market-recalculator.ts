@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase'
 import type { EnhancedProduct } from '@/types'
 import { mergeProductsWithOverrides, type ProductOverride } from '@/lib/product-overrides'
-import { calculateGrade, type ScoringInputs } from '@/lib/scoring'
+import { calculateMarketMetrics, convertToOverrideData, type MarketOverrideData } from '@/lib/shared-market-calculator'
 
 export interface MarketRecalculationResult {
   marketId: string
@@ -10,32 +10,7 @@ export interface MarketRecalculationResult {
   recalculatedData: MarketOverrideData
 }
 
-export interface MarketOverrideData {
-  // Aggregated financial metrics
-  avg_price: number
-  avg_monthly_sales: number
-  avg_monthly_revenue: number
-  avg_daily_revenue: number
-  avg_profit_margin: number
-  avg_profit_per_unit: number
-  
-  // Performance metrics
-  avg_reviews: number
-  avg_rating: number
-  avg_bsr: number
-  avg_cpc: number
-  avg_launch_budget: number
-  
-  // Market scoring/classification
-  market_grade: string
-  market_consistency_rating: string
-  market_risk_classification: string
-  opportunity_score: number
-  
-  // Metadata
-  total_products_analyzed: number
-  products_verified: number
-}
+// MarketOverrideData interface now imported from shared-market-calculator
 
 export class MarketRecalculator {
   /**
@@ -143,177 +118,22 @@ export class MarketRecalculator {
   }
 
   /**
-   * Calculate market metrics from effective (override-adjusted) product data
+   * Calculate market metrics using EXACT SAME algorithm as original research
+   * This ensures algorithm consistency between initial research and recalculation
    */
   private calculateMarketMetrics(products: EnhancedProduct[]): MarketOverrideData {
-    if (products.length === 0) {
-      throw new Error('Cannot calculate metrics for empty product set')
-    }
-
-    // Helper function to safely get nested values
-    const getMonthlyRevenue = (p: EnhancedProduct) => 
-      p.salesData?.monthlyRevenue ?? p.monthlyRevenue ?? 0
-    const getMonthlySales = (p: EnhancedProduct) => 
-      p.salesData?.monthlySales ?? p.monthlySales ?? 0
-    const getDailyRevenue = (p: EnhancedProduct) =>
-      p.calculatedMetrics?.dailyRevenue ?? (getMonthlyRevenue(p) / 30)
-    const getCogs = (p: EnhancedProduct) =>
-      p.salesData?.cogs ?? 0
-    const getMargin = (p: EnhancedProduct) =>
-      p.salesData?.margin ?? 0
-    const getProfitPerUnit = (p: EnhancedProduct) =>
-      p.calculatedMetrics?.profitPerUnitAfterLaunch ?? 0
-    const getLaunchBudget = (p: EnhancedProduct) =>
-      p.calculatedMetrics?.launchBudget ?? 0
-
-    const validProducts = products.filter(p => p.price && getMonthlyRevenue(p) > 0)
-
-    // Financial metrics (averages)
-    const avg_price = this.calculateAverage(validProducts.map(p => p.price))
-    const avg_monthly_sales = Math.round(this.calculateAverage(validProducts.map(p => getMonthlySales(p))))
-    const avg_monthly_revenue = this.calculateAverage(validProducts.map(p => getMonthlyRevenue(p)))
-    const avg_daily_revenue = this.calculateAverage(validProducts.map(p => getDailyRevenue(p)))
+    console.log(`🔄 Recalculating market metrics using shared algorithm for ${products.length} products`)
     
-    // Calculate profit margin from salesData or fallback to profitEstimate
-    const profitMargins = validProducts
-      .map(p => {
-        const margin = getMargin(p)
-        if (margin > 0) return margin
-        // Fallback to estimate from profitEstimate
-        const revenue = getMonthlyRevenue(p)
-        return p.profitEstimate && revenue ? p.profitEstimate / revenue : 0
-      })
-      .filter(margin => margin > 0)
-    const avg_profit_margin = profitMargins.length > 0 ? this.calculateAverage(profitMargins) : 0
+    // Use the shared market calculator to ensure algorithm consistency
+    const calculationResult = calculateMarketMetrics(products)
     
-    const avg_profit_per_unit = this.calculateAverage(
-      validProducts.map(p => {
-        const ppu = getProfitPerUnit(p)
-        if (ppu > 0) return ppu
-        // Fallback calculation
-        const sales = getMonthlySales(p)
-        return p.profitEstimate && sales ? p.profitEstimate / sales : 0
-      })
-    )
-
-    // Performance metrics
-    const avg_reviews = Math.round(this.calculateAverage(validProducts.map(p => p.reviews || 0)))
-    const avg_rating = this.calculateAverage(validProducts.map(p => p.rating || 0))
-    const avg_bsr = Math.round(this.calculateAverage(validProducts.map(p => p.bsr || 0)))
+    console.log(`📊 Shared calculator result: ${calculationResult.validProductCount}/${calculationResult.totalProductCount} valid products, grade: ${calculationResult.marketStats.market_grade}`)
     
-    // CPC and launch budget
-    const avg_cpc = this.estimateAverageCPC(validProducts)
-    const avg_launch_budget = this.calculateAverage(
-      validProducts.map(p => {
-        const budget = getLaunchBudget(p)
-        return budget > 0 ? budget : this.estimateLaunchBudget(getMonthlyRevenue(p), avg_cpc)
-      })
-    )
-
-    // Market scoring using your custom algorithm
-    const marketScoring = this.calculateMarketScoring(validProducts, {
-      avg_monthly_revenue,
-      avg_profit_margin,
-      avg_reviews,
-      avg_rating,
-      avg_bsr
-    })
-
-    return {
-      avg_price: Math.round(avg_price * 100) / 100,
-      avg_monthly_sales,
-      avg_monthly_revenue: Math.round(avg_monthly_revenue * 100) / 100,
-      avg_daily_revenue: Math.round(avg_daily_revenue * 100) / 100,
-      avg_profit_margin: Math.round(avg_profit_margin * 10000) / 10000, // 4 decimal places
-      avg_profit_per_unit: Math.round(avg_profit_per_unit * 100) / 100,
-      avg_reviews,
-      avg_rating: Math.round(avg_rating * 100) / 100,
-      avg_bsr,
-      avg_cpc: Number(avg_cpc.toFixed(2)),
-      avg_launch_budget: Math.round(avg_launch_budget * 100) / 100,
-      market_grade: marketScoring.grade,
-      market_consistency_rating: marketScoring.consistencyRating,
-      market_risk_classification: marketScoring.riskClassification,
-      opportunity_score: marketScoring.opportunityScore,
-      total_products_analyzed: products.length,
-      products_verified: products.length // All products are considered verified for override calculation
-    }
+    // Convert to override data format
+    return convertToOverrideData(calculationResult.marketStats)
   }
 
-  /**
-   * Market scoring algorithm using your actual grading system
-   */
-  private calculateMarketScoring(products: EnhancedProduct[], aggregates: any) {
-    const { avg_monthly_revenue, avg_profit_margin, avg_reviews, avg_rating, avg_price } = aggregates
-    
-    // Use your real grading algorithm for market-level scoring
-    // Calculate market-level profit estimate
-    const monthlyProfit = avg_monthly_revenue * avg_profit_margin
-    
-    // Get average CPC from products
-    const avgCpc = this.estimateAverageCPC(products)
-    
-    // Create scoring inputs for market-level grading
-    const marketScoringInputs: ScoringInputs = {
-      monthlyProfit: monthlyProfit,
-      price: avg_price,
-      margin: avg_profit_margin,
-      reviews: avg_reviews,
-      avgCPC: avgCpc,
-      riskClassification: this.calculateMarketRiskClassification(products),
-      consistencyRating: this.calculateMarketConsistencyRating(products),
-      ppu: monthlyProfit / (avg_monthly_revenue || 1), // PPU approximation
-      bsr: aggregates.avg_bsr,
-      rating: avg_rating,
-      opportunityScore: 7 // Default market opportunity score
-    }
-    
-    // Use your actual grading algorithm
-    const gradingResult = calculateGrade(marketScoringInputs)
-    
-    return {
-      grade: gradingResult.grade,
-      consistencyRating: marketScoringInputs.consistencyRating,
-      riskClassification: marketScoringInputs.riskClassification,
-      opportunityScore: gradingResult.score / 1000 // Convert to 0-100 scale
-    }
-  }
-  
-  /**
-   * Calculate market-level risk classification from products
-   */
-  private calculateMarketRiskClassification(products: EnhancedProduct[]): string {
-    const riskCounts = { 'No Risk': 0, 'Electric': 0, 'Breakable': 0, 'Banned': 0 }
-    
-    products.forEach(product => {
-      const risk = product.aiAnalysis?.riskClassification || 'No Risk'
-      if (risk in riskCounts) {
-        riskCounts[risk as keyof typeof riskCounts]++
-      }
-    })
-    
-    // Return the most common risk classification
-    return Object.entries(riskCounts)
-      .reduce((a, b) => riskCounts[a[0] as keyof typeof riskCounts] > riskCounts[b[0] as keyof typeof riskCounts] ? a : b)[0]
-  }
-  
-  /**
-   * Calculate market-level consistency rating from products
-   */
-  private calculateMarketConsistencyRating(products: EnhancedProduct[]): string {
-    const consistencyCounts = { 'Consistent': 0, 'Seasonal': 0, 'Trendy': 0 }
-    
-    products.forEach(product => {
-      const consistency = product.aiAnalysis?.consistencyRating || 'Consistent'
-      if (consistency in consistencyCounts) {
-        consistencyCounts[consistency as keyof typeof consistencyCounts]++
-      }
-    })
-    
-    // Return the most common consistency rating
-    return Object.entries(consistencyCounts)
-      .reduce((a, b) => consistencyCounts[a[0] as keyof typeof consistencyCounts] > consistencyCounts[b[0] as keyof typeof consistencyCounts] ? a : b)[0]
-  }
+  // Market scoring methods removed - now using shared market calculator for consistency
 
   /**
    * Helper methods

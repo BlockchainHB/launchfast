@@ -37,6 +37,11 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   
+  // Market refresh state
+  const [existingMarket, setExistingMarket] = useState<any>(null)
+  const [showMarketChoice, setShowMarketChoice] = useState(false)
+  const [refreshMode, setRefreshMode] = useState<'new' | 'refresh'>('new')
+  
   // Display Controller
   const displayControllerRef = useRef<ProgressDisplayController | null>(null)
   const [displayState, setDisplayState] = useState({
@@ -101,6 +106,28 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     e.preventDefault()
     if (!keyword.trim()) return
 
+    // Check for existing market first
+    try {
+      const existingResponse = await fetch(`/api/markets/check-existing?keyword=${encodeURIComponent(keyword.trim())}`)
+      const existingData = await existingResponse.json()
+      
+      if (existingData.existingMarket) {
+        setExistingMarket(existingData.existingMarket)
+        setShowMarketChoice(true)
+        return // Show choice UI instead of starting research
+      }
+    } catch (error) {
+      console.error('Error checking existing market:', error)
+      // Continue with normal research if check fails
+    }
+    
+    // No existing market - proceed with normal research
+    startResearch('new')
+  }
+
+  const startResearch = async (mode: 'new' | 'refresh') => {
+    setRefreshMode(mode)
+    setShowMarketChoice(false)
     setIsLoading(true)
     setError(null)
     setResults([])
@@ -116,7 +143,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     })
     
     try {
-      console.log("Starting SSE research for keyword:", keyword)
+      console.log(`Starting SSE research for keyword: ${keyword} (mode: ${mode})`)
       
       // Create EventSource with URL parameters
       const params = new URLSearchParams({
@@ -264,7 +291,9 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
         },
         body: JSON.stringify({
           products: results,
-          marketAnalysis: marketAnalysis
+          marketAnalysis: marketAnalysis,
+          refreshMode: refreshMode,
+          existingMarketId: refreshMode === 'refresh' ? existingMarket?.id : null
         }),
       })
 
@@ -303,6 +332,9 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     setAsin("")
     setShowProducts(false)
     setSaveSuccess(false)
+    setExistingMarket(null)
+    setShowMarketChoice(false)
+    setRefreshMode('new')
     setDisplayState({
       currentPhase: '',
       phaseMessage: '',
@@ -622,10 +654,71 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     )
   }
 
-  // Simple 3-state rendering: Loading, Results, Input
+  // Market choice UI
+  const renderMarketChoice = () => {
+    if (!showMarketChoice || !existingMarket) return null
+
+    return (
+      <div className="space-y-6">
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-4">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-amber-100 rounded-full">
+                <IconSearch className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-amber-900">Existing Market Found</h4>
+                <p className="text-sm text-amber-700 mt-1">
+                  You already researched "{existingMarket.keyword}" with {existingMarket.productCount} products.
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Last updated: {new Date(existingMarket.updatedAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Button 
+            onClick={() => startResearch('refresh')}
+            className="h-auto p-4 flex-col items-start"
+          >
+            <div className="flex items-center space-x-2 mb-2">
+              <IconSearch className="w-4 h-4" />
+              <span className="font-medium">Update Market</span>
+            </div>
+            <span className="text-xs text-white/80 text-left">
+              Add new products to existing market
+            </span>
+          </Button>
+          
+          <Button 
+            variant="outline"
+            onClick={() => startResearch('new')}
+            className="h-auto p-4 flex-col items-start"
+          >
+            <div className="flex items-center space-x-2 mb-2">
+              <IconSearch className="w-4 h-4" />
+              <span className="font-medium">New Market</span>
+            </div>
+            <span className="text-xs text-muted-foreground text-left">
+              Create separate market analysis
+            </span>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Enhanced 4-state rendering: Loading, Market Choice, Results, Input
   const renderContent = () => {
     if (isLoading) {
       return renderProgressPhase()
+    }
+
+    if (showMarketChoice) {
+      return renderMarketChoice()
     }
 
     if (error) {
