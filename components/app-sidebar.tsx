@@ -67,6 +67,7 @@ const data = {
       url: "/dashboard/product-analysis",
       icon: IconFileAnalytics,
       active: true,
+      beta: true,
     },
     {
       name: "Keyword Research",

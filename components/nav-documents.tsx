@@ -37,6 +37,7 @@ export function NavDocuments({
     icon: Icon
     active?: boolean
     comingSoon?: boolean
+    beta?: boolean
   }[]
 }) {
   const { isMobile } = useSidebar()
@@ -73,9 +74,14 @@ export function NavDocuments({
                   <span className={`flex-1 ${isActive ? 'sidebar-nav-item-active' : 'sidebar-nav-item'}`}>
                     {item.name}
                   </span>
+                  {item.beta && (
+                    <Badge className="text-xs bg-blue-500 hover:bg-blue-600 text-white">
+                      BETA
+                    </Badge>
+                  )}
                   {item.comingSoon && (
-                    <Badge variant="secondary" className="text-xs">
-                      Soon
+                    <Badge className="text-xs bg-red-500 hover:bg-red-600 text-white">
+                      SOON
                     </Badge>
                   )}
                 </SidebarMenuButton>
