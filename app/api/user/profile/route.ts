@@ -52,8 +52,8 @@ export async function GET() {
       subscription_status: profile?.subscription_status,
       stripe_customer_id: profile?.stripe_customer_id,
       stripe_subscription_id: profile?.stripe_subscription_id,
-      current_period_end: profile?.current_period_end,
-      cancel_at_period_end: profile?.cancel_at_period_end
+      current_period_end: profile?.subscription_current_period_end,
+      cancel_at_period_end: profile?.subscription_cancel_at_period_end
     })
   } catch (error) {
     console.error('Profile operation failed')
