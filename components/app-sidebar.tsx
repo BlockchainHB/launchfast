@@ -7,6 +7,10 @@ import {
   IconFileAnalytics,
   IconMail,
   IconSearch,
+  IconTool,
+  IconBulb,
+  IconUsers,
+  IconBox,
 } from "@tabler/icons-react"
 
 import { NavDocuments } from "@/components/nav-documents"
@@ -57,11 +61,33 @@ const data = {
     },
   ],
   navSecondary: [],
-  documents: [
+  tools: [
     {
       name: "Product Analysis",
       url: "/dashboard/product-analysis",
       icon: IconFileAnalytics,
+      active: true,
+    },
+    {
+      name: "Keyword Research",
+      url: "#",
+      icon: IconBulb,
+      active: false,
+      comingSoon: true,
+    },
+    {
+      name: "Supplier Sourcing",
+      url: "#",
+      icon: IconUsers,
+      active: false,
+      comingSoon: true,
+    },
+    {
+      name: "Blackbox",
+      url: "#",
+      icon: IconBox,
+      active: false,
+      comingSoon: true,
     },
   ],
 }
@@ -113,7 +139,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} onDataRefresh={onDataRefresh} />
-        <NavDocuments items={data.documents} />
+        <NavDocuments items={data.tools} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

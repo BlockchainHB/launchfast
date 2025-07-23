@@ -40,21 +40,54 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         }
         
         .header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #1e40af 100%);
           color: white;
-          padding: 40px;
+          padding: 50px 40px;
           text-align: center;
+          position: relative;
+        }
+        
+        .header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+          opacity: 0.3;
+        }
+        
+        .header > * {
+          position: relative;
+          z-index: 1;
         }
         
         .header h1 {
-          font-size: 2.5rem;
-          margin-bottom: 10px;
-          font-weight: 700;
+          font-size: 2.8rem;
+          margin-bottom: 15px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .header p {
-          font-size: 1.1rem;
-          opacity: 0.9;
+          font-size: 1.2rem;
+          opacity: 0.95;
+          font-weight: 300;
+          letter-spacing: 0.5px;
+        }
+        
+        .brand-badge {
+          display: inline-block;
+          background: rgba(255,255,255,0.2);
+          padding: 8px 16px;
+          border-radius: 25px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          margin-top: 15px;
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255,255,255,0.3);
         }
         
         .content {
@@ -66,10 +99,23 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
           grid-template-columns: 1fr 1fr;
           gap: 30px;
           margin-bottom: 40px;
-          padding: 30px;
-          background: #f8fafc;
-          border-radius: 8px;
-          border-left: 4px solid #667eea;
+          padding: 35px;
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+          border-radius: 12px;
+          border-left: 5px solid #3b82f6;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          position: relative;
+        }
+        
+        .product-overview::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 100px;
+          height: 100px;
+          background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
+          border-radius: 50%;
         }
         
         .product-details h2 {
@@ -211,11 +257,25 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         }
         
         .footer {
-          background: #f1f5f9;
-          padding: 30px;
+          background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+          padding: 40px;
           text-align: center;
           color: #64748b;
           font-size: 0.9rem;
+          border-top: 3px solid #e2e8f0;
+          position: relative;
+        }
+        
+        .footer::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 60px;
+          height: 3px;
+          background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+          border-radius: 0 0 3px 3px;
         }
         
         .disclaimer {
@@ -256,7 +316,8 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         <div class="header">
           <h1>AI Product Analysis Report</h1>
           <p>Comprehensive Amazon FBA Private Label Assessment</p>
-          <p style="margin-top: 10px; font-size: 0.9rem;">Generated on ${currentDate}</p>
+          <div class="brand-badge">Launch Fast by LegacyX FBA • Version 1.0</div>
+          <p style="margin-top: 20px; font-size: 0.95rem; opacity: 0.8;">Generated on ${currentDate}</p>
         </div>
         
         <div class="content">
@@ -296,27 +357,23 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
             </div>
             
             <div class="product-details">
-              <h2>Physical Estimates</h2>
+              <h2>Analysis Insights</h2>
               <ul class="product-info">
                 <li>
-                  <span class="label">Estimated Dimensions:</span>
+                  <span class="label">Dimensions:</span>
                   <span class="value">${aiAnalysis.estimated_dimensions || 'N/A'}</span>
                 </li>
                 <li>
-                  <span class="label">Estimated Weight:</span>
+                  <span class="label">Weight:</span>
                   <span class="value">${aiAnalysis.estimated_weight || 'N/A'}</span>
                 </li>
                 <li>
-                  <span class="label">Monthly Sales:</span>
-                  <span class="value">${product.monthly_sales?.toLocaleString() || 'N/A'}</span>
+                  <span class="label">Market Position:</span>
+                  <span class="value">BSR #${product.bsr?.toLocaleString() || 'N/A'}</span>
                 </li>
                 <li>
-                  <span class="label">Monthly Revenue:</span>
-                  <span class="value">$${product.monthly_revenue?.toLocaleString() || 'N/A'}</span>
-                </li>
-                <li>
-                  <span class="label">Profit Estimate:</span>
-                  <span class="value">$${product.profit_estimate?.toLocaleString() || 'N/A'}</span>
+                  <span class="label">Market Analysis:</span>
+                  <span class="value">Professional Grade Assessment</span>
                 </li>
                 <li>
                   <span class="label">Product Grade:</span>
@@ -407,7 +464,8 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
             for specific advice related to your situation.</p>
             
             <p style="margin-top: 15px;">
-              <strong>Generated by SellerSprite Dashboard</strong> • AI-Powered Amazon FBA Analysis Platform
+              <strong>Generated by Launch Fast V1.0</strong> • AI-Powered Amazon FBA Analysis Platform by LegacyX FBA<br>
+              <span style="font-size: 0.8rem; opacity: 0.7; margin-top: 5px; display: block;">Enhanced features and deeper insights coming in V1.2</span>
             </p>
           </div>
         </div>
