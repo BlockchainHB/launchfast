@@ -1,43 +1,4 @@
-// Professional AI Analysis Document Templates
-
-interface AIAnalysisData {
-  id: string
-  risk_classification: string
-  consistency_rating: string
-  estimated_dimensions: string
-  estimated_weight: string
-  opportunity_score: number
-  market_insights: string[]
-  risk_factors: string[]
-  created_at: string
-}
-
-interface ProductData {
-  asin: string
-  title: string
-  brand?: string
-  price: number
-  bsr?: number
-  reviews: number
-  rating: number
-  grade: string
-  monthly_revenue?: number
-  monthly_profit?: number
-}
-
-interface ComprehensiveAnalysisData {
-  product: ProductData
-  aiAnalysis: AIAnalysisData
-  reportTitle?: string
-}
-
-export function generateComprehensiveAnalysisHTML(data: ComprehensiveAnalysisData): string {
-  const {
-    product,
-    aiAnalysis,
-    reportTitle = `Product Analysis Report - ${product.title}`
-  } = data
-
+export function generateAnalysisDocument(product: any, aiAnalysis: any): string {
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -46,437 +7,438 @@ export function generateComprehensiveAnalysisHTML(data: ComprehensiveAnalysisDat
 
   const riskColor = getRiskColor(aiAnalysis.risk_classification)
   const consistencyColor = getConsistencyColor(aiAnalysis.consistency_rating)
-  const gradeColor = getGradeColor(product.grade)
 
   return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${reportTitle}</title>
-    <style>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>AI Product Analysis Report - ${product.asin}</title>
+      <style>
         * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: #fff;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          background: #f8fafc;
+          padding: 20px;
         }
         
-        .document {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 40px;
-            background: white;
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
         }
         
         .header {
-            border-bottom: 3px solid #2563eb;
-            padding-bottom: 30px;
-            margin-bottom: 40px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 40px;
+          text-align: center;
         }
         
-        .logo-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+        .header h1 {
+          font-size: 2.5rem;
+          margin-bottom: 10px;
+          font-weight: 700;
         }
         
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2563eb;
+        .header p {
+          font-size: 1.1rem;
+          opacity: 0.9;
         }
         
-        .report-date {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .title {
-            font-size: 32px;
-            font-weight: bold;
-            color: #1e293b;
-            margin-bottom: 8px;
-        }
-        
-        .subtitle {
-            font-size: 18px;
-            color: #64748b;
-        }
-        
-        .executive-summary {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 40px;
-            border-left: 6px solid #2563eb;
-        }
-        
-        .summary-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1e293b;
-            margin-bottom: 20px;
-        }
-        
-        .key-metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-        
-        .metric-card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        
-        .metric-label {
-            font-size: 14px;
-            color: #64748b;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .metric-value {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        
-        .section {
-            margin-bottom: 40px;
-        }
-        
-        .section-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1e293b;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e2e8f0;
+        .content {
+          padding: 40px;
         }
         
         .product-overview {
-            background: #f8fafc;
-            padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 30px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 30px;
+          margin-bottom: 40px;
+          padding: 30px;
+          background: #f8fafc;
+          border-radius: 8px;
+          border-left: 4px solid #667eea;
         }
         
-        .product-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+        .product-details h2 {
+          color: #1e293b;
+          margin-bottom: 20px;
+          font-size: 1.5rem;
         }
         
-        .detail-item {
-            padding: 15px 0;
-            border-bottom: 1px solid #e2e8f0;
+        .product-info {
+          list-style: none;
         }
         
-        .detail-label {
-            font-weight: 600;
-            color: #475569;
-            margin-bottom: 4px;
+        .product-info li {
+          margin-bottom: 12px;
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          border-bottom: 1px solid #e2e8f0;
         }
         
-        .detail-value {
-            color: #1e293b;
-            font-size: 16px;
+        .product-info li:last-child {
+          border-bottom: none;
         }
         
-        .risk-analysis {
-            background: #fef7f0;
-            border: 1px solid #fed7aa;
-            border-radius: 12px;
-            padding: 25px;
-            margin: 20px 0;
+        .label {
+          font-weight: 600;
+          color: #475569;
         }
         
-        .opportunity-analysis {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 12px;
-            padding: 25px;
-            margin: 20px 0;
+        .value {
+          color: #1e293b;
+          font-weight: 500;
+        }
+        
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 20px;
+          margin-bottom: 40px;
+        }
+        
+        .metric-card {
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 24px;
+          text-align: center;
+          transition: transform 0.2s ease;
+        }
+        
+        .metric-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .metric-value {
+          font-size: 2rem;
+          font-weight: 700;
+          margin-bottom: 8px;
+        }
+        
+        .metric-label {
+          color: #64748b;
+          font-size: 0.9rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .risk-high { color: #dc2626; }
+        .risk-medium { color: #ea580c; }
+        .risk-low { color: #16a34a; }
+        
+        .consistency-high { color: #16a34a; }
+        .consistency-medium { color: #ca8a04; }
+        .consistency-low { color: #dc2626; }
+        
+        .analysis-section {
+          margin-bottom: 40px;
+        }
+        
+        .section-title {
+          font-size: 1.5rem;
+          color: #1e293b;
+          margin-bottom: 20px;
+          padding-bottom: 10px;
+          border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .insights-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 30px;
+        }
+        
+        .insight-card {
+          background: #f8fafc;
+          border-radius: 8px;
+          padding: 24px;
+          border-left: 4px solid #667eea;
+        }
+        
+        .insight-card h3 {
+          color: #1e293b;
+          margin-bottom: 12px;
+          font-size: 1.2rem;
         }
         
         .insight-list {
-            list-style: none;
-            padding: 0;
+          list-style: none;
         }
         
-        .insight-item {
-            background: white;
-            margin: 10px 0;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #2563eb;
+        .insight-list li {
+          margin-bottom: 8px;
+          padding-left: 20px;
+          position: relative;
         }
         
-        .badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .insight-list li:before {
+          content: "•";
+          color: #667eea;
+          position: absolute;
+          left: 0;
+          font-weight: bold;
         }
         
-        .badge-safe { background: #dcfce7; color: #166534; }
-        .badge-electric { background: #fef3c7; color: #92400e; }
-        .badge-breakable { background: #fed7aa; color: #c2410c; }
-        .badge-medical { background: #dbeafe; color: #1d4ed8; }
-        .badge-prohibited { background: #fecaca; color: #dc2626; }
-        
-        .badge-consistent { background: #dcfce7; color: #166534; }
-        .badge-low { background: #fecaca; color: #dc2626; }
-        .badge-trendy { background: #fecaca; color: #dc2626; }
-        
-        .grade-badge {
-            font-size: 28px;
-            font-weight: bold;
-            padding: 10px 20px;
-            border-radius: 8px;
-            display: inline-block;
+        .risk-factors {
+          background: #fef2f2;
+          border-left-color: #dc2626;
         }
         
-        .recommendation {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin: 30px 0;
+        .market-insights {
+          background: #f0f9ff;
+          border-left-color: #0284c7;
         }
         
-        .recommendation-title {
-            font-size: 22px;
-            font-weight: bold;
-            margin-bottom: 15px;
+        .opportunity-insights {
+          background: #f0fdf4;
+          border-left-color: #16a34a;
         }
         
         .footer {
-            border-top: 2px solid #e2e8f0;
-            padding-top: 30px;
-            margin-top: 50px;
-            text-align: center;
-            color: #64748b;
+          background: #f1f5f9;
+          padding: 30px;
+          text-align: center;
+          color: #64748b;
+          font-size: 0.9rem;
         }
         
         .disclaimer {
-            background: #f1f5f9;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            font-size: 14px;
-            color: #475569;
+          max-width: 800px;
+          margin: 0 auto;
+          line-height: 1.5;
         }
         
-        @media print {
-            .document { padding: 20px; }
-            .section { page-break-inside: avoid; }
+        @media (max-width: 768px) {
+          .product-overview {
+            grid-template-columns: 1fr;
+          }
+          
+          .insights-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .metrics-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .content {
+            padding: 20px;
+          }
+          
+          .header {
+            padding: 30px 20px;
+          }
+          
+          .header h1 {
+            font-size: 2rem;
+          }
         }
-    </style>
-</head>
-<body>
-    <div class="document">
-        <!-- Header -->
+      </style>
+    </head>
+    <body>
+      <div class="container">
         <div class="header">
-            <div class="logo-section">
-                <div class="logo">SellerSprite AI Analysis</div>
-                <div class="report-date">Generated: ${currentDate}</div>
-            </div>
-            <h1 class="title">${reportTitle}</h1>
-            <p class="subtitle">Comprehensive AI-Powered Product Analysis</p>
+          <h1>AI Product Analysis Report</h1>
+          <p>Comprehensive Amazon FBA Private Label Assessment</p>
+          <p style="margin-top: 10px; font-size: 0.9rem;">Generated on ${currentDate}</p>
         </div>
-
-        <!-- Executive Summary -->
-        <div class="executive-summary">
-            <h2 class="summary-title">Executive Summary</h2>
-            <p>This comprehensive analysis evaluates the business opportunity for <strong>${product.title}</strong> (ASIN: ${product.asin}) using advanced AI algorithms and market intelligence.</p>
+        
+        <div class="content">
+          <div class="product-overview">
+            <div class="product-details">
+              <h2>Product Overview</h2>
+              <ul class="product-info">
+                <li>
+                  <span class="label">ASIN:</span>
+                  <span class="value">${product.asin}</span>
+                </li>
+                <li>
+                  <span class="label">Product Title:</span>
+                  <span class="value">${product.title}</span>
+                </li>
+                <li>
+                  <span class="label">Brand:</span>
+                  <span class="value">${product.brand || 'N/A'}</span>
+                </li>
+                <li>
+                  <span class="label">Current Price:</span>
+                  <span class="value">$${product.price?.toFixed(2) || 'N/A'}</span>
+                </li>
+                <li>
+                  <span class="label">Customer Rating:</span>
+                  <span class="value">${product.rating || 'N/A'} ⭐</span>
+                </li>
+                <li>
+                  <span class="label">Total Reviews:</span>
+                  <span class="value">${product.reviews?.toLocaleString() || 'N/A'}</span>
+                </li>
+                <li>
+                  <span class="label">BSR:</span>
+                  <span class="value">${product.bsr?.toLocaleString() || 'N/A'}</span>
+                </li>
+              </ul>
+            </div>
             
-            <div class="key-metrics">
-                <div class="metric-card">
-                    <div class="metric-label">Overall Grade</div>
-                    <div class="metric-value grade-badge" style="color: ${gradeColor};">${product.grade}</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Opportunity Score</div>
-                    <div class="metric-value" style="color: #059669;">${aiAnalysis.opportunity_score}/10</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Risk Level</div>
-                    <div class="metric-value">
-                        <span class="badge badge-${aiAnalysis.risk_classification.toLowerCase()}">${aiAnalysis.risk_classification}</span>
-                    </div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Demand Pattern</div>
-                    <div class="metric-value">
-                        <span class="badge badge-${aiAnalysis.consistency_rating.toLowerCase()}">${aiAnalysis.consistency_rating}</span>
-                    </div>
-                </div>
+            <div class="product-details">
+              <h2>Physical Estimates</h2>
+              <ul class="product-info">
+                <li>
+                  <span class="label">Estimated Dimensions:</span>
+                  <span class="value">${aiAnalysis.estimated_dimensions || 'N/A'}</span>
+                </li>
+                <li>
+                  <span class="label">Estimated Weight:</span>
+                  <span class="value">${aiAnalysis.estimated_weight || 'N/A'}</span>
+                </li>
+                <li>
+                  <span class="label">Monthly Sales:</span>
+                  <span class="value">${product.monthly_sales?.toLocaleString() || 'N/A'}</span>
+                </li>
+                <li>
+                  <span class="label">Monthly Revenue:</span>
+                  <span class="value">$${product.monthly_revenue?.toLocaleString() || 'N/A'}</span>
+                </li>
+                <li>
+                  <span class="label">Profit Estimate:</span>
+                  <span class="value">$${product.profit_estimate?.toLocaleString() || 'N/A'}</span>
+                </li>
+                <li>
+                  <span class="label">Product Grade:</span>
+                  <span class="value">${product.grade || 'N/A'}</span>
+                </li>
+              </ul>
             </div>
-        </div>
-
-        <!-- Product Overview -->
-        <div class="section">
-            <h2 class="section-title">Product Overview</h2>
-            <div class="product-overview">
-                <div class="product-details">
-                    <div class="detail-item">
-                        <div class="detail-label">Product Title</div>
-                        <div class="detail-value">${product.title}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">ASIN</div>
-                        <div class="detail-value">${product.asin}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Brand</div>
-                        <div class="detail-value">${product.brand || 'Not specified'}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Current Price</div>
-                        <div class="detail-value">$${product.price.toFixed(2)}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Customer Reviews</div>
-                        <div class="detail-value">${product.reviews.toLocaleString()} reviews</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Average Rating</div>
-                        <div class="detail-value">${product.rating}/5.0 stars</div>
-                    </div>
-                    ${product.bsr ? `
-                    <div class="detail-item">
-                        <div class="detail-label">Best Seller Rank</div>
-                        <div class="detail-value">#${product.bsr.toLocaleString()}</div>
-                    </div>` : ''}
-                    <div class="detail-item">
-                        <div class="detail-label">Estimated Dimensions</div>
-                        <div class="detail-value">${aiAnalysis.estimated_dimensions}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-label">Estimated Weight</div>
-                        <div class="detail-value">${aiAnalysis.estimated_weight}</div>
-                    </div>
-                </div>
+          </div>
+          
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-value ${riskColor.class}">${aiAnalysis.risk_classification}</div>
+              <div class="metric-label">Risk Classification</div>
             </div>
-        </div>
-
-        <!-- Market Insights -->
-        <div class="section">
-            <h2 class="section-title">Market Intelligence</h2>
-            <div class="opportunity-analysis">
-                <h3 style="color: #166534; margin-bottom: 15px;">Key Market Insights</h3>
+            
+            <div class="metric-card">
+              <div class="metric-value ${consistencyColor.class}">${aiAnalysis.consistency_rating}</div>
+              <div class="metric-label">Consistency Rating</div>
+            </div>
+            
+            <div class="metric-card">
+              <div class="metric-value" style="color: #667eea;">${aiAnalysis.opportunity_score}/100</div>
+              <div class="metric-label">Opportunity Score</div>
+            </div>
+          </div>
+          
+          <div class="analysis-section">
+            <h2 class="section-title">Detailed Analysis</h2>
+            <div class="insights-grid">
+              <div class="insight-card risk-factors">
+                <h3>Risk Factors</h3>
                 <ul class="insight-list">
-                    ${aiAnalysis.market_insights.map(insight => `
-                        <li class="insight-item">${insight}</li>
-                    `).join('')}
+                  ${aiAnalysis.risk_factors ? 
+                    (Array.isArray(aiAnalysis.risk_factors) ? 
+                      aiAnalysis.risk_factors.map((risk: string) => `<li>${risk}</li>`).join('') 
+                      : `<li>${aiAnalysis.risk_factors}</li>`
+                    ) 
+                    : '<li>No specific risk factors identified</li>'
+                  }
                 </ul>
-            </div>
-        </div>
-
-        <!-- Risk Analysis -->
-        <div class="section">
-            <h2 class="section-title">Risk Assessment</h2>
-            <div class="risk-analysis">
-                <h3 style="color: #c2410c; margin-bottom: 15px;">Risk Factors & Considerations</h3>
+              </div>
+              
+              <div class="insight-card market-insights">
+                <h3>Market Insights</h3>
                 <ul class="insight-list">
-                    ${aiAnalysis.risk_factors.map(risk => `
-                        <li class="insight-item">${risk}</li>
-                    `).join('')}
+                  ${aiAnalysis.market_insights ? 
+                    (Array.isArray(aiAnalysis.market_insights) ? 
+                      aiAnalysis.market_insights.map((insight: string) => `<li>${insight}</li>`).join('') 
+                      : `<li>${aiAnalysis.market_insights}</li>`
+                    ) 
+                    : '<li>Market analysis data not available</li>'
+                  }
                 </ul>
+              </div>
             </div>
+          </div>
+          
+          <div class="analysis-section">
+            <h2 class="section-title">Executive Summary</h2>
+            <div class="insight-card opportunity-insights">
+              <p style="font-size: 1.1rem; line-height: 1.7; color: #374151;">
+                This ${product.title} (ASIN: ${product.asin}) has been classified as <strong>${aiAnalysis.risk_classification}</strong> risk 
+                with a <strong>${aiAnalysis.consistency_rating}</strong> consistency rating for Amazon FBA private label opportunities. 
+                The product shows an opportunity score of <strong>${aiAnalysis.opportunity_score}/100</strong>, indicating 
+                ${aiAnalysis.opportunity_score >= 70 ? 'strong potential' : 
+                  aiAnalysis.opportunity_score >= 50 ? 'moderate potential' : 'limited potential'} 
+                for private label success.
+              </p>
+              
+              <p style="font-size: 1rem; line-height: 1.6; color: #6b7280; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                <strong>Key Recommendation:</strong> 
+                ${aiAnalysis.opportunity_score >= 70 && aiAnalysis.risk_classification === 'Safe' ? 
+                  'This product shows excellent potential for private label development with minimal regulatory concerns.' :
+                  aiAnalysis.risk_classification === 'Prohibited' || aiAnalysis.risk_classification === 'Medical' ?
+                  'Avoid this product due to high regulatory risks and compliance requirements.' :
+                  'Consider this product with caution and conduct additional market research before proceeding.'
+                }
+              </p>
+            </div>
+          </div>
         </div>
-
-        <!-- Recommendation -->
-        <div class="recommendation">
-            <h3 class="recommendation-title">AI Recommendation</h3>
-            <p>${generateRecommendation(product.grade, aiAnalysis.opportunity_score, aiAnalysis.risk_classification)}</p>
-        </div>
-
-        <!-- Disclaimer -->
-        <div class="disclaimer">
-            <strong>Disclaimer:</strong> This analysis is generated using AI algorithms and market data. While we strive for accuracy, this should not be considered as financial advice. Always conduct your own due diligence before making business decisions.
-        </div>
-
-        <!-- Footer -->
+        
         <div class="footer">
-            <p>Generated by SellerSprite AI Analysis System</p>
-            <p>Report ID: ${aiAnalysis.id} | Generated: ${currentDate}</p>
+          <div class="disclaimer">
+            <p><strong>Disclaimer:</strong> This analysis is generated by AI and should be used for informational purposes only. 
+            Always conduct your own due diligence and research before making any business decisions. Market conditions, 
+            regulations, and product availability can change rapidly. Consult with legal and business professionals 
+            for specific advice related to your situation.</p>
+            
+            <p style="margin-top: 15px;">
+              <strong>Generated by SellerSprite Dashboard</strong> • AI-Powered Amazon FBA Analysis Platform
+            </p>
+          </div>
         </div>
-    </div>
-</body>
-</html>
-  `.trim()
+      </div>
+    </body>
+    </html>
+  `
 }
 
-function getRiskColor(risk: string): string {
-  switch (risk.toLowerCase()) {
-    case 'safe': return '#059669'
-    case 'electric': return '#d97706'
-    case 'breakable': return '#ea580c'
-    case 'medical': return '#2563eb'
-    case 'prohibited': return '#dc2626'
-    default: return '#6b7280'
-  }
-}
-
-function getConsistencyColor(consistency: string): string {
-  switch (consistency.toLowerCase()) {
-    case 'consistent': return '#059669'
-    case 'low': return '#dc2626'
-    case 'trendy': return '#dc2626'
-    case 'seasonal': return '#2563eb'
-    default: return '#6b7280'
+function getRiskColor(risk: string): { class: string; color: string } {
+  switch (risk?.toLowerCase()) {
+    case 'prohibited':
+    case 'medical':
+      return { class: 'risk-high', color: '#dc2626' }
+    case 'electric':
+    case 'breakable':
+      return { class: 'risk-medium', color: '#ea580c' }
+    case 'safe':
+    default:
+      return { class: 'risk-low', color: '#16a34a' }
   }
 }
 
-function getGradeColor(grade: string): string {
-  if (grade.startsWith('A')) return '#059669'
-  if (grade.startsWith('B')) return '#0284c7'
-  if (grade.startsWith('C')) return '#d97706'
-  if (grade.startsWith('D')) return '#ea580c'
-  if (grade === 'Avoid') return '#dc2626'
-  return '#dc2626'
-}
-
-function generateRecommendation(grade: string, opportunityScore: number, risk: string): string {
-  if (grade === 'Avoid') {
-    return 'This product is not recommended for private label business due to high-risk factors. Consider exploring alternative products with better risk profiles.'
+function getConsistencyColor(consistency: string): { class: string; color: string } {
+  switch (consistency?.toLowerCase()) {
+    case 'high':
+      return { class: 'consistency-high', color: '#16a34a' }
+    case 'medium':
+      return { class: 'consistency-medium', color: '#ca8a04' }
+    case 'low':
+    default:
+      return { class: 'consistency-low', color: '#dc2626' }
   }
-  
-  if (grade.startsWith('A') && opportunityScore >= 8) {
-    return 'Excellent opportunity! This product shows strong potential for private label success with favorable market conditions and manageable risk factors.'
-  }
-  
-  if (grade.startsWith('B') && opportunityScore >= 6) {
-    return 'Good opportunity with solid profit potential. Consider this product for your private label portfolio while monitoring the identified risk factors.'
-  }
-  
-  if (opportunityScore < 5) {
-    return 'Proceed with caution. While not immediately disqualified, this product shows limited opportunity and may require additional market validation.'
-  }
-  
-  return 'Moderate opportunity identified. Conduct additional market research and consider your risk tolerance before proceeding.'
-}
-
-export default {
-  generateComprehensiveAnalysisHTML
 }
