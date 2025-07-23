@@ -14,16 +14,17 @@ const supabase = createClient(
 interface ContactFormData {
   name: string
   email: string
-  category: string
+  subject: string
   message: string
+  type: 'payment' | 'general'
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, category, message }: ContactFormData = await request.json()
+    const { name, email, subject, message, type }: ContactFormData = await request.json()
 
     // Validate required fields
-    if (!name?.trim() || !email?.trim() || !category || !message?.trim()) {
+    if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim() || !type) {
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
@@ -46,15 +47,13 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     }
 
-    // Format category for display
-    const categoryLabels: Record<string, string> = {
-      'billing': 'Billing',
-      'error-report': 'Error Report',
-      'customer-service': 'Customer Service',
-      'feedback': 'Feedback'
+    // Format type for display
+    const typeLabels: Record<string, string> = {
+      'payment': 'Payment Support',
+      'general': 'General Inquiry'
     }
 
-    const categoryLabel = categoryLabels[category] || category
+    const typeLabel = typeLabels[type] || type
 
     // Store contact submission in database (optional - will silently fail if table doesn't exist)
     let submission: { id?: string } = {}
@@ -65,7 +64,8 @@ export async function POST(request: NextRequest) {
           {
             name: name.trim(),
             email: email.toLowerCase().trim(),
-            category,
+            subject: subject.trim(),
+            type,
             message: message.trim(),
             status: 'pending',
             metadata: requestMetadata
@@ -87,26 +87,67 @@ export async function POST(request: NextRequest) {
         from: 'Launch Fast <noreply@updates.launchfastlegacyx.com>',
         to: ['launchfastlegacyx@gmail.com'],
         replyTo: email,
-        subject: `Contact Form: ${categoryLabel} - ${name}`,
+        subject: `[${typeLabel.toUpperCase()}] ${subject} - ${name}`,
         html: `
-          <h2>New Contact Form Submission</h2>
-          <p><strong>From:</strong> ${name} (${email})</p>
-          <p><strong>Category:</strong> ${categoryLabel}</p>
-          <p><strong>Submission ID:</strong> ${submission?.id || 'N/A'}</p>
-          <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
-          
-          <h3>Message:</h3>
-          <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin-top: 16px;">
-            ${message.replace(/\n/g, '<br>')}
-          </div>
-          
-          <hr style="margin: 32px 0;">
-          <p><strong>Note:</strong> Customer was informed about Discord support for instant help.</p>
-          <p style="color: #666; font-size: 14px;">
-            User Agent: ${requestMetadata.userAgent}<br>
-            IP Address: ${requestMetadata.ip}<br>
-            Referrer: ${requestMetadata.referer}
-          </p>
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>LaunchFast Contact Form</title>
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #6231A3 0%, #4C1D95 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
+                .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 12px 12px; }
+                .field { margin-bottom: 20px; }
+                .label { font-weight: 600; color: #6231A3; margin-bottom: 5px; display: block; }
+                .value { background: white; padding: 12px; border-radius: 8px; border: 1px solid #e5e7eb; }
+                .type-badge { display: inline-block; background: ${type === 'payment' ? '#3B82F6' : '#6231A3'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 20px; }
+                .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin: 0; font-size: 24px;">LaunchFast Contact Form</h1>
+                  <p style="margin: 10px 0 0 0; opacity: 0.9;">New message received</p>
+                </div>
+                <div class="content">
+                  <div class="type-badge">${typeLabel.toUpperCase()}</div>
+                  
+                  <div class="field">
+                    <label class="label">From:</label>
+                    <div class="value">${name} &lt;${email}&gt;</div>
+                  </div>
+                  
+                  <div class="field">
+                    <label class="label">Subject:</label>
+                    <div class="value">${subject}</div>
+                  </div>
+                  
+                  <div class="field">
+                    <label class="label">Message:</label>
+                    <div class="value" style="white-space: pre-wrap;">${message}</div>
+                  </div>
+                  
+                  <div class="field">
+                    <label class="label">Submission Details:</label>
+                    <div class="value">
+                      <strong>ID:</strong> ${submission?.id || 'N/A'}<br>
+                      <strong>Timestamp:</strong> ${new Date().toLocaleString()}<br>
+                      <strong>IP:</strong> ${requestMetadata.ip}<br>
+                      <strong>User Agent:</strong> ${requestMetadata.userAgent}
+                    </div>
+                  </div>
+                  
+                  <div class="footer">
+                    <p>This message was sent through the LaunchFast contact form.</p>
+                    <p>Reply directly to this email to respond to ${name}.</p>
+                  </div>
+                </div>
+              </div>
+            </body>
+          </html>
         `
       })
     } catch (emailError) {
@@ -123,7 +164,7 @@ export async function POST(request: NextRequest) {
         html: `
           <h2>Thank you for contacting us!</h2>
           <p>Hi ${name},</p>
-          <p>We've received your ${categoryLabel.toLowerCase()} inquiry and will get back to you within 24 hours.</p>
+          <p>We've received your ${typeLabel.toLowerCase()} and will get back to you within 24 hours.</p>
           
           <h3>Your message:</h3>
           <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
