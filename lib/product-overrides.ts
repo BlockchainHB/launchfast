@@ -222,6 +222,10 @@ export function mergeProductWithOverrides(
     // Ensure keywords are always preserved
     keywords: product.keywords || [],
     
+    // CRITICAL: Preserve fields required for market calculations
+    sellerSpriteVerified: product.sellerSpriteVerified,
+    apifySource: product.apifySource,
+    
     // Add override metadata
     hasOverrides: true,
     overrideInfo: override

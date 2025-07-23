@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { MarketRecalculator } from '@/lib/market-recalculator'
 import { mergeProductsWithOverrides } from '@/lib/product-overrides'
-import { cache } from '@/lib/cache'
+// Cache removed for real-time data accuracy
 import { createServerClient } from '@supabase/ssr'
 import type { EnhancedProduct } from '@/types'
 
@@ -264,7 +264,7 @@ export async function POST(request: NextRequest) {
         `Triggered by batch product overrides: ${overrideReason}`
       )
 
-      console.log(`✅ Recalculated ${recalculationResults.length} markets - now invalidating cache`)
+      console.log(`✅ Recalculated ${recalculationResults.length} markets`)
 
       // No cache invalidation needed - dashboard shows real-time data
       console.log(`✅ Dashboard will reflect override changes in real-time`)
@@ -280,9 +280,7 @@ export async function POST(request: NextRequest) {
         overrides: data, // Raw override data
         updatedProducts: mergedProducts, // Products with overrides applied for immediate UI update
         debug: {
-          cacheKeyUsed: dashboardCacheKey,
-          cacheInvalidated: true,
-          cacheInvalidatedAfterRecalc: true,
+          cacheRemoved: true,
           marketRecalculationResults: recalculationResults.length,
           reOverrideCount: existingCount,
           newOverrideCount: (data?.length || 0) - existingCount,
@@ -293,20 +291,8 @@ export async function POST(request: NextRequest) {
     } catch (recalculationError) {
       console.error('Market recalculation error:', recalculationError)
       
-      // Still invalidate cache even if market recalculation failed
-      const dashboardCacheKey = `dashboard_data_${userId}`
-      
-      const cacheExists = await cache.exists(dashboardCacheKey)
-      console.log(`🔍 Dashboard cache exists (recalc failed): ${cacheExists}`)
-      
-      await cache.del(dashboardCacheKey)
-      console.log(`🗑️ Invalidated dashboard cache for user ${userId} (recalculation failed)`)
-      
-      // Even on failure, add delay to prevent race conditions
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      const stillExists = await cache.exists(dashboardCacheKey)
-      console.log(`🔍 Dashboard cache still exists after deletion (recalc failed): ${stillExists}`)
+      // No cache to invalidate - dashboard shows real-time data
+      console.log(`✅ Dashboard will reflect changes in real-time despite recalculation error`)
       
       // Product overrides were saved successfully, but market recalculation failed
       // This is not a critical error - return success with warning
