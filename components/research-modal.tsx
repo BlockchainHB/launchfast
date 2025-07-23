@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "sonner"
 
 interface ResearchModalProps {
   isOpen: boolean
@@ -310,6 +311,19 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
         throw new Error(data.error || 'Save operation was not successful')
       }
       
+      // Show success toast with duplicate information
+      if (data.duplicatesSkipped > 0) {
+        toast.success("Products saved successfully!", {
+          description: `${data.count} new products added, ${data.duplicatesSkipped} duplicates skipped`,
+          duration: 4000,
+        })
+      } else {
+        toast.success("Products saved successfully!", {
+          description: `${data.count} products saved to your database`,
+          duration: 3000,
+        })
+      }
+      
       setSaveSuccess(true)
       
       if (onSaveSuccess) {
@@ -324,7 +338,14 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
       
     } catch (error) {
       console.error("Failed to save results:", error)
-      setError(error instanceof Error ? error.message : "Failed to save products")
+      const errorMessage = error instanceof Error ? error.message : "Failed to save products"
+      setError(errorMessage)
+      
+      // Show error toast
+      toast.error("Failed to save products", {
+        description: errorMessage,
+        duration: 5000,
+      })
     } finally {
       setIsSaving(false)
     }
