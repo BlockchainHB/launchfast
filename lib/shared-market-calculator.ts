@@ -20,6 +20,7 @@ export interface MarketOverrideData {
   avg_bsr: number
   avg_cpc: number
   avg_launch_budget: number
+  avg_cogs: number
   market_grade: string
   market_consistency_rating: string
   market_risk_classification: string
@@ -153,6 +154,7 @@ export function calculateMarketMetrics(products: EnhancedProduct[]): MarketCalcu
     avg_daily_revenue: average(validProducts.map(p => p.calculatedMetrics?.dailyRevenue || 0)),
     avg_launch_budget: average(validProducts.map(p => p.calculatedMetrics?.launchBudget || 0)),
     avg_profit_per_unit: average(validProducts.map(p => p.calculatedMetrics?.profitPerUnitAfterLaunch || 0)),
+    avg_cogs: average(validProducts.map(p => p.salesData?.cogs || 0)),
     
     // Market-level analysis
     market_consistency_rating: calculateMarketConsistency(validProducts),
@@ -206,6 +208,7 @@ export function convertToOverrideData(marketStats: MarketStatistics): MarketOver
     avg_bsr: Math.round(marketStats.avg_bsr),
     avg_cpc: marketStats.avg_cpc,
     avg_launch_budget: marketStats.avg_launch_budget,
+    avg_cogs: marketStats.avg_cogs,
     market_grade: marketStats.market_grade,
     market_consistency_rating: marketStats.market_consistency_rating,
     market_risk_classification: marketStats.market_risk_classification,

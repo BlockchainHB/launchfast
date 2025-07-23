@@ -20,6 +20,7 @@ export interface MarketStatistics {
   avg_daily_revenue: number
   avg_launch_budget: number
   avg_profit_per_unit: number
+  avg_cogs: number
   
   // Market-Level Analysis
   market_grade: string

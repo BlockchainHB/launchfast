@@ -122,6 +122,7 @@ export function calculateMarketStatistics(products: EnhancedProduct[]): MarketSt
     avg_daily_revenue: average(validProducts.map(p => p.calculatedMetrics?.dailyRevenue || 0)),
     avg_launch_budget: average(validProducts.map(p => p.calculatedMetrics?.launchBudget || 0)),
     avg_profit_per_unit: average(validProducts.map(p => p.calculatedMetrics?.profitPerUnitAfterLaunch || 0)),
+    avg_cogs: average(validProducts.map(p => p.salesData?.cogs || 0)),
     
     // Market-level analysis
     market_consistency_rating: calculateMarketConsistency(validProducts),
