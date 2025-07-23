@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { authHelpers } from '@/lib/auth'
+import { GraduationCap, Sparkles, Mail } from 'lucide-react'
 
 export function SignupForm({
   className,
@@ -119,6 +120,33 @@ export function SignupForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* LegacyX Student Alert */}
+          <div className="mb-6 p-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-primary/20 mt-0.5">
+                <GraduationCap className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-semibold text-primary text-sm" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}>
+                    LegacyX FBA Students
+                  </h3>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold">
+                    <Sparkles className="h-3 w-3" />
+                    75% OFF
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                  Use the <strong>exact same email address</strong> you used when you originally purchased LegacyX FBA to automatically unlock your exclusive student discount.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-primary font-medium">
+                  <Mail className="h-4 w-4" />
+                  <span>$50/month instead of $199/month</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <form onSubmit={handleSubmit}>
             <div className="grid gap-6">
               <div className="grid gap-6">
