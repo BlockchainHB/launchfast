@@ -13,69 +13,24 @@ export const authHelpers = {
     error?: string
   }> {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: userData?.full_name || '',
-            company: userData?.company || ''
-          }
-        }
+      // Use our custom signup endpoint that sends custom emails
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          full_name: userData?.full_name || '',
+          company: userData?.company || ''
+        })
       })
 
-      if (error) {
-        return { error: error.message }
-      }
+      const data = await response.json()
 
-      // If signup successful, create profile via API endpoint
-      if (data.user) {
-        try {
-          // Call our server-side API to create the profile with admin privileges
-          const response = await fetch('/api/auth/create-profile', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: data.user.id,
-              full_name: userData?.full_name || '',
-              company: userData?.company || '',
-              email: data.user.email
-            })
-          })
-
-          if (!response.ok) {
-            const errorData = await response.text()
-            console.error('Failed to create user profile via API:', errorData)
-            
-            // Retry once after a short delay
-            setTimeout(async () => {
-              try {
-                const retryResponse = await fetch('/api/auth/create-profile', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    userId: data.user.id,
-                    full_name: userData?.full_name || '',
-                    company: userData?.company || '',
-                    email: data.user.email
-                  })
-                })
-                if (!retryResponse.ok) {
-                  console.error('Profile creation retry also failed')
-                }
-              } catch (retryError) {
-                console.error('Profile creation retry error:', retryError)
-              }
-            }, 1000)
-          } else {
-            console.log('User profile created successfully during signup')
-          }
-        } catch (profileError) {
-          console.error('Error creating user profile:', profileError)
-          // Still don't fail signup completely, but try to handle it better
-        }
+      if (!response.ok) {
+        return { error: data.error || 'Failed to sign up' }
       }
 
       return { user: data.user }
