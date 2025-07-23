@@ -266,29 +266,8 @@ export async function POST(request: NextRequest) {
 
       console.log(`✅ Recalculated ${recalculationResults.length} markets - now invalidating cache`)
 
-      // CRITICAL: Invalidate cache AFTER market recalculation completes
-      const dashboardCacheKey = `dashboard_data_${userId}`
-      
-      // Check if cache exists before deletion
-      const cacheExists = await cache.exists(dashboardCacheKey)
-      console.log(`🔍 Dashboard cache exists before deletion (AFTER market recalc): ${cacheExists}`)
-      
-      // Force cache deletion after market recalculation is complete
-      await cache.del(dashboardCacheKey)
-      console.log(`🗑️ Cache invalidated AFTER market recalculation for user ${userId}`)
-      
-      // Longer delay to ensure market recalculation data is fully committed
-      await new Promise(resolve => setTimeout(resolve, 250))
-      
-      // Verify deletion
-      const stillExists = await cache.exists(dashboardCacheKey)
-      console.log(`🔍 Dashboard cache still exists after deletion: ${stillExists}`)
-      
-      if (stillExists) {
-        console.warn(`⚠️ Cache deletion failed, attempting force clear`)
-        await cache.del(dashboardCacheKey)
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
+      // No cache invalidation needed - dashboard shows real-time data
+      console.log(`✅ Dashboard will reflect override changes in real-time`)
 
       return NextResponse.json({
         success: true,

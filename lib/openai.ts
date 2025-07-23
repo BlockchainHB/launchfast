@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import { cache, CACHE_TTL, cacheHelpers } from './cache'
+// Cache removed for data accuracy in AI analysis
 import type { ProductData, AIAnalysis, ProcessedReviews } from '@/types'
 
 // Initialize OpenAI client
@@ -19,10 +19,7 @@ export async function analyzeProductWithReviews(
   productData: ProductData, 
   reviewsData?: ProcessedReviews
 ): Promise<AIAnalysis> {
-  // Check cache first (use reviews in cache key if available)
-  const cacheKey = reviewsData ? `${productData.asin}_with_reviews` : productData.asin
-  const cached = await cacheHelpers.getAIAnalysis(cacheKey)
-  if (cached) return cached as AIAnalysis
+  // No caching - always generate fresh AI analysis for accurate insights
 
   const startTime = Date.now()
 
@@ -177,7 +174,7 @@ Be specific and practical in your analysis.`
     analysis.estimatedWeight = analysis.estimatedWeight || 'Unknown'
 
     // Cache the result
-    await cacheHelpers.setAIAnalysis(cacheKey, analysis)
+    // No caching - fresh AI analysis ensures latest insights
 
     return analysis
 
@@ -199,9 +196,7 @@ Be specific and practical in your analysis.`
 
 // Main product analysis function (backward compatibility)
 export async function analyzeProduct(productData: ProductData): Promise<AIAnalysis> {
-  // Check cache first
-  const cached = await cacheHelpers.getAIAnalysis(productData.asin)
-  if (cached) return cached as AIAnalysis
+  // No caching - always generate fresh product analysis as AIAnalysis
 
   const startTime = Date.now()
 
@@ -310,8 +305,7 @@ Be specific and practical in your analysis.`
     analysis.estimatedDimensions = analysis.estimatedDimensions || 'Unknown'
     analysis.estimatedWeight = analysis.estimatedWeight || 'Unknown'
 
-    // Cache the result
-    await cacheHelpers.setAIAnalysis(productData.asin, analysis)
+    // No caching - fresh AI insights for every product analysis
 
     return analysis
 

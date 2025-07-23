@@ -4,7 +4,7 @@ import { apifyClient } from '@/lib/apify'
 import { analyzeProductWithReviews } from '@/lib/openai'
 import { scoreProduct, scoreApifyProduct } from '@/lib/scoring'
 import { supabaseAdmin } from '@/lib/supabase'
-import { cache, CACHE_TTL } from '@/lib/cache'
+// Cache removed for data accuracy
 import { calculateAllMetrics, formatCompetitiveIntelligence } from '@/lib/calculations'
 import { Logger } from '@/lib/logger'
 import { createServerClient } from '@supabase/ssr'
@@ -98,20 +98,7 @@ export async function GET(request: NextRequest) {
 
       Logger.research.start(keyword, filters)
 
-      // Check cache first (no UI update for this)
-      const cacheKey = cache.generateKey('apify_product_research', { keyword, filters, limit })
-      const cached = await cache.get<EnhancedProduct[]>(cacheKey)
-      if (cached) {
-        sendEvent({
-          phase: 'complete',
-          message: `Found ${cached.length} cached products`,
-          progress: 100,
-          data: { products: cached, cached: true },
-          timestamp: new Date().toISOString()
-        })
-        controller.close()
-        return
-      }
+      // Skip cache - streaming research always provides fresh real-time data
 
       // Phase 1: Marketplace Analysis - Industry-standard step progression
       const marketplaceSteps = [
@@ -406,8 +393,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Cache results
-      await cache.set(cacheKey, finalProducts, CACHE_TTL.SEARCH_RESULTS)
+      // No caching - streaming provides real-time fresh results
 
       // Log search session
       try {

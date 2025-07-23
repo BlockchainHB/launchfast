@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { cache, CACHE_TTL } from '@/lib/cache'
+// Dashboard cache removed for real-time data accuracy
 import { createServerClient } from '@supabase/ssr'
 import { mergeProductsWithOverrides, mergeMarketsWithOverrides, type ProductOverride, type MarketOverride } from '@/lib/product-overrides'
 import type { EnhancedProduct } from '@/types'
@@ -89,28 +89,7 @@ export async function GET(request: NextRequest) {
 
     const userId = user.id
 
-    // Check cache first for performance
-    const cacheKey = `dashboard_data_${userId}`
-    console.log(`🔍 Checking cache for key: ${cacheKey}`)
-    
-    const cacheExists = await cache.exists(cacheKey)
-    console.log(`🔍 Cache exists: ${cacheExists}`)
-    
-    const cached = await cache.get<DashboardData>(cacheKey)
-    if (cached) {
-      console.log('📋 Using cached data - markets:', cached.markets?.length || 0)
-      console.log('📋 Cache timestamp check - data created at:', cached.markets?.[0]?.research_date)
-      return NextResponse.json({
-        success: true,
-        data: cached,
-        cached: true,
-        debug: {
-          cacheKey,
-          cacheExists: true,
-          timestamp: new Date().toISOString()
-        }
-      })
-    }
+    // No caching - always provide real-time dashboard data
 
     console.log('🏃‍♂️ Fetching complete dashboard data for user:', userId)
 
@@ -144,9 +123,7 @@ export async function GET(request: NextRequest) {
       legacyProducts: legacyProductsWithOverrides
     }
 
-    // Cache for 5 minutes to improve performance
-    await cache.set(cacheKey, dashboardData, 300) // 5 minutes
-    console.log(`🔄 Cached fresh data with key: ${cacheKey} for 5 minutes`)
+    // No caching - dashboard reflects real-time changes
 
     console.log(`✅ Dashboard data loaded: ${marketsWithProducts.length} markets, ${legacyProducts.length} legacy products`)
 

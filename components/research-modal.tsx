@@ -666,54 +666,71 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
 
     return (
       <div className="space-y-6">
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-4">
-            <div className="flex items-start space-x-3">
-              <div className="p-2 bg-amber-100 rounded-full">
-                <IconSearch className="w-4 h-4 text-amber-600" />
+        <Card className="border-amber-200/60 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-800/30 shadow-sm hover:shadow-md transition-all duration-300 fade-in-subtle">
+          <CardContent className="pt-5">
+            <div className="flex items-start space-x-4">
+              <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                <IconSearch className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="flex-1">
-                <h4 className="font-medium text-amber-900">Existing Market Found</h4>
-                <p className="text-sm text-amber-700 mt-1">
-                  You already researched "{existingMarket.keyword}" with {existingMarket.productCount} products.
+                <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-2">Market Already Exists</h4>
+                <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
+                  You previously researched <span className="font-medium">"{existingMarket.keyword}"</span> with {existingMarket.productCount} products.
                 </p>
-                <p className="text-xs text-amber-600 mt-1">
-                  Last updated: {new Date(existingMarket.updatedAt).toLocaleDateString()}
-                </p>
+                <div className="mt-3 flex items-center space-x-2">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
+                    <span className="text-xs text-amber-700 dark:text-amber-300">
+                      Last updated: {new Date(existingMarket.updatedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <div className="space-y-3">
+        <div className="space-y-4 scale-in-gentle">
+          {/* Primary Action: Add to Existing Market */}
           <Button 
             onClick={() => startResearch('refresh')}
-            className="w-full h-auto p-6 flex items-center justify-start space-x-4 bg-blue-600 hover:bg-blue-700 text-white"
+            className="group w-full h-auto p-5 flex items-center justify-between bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.01] hover:-translate-y-0.5 border-0"
           >
-            <div className="p-2 bg-blue-500 rounded-lg">
-              <IconSearch className="w-5 h-5" />
-            </div>
-            <div className="text-left">
-              <div className="font-semibold text-base">Update Existing Market</div>
-              <div className="text-sm text-blue-100 mt-1">
-                Add new products to "{existingMarket.keyword}" market
+            <div className="flex items-center space-x-4">
+              <div className="p-2.5 bg-primary-foreground/20 rounded-lg group-hover:bg-primary-foreground/30 transition-all duration-300">
+                <IconSearch className="w-5 h-5" />
               </div>
+              <div className="text-left">
+                <div className="font-semibold text-base mb-0.5">Add to Market</div>
+                <div className="text-sm text-primary-foreground/80">
+                  Expand "{existingMarket.keyword}" with fresh products
+                </div>
+              </div>
+            </div>
+            <div className="p-1.5 bg-primary-foreground/10 rounded-full group-hover:translate-x-1 transition-transform duration-300">
+              <IconChevronRight className="w-4 h-4" />
             </div>
           </Button>
           
+          {/* Secondary Action: Create New Market */}
           <Button 
             variant="outline"
             onClick={() => startResearch('new')}
-            className="w-full h-auto p-6 flex items-center justify-start space-x-4 border-2 hover:bg-gray-50"
+            className="group w-full h-auto p-5 flex items-center justify-between border-2 border-border hover:border-primary/30 bg-card hover:bg-muted/50 transition-all duration-300 hover:scale-[1.01] hover:shadow-md"
           >
-            <div className="p-2 bg-gray-100 rounded-lg">
-              <IconSearch className="w-5 h-5 text-gray-600" />
-            </div>
-            <div className="text-left">
-              <div className="font-semibold text-base text-gray-900">Create New Market</div>
-              <div className="text-sm text-gray-600 mt-1">
-                Run separate analysis for "{keyword}"
+            <div className="flex items-center space-x-4">
+              <div className="p-2.5 bg-muted rounded-lg group-hover:bg-primary/10 transition-all duration-300">
+                <IconSearch className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
               </div>
+              <div className="text-left">
+                <div className="font-semibold text-base text-foreground mb-0.5">Create New Market</div>
+                <div className="text-sm text-muted-foreground">
+                  Fresh analysis for "{keyword}"
+                </div>
+              </div>
+            </div>
+            <div className="p-1.5 bg-muted/50 rounded-full group-hover:bg-primary/10 group-hover:translate-x-1 transition-all duration-300">
+              <IconChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
             </div>
           </Button>
         </div>

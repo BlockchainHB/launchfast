@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { extractMarketKeywords } from '@/lib/market-calculations'
 import { Logger } from '@/lib/logger'
 import { createServerClient } from '@supabase/ssr'
-import { cache } from '@/lib/cache'
+// Cache removed for data accuracy
 import { MarketRecalculator } from '@/lib/market-recalculator'
 
 export async function POST(request: NextRequest) {
@@ -426,10 +426,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Invalidate dashboard cache so new data shows immediately
-    const dashboardCacheKey = `dashboard_data_${userId}`
-    await cache.del(dashboardCacheKey)
-    Logger.cache.invalidated('dashboard', userId)
+    // No cache invalidation needed - dashboard shows real-time data
 
     const response: any = {
       success: true,

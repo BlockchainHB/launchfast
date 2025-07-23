@@ -4,7 +4,7 @@ import { apifyClient } from '@/lib/apify'
 import { analyzeProductWithReviews } from '@/lib/openai'
 import { scoreProduct, scoreApifyProduct } from '@/lib/scoring'
 import { supabaseAdmin } from '@/lib/supabase'
-import { cache, CACHE_TTL } from '@/lib/cache'
+// Cache removed for data accuracy
 import { calculateAllMetrics, formatCompetitiveIntelligence } from '@/lib/calculations'
 import { Logger } from '@/lib/logger'
 import { createServerClient } from '@supabase/ssr'
@@ -49,20 +49,7 @@ export async function POST(request: NextRequest) {
 
     Logger.research.start(keyword, filters)
 
-    // Check cache first
-    const cacheKey = cache.generateKey('apify_product_research', { keyword, filters, limit })
-    const cached = await cache.get<EnhancedProduct[]>(cacheKey)
-    if (cached) {
-      Logger.cache.hit(`research_${keyword}`)
-      return NextResponse.json({
-        success: true,
-        data: cached,
-        cached: true,
-        count: cached.length,
-        processing_time: Date.now() - startTime,
-        source: 'cache'
-      })
-    }
+    // Skip cache - always fetch fresh data for market research
     Logger.cache.miss(`research_${keyword}`)
 
     // Validate API keys
@@ -242,8 +229,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Cache results
-    await cache.set(cacheKey, finalProducts, CACHE_TTL.SEARCH_RESULTS)
+    // No caching - always provide fresh market research results
 
     // Log search session
     try {

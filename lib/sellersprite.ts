@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { cache, CACHE_TTL, cacheHelpers } from './cache'
+// Cache removed for data accuracy in multi-API flows
 import { calculateReferralFeeFromApify } from './amazon-fees'
 import { calculateEnhancedFbaCost } from './calculations'
 import { Logger } from './logger'
@@ -24,9 +24,7 @@ export class SellerSpriteClient {
 
   // Product Research - Primary discovery endpoint
   async productResearch(params: SearchParams): Promise<ProductData[]> {
-    const cacheKey = cache.generateKey('product_research', params)
-    const cached = await cache.get<ProductData[]>(cacheKey)
-    if (cached) return cached
+    // No caching - always fetch fresh product research data
 
     try {
       const requestPayload: any = {
@@ -120,7 +118,7 @@ export class SellerSpriteClient {
         createdAt: new Date().toISOString()
       }))
 
-      await cache.set(cacheKey, products, CACHE_TTL.PRODUCT_RESEARCH)
+      // No caching - fresh data ensures accuracy
       return products
       
     } catch (error) {
@@ -131,8 +129,7 @@ export class SellerSpriteClient {
 
   // Sales Prediction - Profit calculation endpoint
   async salesPrediction(asin: string): Promise<SalesPrediction | null> {
-    const cached = await cacheHelpers.getSalesData(asin)
-    if (cached) return cached as SalesPrediction
+    // No caching - always fetch fresh sales predictions as SalesPrediction
 
     try {
       const response = await axios.get(`${this.baseURL}/v1/sales/prediction/asin`, {
@@ -188,7 +185,7 @@ export class SellerSpriteClient {
         referralCategory: enhancedMargin.referralCategory
       }
 
-      await cacheHelpers.setSalesData(asin, salesData)
+      // No caching - fresh sales data for accurate analysis
       return salesData
       
     } catch (error) {
@@ -199,9 +196,7 @@ export class SellerSpriteClient {
 
   // Reverse ASIN - Keyword intelligence endpoint
   async reverseASIN(asin: string, page: number = 1, size: number = 200): Promise<KeywordData[]> {
-    const cacheKey = cache.generateKey('reverse_asin', { asin, page, size })
-    const cached = await cache.get<KeywordData[]>(cacheKey)
-    if (cached) return cached
+    // No caching - always fetch fresh keyword data
 
     try {
       const response = await axios.post(`${this.baseURL}/v1/traffic/keyword`, {
@@ -229,7 +224,7 @@ export class SellerSpriteClient {
         competitionScore: 0 // Will be calculated based on other factors
       }))
 
-      await cache.set(cacheKey, keywords, CACHE_TTL.REVERSE_ASIN)
+      // No caching - fresh keyword data ensures accuracy
       return keywords
       
     } catch (error) {
@@ -255,9 +250,7 @@ export class SellerSpriteClient {
       amazonChoice: false
     }
 
-    const cacheKey = cache.generateKey('keyword_mining', params)
-    const cached = await cache.get<OpportunityData[]>(cacheKey)
-    if (cached) return cached
+    // No caching - always fetch fresh keyword mining data
 
     try {
       const response = await axios.post(`${this.baseURL}/v1/keyword/miner`, params, {
@@ -287,7 +280,7 @@ export class SellerSpriteClient {
         growthTrend: item.growthTrend || 'stable'
       }))
 
-      await cache.set(cacheKey, opportunities, CACHE_TTL.KEYWORD_MINING)
+      // No caching - fresh keyword mining for accurate results
       return opportunities
       
     } catch (error) {
@@ -305,9 +298,7 @@ export class SellerSpriteClient {
   }> {
     try {
       // Get cached product data first
-      const cachedProduct = await cacheHelpers.getProductData(asin)
-      const cachedSales = await cacheHelpers.getSalesData(asin)
-      const cachedKeywords = await cacheHelpers.getKeywordsData(asin)
+      // No caching - always fetch fresh comprehensive analysis
 
       // Fetch missing data in parallel
       const [salesData, keywordData] = await Promise.all([

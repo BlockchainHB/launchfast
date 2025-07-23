@@ -121,59 +121,20 @@ export const cache = {
   }
 }
 
-// Cache TTL configuration (in seconds)
+// Cache TTL configuration (in seconds) - UI only
 export const CACHE_TTL = {
-  PRODUCT_RESEARCH: 6 * 60 * 60, // 6 hours
-  SALES_PREDICTION: 24 * 60 * 60, // 24 hours
-  REVERSE_ASIN: 7 * 24 * 60 * 60, // 7 days
-  KEYWORD_MINING: 3 * 24 * 60 * 60, // 3 days
-  AI_ANALYSIS: 7 * 24 * 60 * 60, // 7 days
-  SEARCH_RESULTS: 2 * 60 * 60 // 2 hours
+  UI_ELEMENTS: 5 * 60 // 5 minutes for UI caching only
 }
 
-// Cache key prefixes
+// Cache key prefixes - UI only
 export const CACHE_KEYS = {
-  PRODUCT: 'product',
-  SALES: 'sales',
-  KEYWORDS: 'keywords',
-  OPPORTUNITIES: 'opportunities',
-  AI_ANALYSIS: 'ai_analysis',
-  SEARCH: 'search'
+  UI: 'ui'
 }
 
-// Helper functions for specific cache operations
+// Helper functions for UI cache operations only
 export const cacheHelpers = {
-  async getProductData(asin: string) {
-    return await cache.get(`${CACHE_KEYS.PRODUCT}:${asin}`)
-  },
-
-  async setProductData(asin: string, data: any, ttl: number = CACHE_TTL.PRODUCT_RESEARCH) {
-    await cache.set(`${CACHE_KEYS.PRODUCT}:${asin}`, data, ttl)
-  },
-
-  async getSalesData(asin: string) {
-    return await cache.get(`${CACHE_KEYS.SALES}:${asin}`)
-  },
-
-  async setSalesData(asin: string, data: any, ttl: number = CACHE_TTL.SALES_PREDICTION) {
-    await cache.set(`${CACHE_KEYS.SALES}:${asin}`, data, ttl)
-  },
-
-  async getKeywordsData(asin: string) {
-    return await cache.get(`${CACHE_KEYS.KEYWORDS}:${asin}`)
-  },
-
-  async setKeywordsData(asin: string, data: any, ttl: number = CACHE_TTL.REVERSE_ASIN) {
-    await cache.set(`${CACHE_KEYS.KEYWORDS}:${asin}`, data, ttl)
-  },
-
-  async getAIAnalysis(asin: string) {
-    return await cache.get(`${CACHE_KEYS.AI_ANALYSIS}:${asin}`)
-  },
-
-  async setAIAnalysis(asin: string, data: any, ttl: number = CACHE_TTL.AI_ANALYSIS) {
-    await cache.set(`${CACHE_KEYS.AI_ANALYSIS}:${asin}`, data, ttl)
-  }
+  // Core cache methods remain available for UI caching
+  // All business logic cache helpers removed for data accuracy
 }
 
 // Export memoryCache for direct access if needed

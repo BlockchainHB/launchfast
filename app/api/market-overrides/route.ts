@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { MarketRecalculator } from '@/lib/market-recalculator'
-import { cache } from '@/lib/cache'
+// Cache removed for data accuracy
 import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
@@ -122,17 +122,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Force invalidate dashboard cache to update stats cards (especially for re-overrides)
-    const dashboardCacheKey = `dashboard_data_${userId}`
-    
-    console.log(`🔍 Invalidating cache for ${isReOverride ? 're-override' : 'new override'}: ${dashboardCacheKey}`)
-    await cache.del(dashboardCacheKey)
-    
-    // Add delay to prevent race conditions
-    await new Promise(resolve => setTimeout(resolve, 150))
-    
-    const cacheStillExists = await cache.exists(dashboardCacheKey)
-    console.log(`🗑️ Invalidated dashboard cache after market ${isReOverride ? 're-override' : 'override'}: ${dashboardCacheKey} (still exists: ${cacheStillExists})`)
+    // No cache invalidation needed - dashboard shows real-time data
+    console.log(`✅ Dashboard will reflect market ${isReOverride ? 're-override' : 'override'} in real-time`)
 
     return NextResponse.json({
       success: true,
@@ -203,10 +194,8 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Invalidate dashboard cache to update stats cards after deletion
-    const dashboardCacheKey = `dashboard_data_${userId}`
-    await cache.del(dashboardCacheKey)
-    console.log(`🗑️ Invalidated dashboard cache after market override deletion: ${dashboardCacheKey}`)
+    // No cache invalidation needed - dashboard shows real-time data
+    console.log(`✅ Dashboard will reflect market override deletion in real-time`)
 
     return NextResponse.json({
       success: true,
@@ -214,8 +203,7 @@ export async function DELETE(request: NextRequest) {
         ? 'Successfully deleted market override' 
         : 'Successfully deleted all market overrides for user',
       debug: {
-        cacheInvalidated: true,
-        cacheKey: dashboardCacheKey
+        realTimeDashboard: true
       }
     })
 

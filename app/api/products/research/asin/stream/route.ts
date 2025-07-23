@@ -4,7 +4,7 @@ import { apifyClient } from '@/lib/apify'
 import { analyzeProductWithReviews } from '@/lib/openai'
 import { scoreProduct } from '@/lib/scoring'
 import { supabaseAdmin } from '@/lib/supabase'
-import { cache, CACHE_TTL } from '@/lib/cache'
+// Cache removed for data accuracy
 import { calculateAllMetrics, formatCompetitiveIntelligence } from '@/lib/calculations'
 import { Logger } from '@/lib/logger'
 import { createServerClient } from '@supabase/ssr'
@@ -123,20 +123,7 @@ export async function GET(request: NextRequest) {
         return
       }
 
-      // Check cache
-      const cacheKey = cache.generateKey('asin_research', { asin })
-      const cached = await cache.get<EnhancedProduct>(cacheKey)
-      if (cached) {
-        sendEvent({
-          phase: 'complete',
-          message: 'Found cached analysis',
-          progress: 100,
-          data: { products: [cached], cached: true },
-          timestamp: new Date().toISOString()
-        })
-        if (controller) controller.close()
-        return
-      }
+      // Skip cache - always fetch fresh data for user-initiated ASIN research
 
       // Phase 1: Product Analysis
       sendEvent({
@@ -276,8 +263,7 @@ export async function GET(request: NextRequest) {
         market: null
       }
 
-      // Cache the result
-      await cache.set(cacheKey, enhancedProduct, CACHE_TTL.PRODUCT_ANALYSIS)
+      // No caching - always provide fresh analysis results
 
       const processingTime = Date.now() - startTime
       Logger.dev.trace(`ASIN research completed for ${asin} in ${processingTime}ms`)

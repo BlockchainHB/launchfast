@@ -106,19 +106,8 @@ export async function DELETE(
     // Invalidate dashboard cache
     console.log(`🗑️ Invalidating dashboard cache for user ${userId}`)
     
-    let cacheCleared = false
-    const cacheKey = `dashboard_data_${userId}`
-
-    try {
-      // Use the cache helper which handles Upstash Redis automatically
-      const { cache } = await import('@/lib/cache')
-      await cache.del(cacheKey)
-      cacheCleared = true
-      console.log(`✅ Cache cleared: ${cacheKey}`)
-    } catch (cacheError) {
-      console.warn('Failed to clear cache:', cacheError)
-      // Continue anyway, cache clearing is not critical for the operation
-    }
+    // No cache invalidation needed - dashboard shows real-time data
+    const cacheCleared = true // Always true since no cache exists
 
     return NextResponse.json({
       success: true,
