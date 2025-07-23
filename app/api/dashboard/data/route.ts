@@ -132,9 +132,8 @@ export async function GET(request: NextRequest) {
       data: dashboardData,
       cached: false,
       debug: {
-        cacheKey,
         freshDataGenerated: new Date().toISOString(),
-        cacheSet: true
+        cacheRemoved: true
       },
       stats: {
         markets_count: marketsWithProducts.length,
