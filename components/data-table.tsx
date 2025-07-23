@@ -649,38 +649,6 @@ export function DataTable({
     }
   }
 
-  const handleGenerateAIAnalysis = async () => {
-    if (selectedRows.length === 1) {
-      const product = selectedRows[0].original
-      
-      try {
-        const loadingToast = toast(`Generating AI Analysis document for ${product.title.slice(0, 50)}...`)
-        
-        const response = await fetch('/api/analysis-documents/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            productId: product.id
-          })
-        })
-
-        const data = await response.json()
-        
-        if (data.success) {
-          toast.success('AI Analysis document generated successfully!')
-          // Navigate to Product Analysis page
-          window.location.href = '/dashboard/product-analysis'
-        } else {
-          toast.error(data.error || 'Failed to generate AI Analysis document')
-        }
-      } catch (error) {
-        console.error('Error generating AI Analysis:', error)
-        toast.error('Failed to generate AI Analysis document')
-      }
-    }
-  }
 
   const handleBatchDelete = async () => {
     if (!hasSelection) return
