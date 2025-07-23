@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { ArrowLeft, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react"
 
-export function ResetPasswordForm({
+function ResetPasswordFormContent({
   className,
   ...props
 }: React.ComponentProps<"div">) {
@@ -235,5 +235,27 @@ export function ResetPasswordForm({
         </Link>
       </div>
     </div>
+  )
+}
+
+export function ResetPasswordForm(props: React.ComponentProps<"div">) {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col gap-6">
+        <div className="border border-primary/10 bg-white/5 backdrop-blur-md rounded-lg p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+            <div className="space-y-3">
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <ResetPasswordFormContent {...props} />
+    </Suspense>
   )
 }
