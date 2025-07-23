@@ -127,6 +127,50 @@ export function SubscriptionSettings() {
     window.location.href = '/api/subscribe'
   }
 
+  const handleCancelSubscription = async () => {
+    setIsCancellingSubscription(true)
+    try {
+      const response = await fetch('/api/subscription/cancel', {
+        method: 'POST'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(data.message)
+        fetchSubscriptionData()
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Failed to cancel subscription')
+      }
+    } catch (error) {
+      toast.error('Error cancelling subscription')
+    } finally {
+      setIsCancellingSubscription(false)
+    }
+  }
+
+  const handleReactivateSubscription = async () => {
+    setIsCancellingSubscription(true)
+    try {
+      const response = await fetch('/api/subscription/cancel', {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(data.message)
+        fetchSubscriptionData()
+      } else {
+        const errorData = await response.json()
+        toast.error(errorData.error || 'Failed to reactivate subscription')
+      }
+    } catch (error) {
+      toast.error('Error reactivating subscription')
+    } finally {
+      setIsCancellingSubscription(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -167,10 +211,16 @@ export function SubscriptionSettings() {
                   ✨ Special User
                 </Badge>
               )}
-              {isPro && isActive && (
+              {isPro && isActive && !subscription.cancel_at_period_end && (
                 <Badge variant="default" className="bg-green-100 text-green-800">
                   <IconCheck className="h-3 w-3 mr-1" />
                   Active
+                </Badge>
+              )}
+              {isPro && isActive && subscription.cancel_at_period_end && (
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                  <IconAlertTriangle className="h-3 w-3 mr-1" />
+                  Cancelling
                 </Badge>
               )}
               {!isActive && !isUnlimited && (
@@ -195,23 +245,66 @@ export function SubscriptionSettings() {
               )}
               
               {!isUnlimited && (
-                <div className="flex gap-4">
-                  {!isPro && (
-                    <Button onClick={handleUpgrade}>
-                      Upgrade to Pro
-                    </Button>
+                <div className="space-y-4">
+                  {/* Cancellation Alert */}
+                  {isPro && isActive && subscription.cancel_at_period_end && (
+                    <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                      <IconAlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-orange-800">
+                          Subscription Cancellation Scheduled
+                        </p>
+                        <p className="text-sm text-orange-700 mt-1">
+                          Your subscription will end on {new Date(subscription.current_period_end!).toLocaleDateString()}. 
+                          You&apos;ll continue to have access until then.
+                        </p>
+                      </div>
+                    </div>
                   )}
-                  {isPro && isActive && (
-                    <Button
-                      variant="outline"
-                      onClick={handleManageSubscription}
-                      disabled={isManagingSubscription}
-                    >
-                      <IconCreditCard className="h-4 w-4 mr-2" />
-                      {isManagingSubscription ? 'Loading...' : 'Manage Subscription'}
-                      <IconExternalLink className="h-4 w-4 ml-2" />
-                    </Button>
-                  )}
+
+                  <div className="flex flex-wrap gap-3">
+                    {!isPro && (
+                      <Button onClick={handleUpgrade}>
+                        Upgrade to Pro
+                      </Button>
+                    )}
+                    
+                    {isPro && isActive && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={handleManageSubscription}
+                          disabled={isManagingSubscription}
+                        >
+                          <IconCreditCard className="h-4 w-4 mr-2" />
+                          {isManagingSubscription ? 'Loading...' : 'Manage Subscription'}
+                          <IconExternalLink className="h-4 w-4 ml-2" />
+                        </Button>
+
+                        {!subscription.cancel_at_period_end ? (
+                          <Button
+                            variant="outline"
+                            onClick={handleCancelSubscription}
+                            disabled={isCancellingSubscription}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                          >
+                            <IconX className="h-4 w-4 mr-2" />
+                            {isCancellingSubscription ? 'Cancelling...' : 'Cancel Subscription'}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            onClick={handleReactivateSubscription}
+                            disabled={isCancellingSubscription}
+                            className="text-green-600 border-green-200 hover:bg-green-50"
+                          >
+                            <IconCheck className="h-4 w-4 mr-2" />
+                            {isCancellingSubscription ? 'Reactivating...' : 'Reactivate Subscription'}
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
