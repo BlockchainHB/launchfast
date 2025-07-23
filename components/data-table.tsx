@@ -28,6 +28,7 @@ import {
   IconEdit,
   IconTrash,
   IconDots,
+  IconBrain,
 } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -648,6 +649,39 @@ export function DataTable({
     }
   }
 
+  const handleGenerateAIAnalysis = async () => {
+    if (selectedRows.length === 1) {
+      const product = selectedRows[0].original
+      
+      try {
+        const loadingToast = toast(`Generating AI Analysis document for ${product.title.slice(0, 50)}...`)
+        
+        const response = await fetch('/api/analysis-documents/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            productId: product.id
+          })
+        })
+
+        const data = await response.json()
+        
+        if (data.success) {
+          toast.success('AI Analysis document generated successfully!')
+          // Navigate to Product Analysis page
+          window.location.href = '/dashboard/product-analysis'
+        } else {
+          toast.error(data.error || 'Failed to generate AI Analysis document')
+        }
+      } catch (error) {
+        console.error('Error generating AI Analysis:', error)
+        toast.error('Failed to generate AI Analysis document')
+      }
+    }
+  }
+
   const handleBatchDelete = async () => {
     if (!hasSelection) return
 
@@ -830,6 +864,16 @@ export function DataTable({
           >
             <IconEdit className="mr-2 h-4 w-4" />
             Edit Selected ({selectedRows.length})
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleGenerateAIAnalysis}
+            disabled={selectedRows.length !== 1}
+            className={selectedRows.length === 1 ? "border-blue-500 text-blue-600 hover:bg-blue-50" : ""}
+          >
+            <IconBrain className="mr-2 h-4 w-4" />
+            Generate AI Analysis
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
