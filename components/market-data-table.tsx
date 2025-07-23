@@ -458,13 +458,26 @@ function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketT
     header: ({ column }) => (
       <div className="text-center text-xs font-medium">COG</div>
     ),
-    cell: ({ row }) => (
-      <div className="text-center">
-        <span className="metric-currency">
-          ${(row.original.avg_cogs || (row.original.avg_price * 0.3)).toFixed(2)}
-        </span>
-      </div>
-    ),
+    cell: ({ row }) => {
+      const market = row.original
+      // Calculate average COG from actual products in this market
+      const products = market.products || []
+      const validCogs = products
+        .map(p => p.salesData?.cogs || 0)
+        .filter(cogs => cogs > 0)
+      
+      const avgCogs = validCogs.length > 0 
+        ? validCogs.reduce((sum, cogs) => sum + cogs, 0) / validCogs.length
+        : market.avg_price * 0.3 // Fallback to 30% of price
+      
+      return (
+        <div className="text-center">
+          <span className="metric-currency">
+            ${avgCogs.toFixed(2)}
+          </span>
+        </div>
+      )
+    },
     size: 100,
   },
   // 11. Fulfillment Fees (Market Average) - calculated from avg launch budget
