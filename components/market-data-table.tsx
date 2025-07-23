@@ -121,6 +121,8 @@ function ProductSubRow({ product, isLast }: { product: EnhancedProduct; isLast: 
             </TooltipProvider>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-muted-foreground">{product.asin}</span>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">${product.price}</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -452,14 +454,14 @@ function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketT
   },
   // 10. COG (Market Average)
   {
-    accessorKey: "price",
+    accessorKey: "avg_cogs",
     header: ({ column }) => (
       <div className="text-center text-xs font-medium">COG</div>
     ),
     cell: ({ row }) => (
       <div className="text-center">
         <span className="metric-currency">
-          ${(row.original.price * 0.3).toFixed(2)}
+          ${(row.original.avg_cogs || (row.original.avg_price * 0.3)).toFixed(2)}
         </span>
       </div>
     ),
