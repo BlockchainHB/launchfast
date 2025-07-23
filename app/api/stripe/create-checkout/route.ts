@@ -74,16 +74,17 @@ async function createCheckoutSession(
 
   if (email) {
     try {
-      // Verify if customer is legacy customer
-      const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/customer/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
+      // Verify if customer is legacy customer - direct database call for server-side
+      const { data: legacyCustomer, error } = await supabaseAdmin
+        .from('legacyx_customers')
+        .select('id, customer_name, customer_email')
+        .eq('customer_email', email.toLowerCase().trim())
+        .single();
 
-      if (verifyResponse.ok) {
-        const verification = await verifyResponse.json();
-        priceId = verification.priceId;
+      if (!error && legacyCustomer) {
+        priceId = PRICE_IDS.LEGACY_CUSTOMER;
+      } else {
+        priceId = PRICE_IDS.NEW_CUSTOMER;
       }
     } catch (error) {
       console.error('Customer verification failed, using default pricing:', error);

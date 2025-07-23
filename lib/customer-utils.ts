@@ -40,7 +40,8 @@ export const PRICE_IDS = {
 } as const;
 
 /**
- * Customer verification with proper error handling
+ * Customer verification with proper error handling (client-side only)
+ * For server-side verification, use direct database calls instead
  */
 export async function verifyCustomer(email: string): Promise<CustomerVerificationResult> {
   try {
@@ -65,6 +66,50 @@ export async function verifyCustomer(email: string): Promise<CustomerVerificatio
     return await response.json();
   } catch (error) {
     console.error('Customer verification error:', error);
+    
+    // Return safe defaults on error
+    return {
+      isLegacyCustomer: false,
+      priceId: PRICE_IDS.NEW_CUSTOMER,
+      message: 'Verification unavailable, using regular pricing'
+    };
+  }
+}
+
+/**
+ * Server-side customer verification using direct database access
+ * Use this in API routes instead of verifyCustomer()
+ */
+export async function verifyCustomerServerSide(
+  email: string, 
+  supabaseAdmin: any
+): Promise<CustomerVerificationResult> {
+  try {
+    const normalizedEmail = normalizeEmail(email);
+    
+    if (!isValidEmail(normalizedEmail)) {
+      throw new Error('Invalid email format');
+    }
+
+    const { data: legacyCustomer, error } = await supabaseAdmin
+      .from('legacyx_customers')
+      .select('id, customer_name, customer_email')
+      .eq('customer_email', normalizedEmail)
+      .single();
+
+    const isLegacyCustomer = !error && !!legacyCustomer;
+    const priceId = isLegacyCustomer ? PRICE_IDS.LEGACY_CUSTOMER : PRICE_IDS.NEW_CUSTOMER;
+
+    return {
+      isLegacyCustomer,
+      priceId,
+      customerName: legacyCustomer?.customer_name || null,
+      message: isLegacyCustomer 
+        ? 'Welcome back! You qualify for our legacy customer discount.'
+        : 'New customer pricing applied.'
+    };
+  } catch (error) {
+    console.error('Server-side customer verification error:', error);
     
     // Return safe defaults on error
     return {

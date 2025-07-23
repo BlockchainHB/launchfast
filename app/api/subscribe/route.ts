@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@supabase/ssr'
+import { supabaseAdmin } from '@/lib/supabase'
 import { PRICE_IDS } from '@/lib/customer-utils'
 
 export async function GET(request: NextRequest) {
@@ -30,17 +31,16 @@ export async function GET(request: NextRequest) {
 
     if (customerEmail) {
       try {
-        // Verify if customer is legacy customer
-        const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/customer/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: customerEmail })
-        });
+        // Verify if customer is legacy customer - direct database call for server-side
+        const { data: legacyCustomer, error } = await supabaseAdmin
+          .from('legacyx_customers')
+          .select('id, customer_name, customer_email')
+          .eq('customer_email', customerEmail.toLowerCase().trim())
+          .single();
 
-        if (verifyResponse.ok) {
-          const verification = await verifyResponse.json();
-          priceId = verification.priceId;
-          customerType = verification.isLegacyCustomer ? 'legacy' : 'new';
+        if (!error && legacyCustomer) {
+          priceId = PRICE_IDS.LEGACY_CUSTOMER;
+          customerType = 'legacy';
         }
       } catch (error) {
         console.error('Customer verification failed, using new customer pricing:', error);
