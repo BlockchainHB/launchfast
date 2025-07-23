@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
     let savedMarket = null
     let recalculationTriggered = false
     let newProductIds = []
+    let duplicateCount = 0
     
     Logger.save.start(products.length, !!marketAnalysis)
     
@@ -60,62 +61,80 @@ export async function POST(request: NextRequest) {
     if (refreshMode === 'refresh' && existingMarketId) {
       console.log(`🔄 Refresh mode: Adding ${products.length} products to existing market ${existingMarketId}`)
       
-      // 1. Insert new products linked to existing market
-      const newProductInserts = products.map((product, index) => ({
-        user_id: userId,
-        market_id: existingMarketId,
-        asin: product.asin,
-        title: product.title,
-        brand: product.brand || 'Unknown',
-        price: product.price,
-        bsr: product.bsr || null,
-        reviews: product.reviews || 0,
-        rating: product.rating || null,
-        monthly_sales: product.salesData?.monthlySales || null,
-        monthly_revenue: product.salesData?.monthlyRevenue || null,
-        profit_estimate: product.salesData?.monthlyProfit || null,
-        grade: product.grade ? product.grade.substring(0, 2) : null,
-        images: product.images || [],
-        dimensions: product.dimensions || {},
-        reviews_data: product.reviewsData || {},
-        sales_data: product.salesData || {},
-        competitive_intelligence: product.competitiveIntelligence || '',
-        apify_source: product.apifySource || false,
-        seller_sprite_verified: product.sellerSpriteVerified || false,
-        calculated_metrics: product.calculatedMetrics || {},
-        is_market_representative: false, // New products don't represent the market
-        analysis_rank: index + 1, // Will be recalculated
-        created_at: new Date().toISOString()
-      }))
-
-      const { data: newProducts, error: productError } = await supabaseAdmin
+      // 1. Check for existing ASINs to avoid duplicates
+      const asinsToCheck = products.map(p => p.asin)
+      const { data: existingProducts } = await supabaseAdmin
         .from('products')
-        .insert(newProductInserts)
-        .select()
+        .select('asin')
+        .eq('user_id', userId)
+        .in('asin', asinsToCheck)
 
-      if (productError) {
-        Logger.error('New product insertion failed', productError)
-        console.error('Product insertion error details:', productError)
-        throw new Error(`Failed to insert new products: ${productError.message}`)
+      const existingAsins = new Set(existingProducts?.map(p => p.asin) || [])
+      const newProducts = products.filter(p => !existingAsins.has(p.asin))
+      duplicateCount = products.length - newProducts.length
+
+      console.log(`📊 Product analysis: ${newProducts.length} new, ${duplicateCount} duplicates`)
+
+      // 2. Insert only new products linked to existing market
+      let insertedProducts: any[] = []
+      if (newProducts.length > 0) {
+        const newProductInserts = newProducts.map((product, index) => ({
+          user_id: userId,
+          market_id: existingMarketId,
+          asin: product.asin,
+          title: product.title,
+          brand: product.brand || 'Unknown',
+          price: product.price,
+          bsr: product.bsr || null,
+          reviews: product.reviews || 0,
+          rating: product.rating || null,
+          monthly_sales: product.salesData?.monthlySales || null,
+          monthly_revenue: product.salesData?.monthlyRevenue || null,
+          profit_estimate: product.salesData?.monthlyProfit || null,
+          grade: product.grade ? product.grade.substring(0, 2) : null,
+          images: product.images || [],
+          dimensions: product.dimensions || {},
+          reviews_data: product.reviewsData || {},
+          sales_data: product.salesData || {},
+          competitive_intelligence: product.competitiveIntelligence || '',
+          apify_source: product.apifySource || false,
+          seller_sprite_verified: product.sellerSpriteVerified || false,
+          calculated_metrics: product.calculatedMetrics || {},
+          is_market_representative: false, // New products don't represent the market
+          analysis_rank: index + 1, // Will be recalculated
+          created_at: new Date().toISOString()
+        }))
+
+        const { data: insertResult, error: productError } = await supabaseAdmin
+          .from('products')
+          .insert(newProductInserts)
+          .select()
+
+        if (productError) {
+          Logger.error('New product insertion failed', productError)
+          console.error('Product insertion error details:', productError)
+          throw new Error(`Failed to insert new products: ${productError.message}`)
+        }
+
+        insertedProducts = insertResult || []
       }
 
-      savedProducts.push(...newProducts)
-      newProductIds = newProducts.map(p => p.id)
+      savedProducts.push(...insertedProducts)
+      newProductIds = insertedProducts.map(p => p.id)
 
-      // 2. Update market metadata
-      // First get current counts
+      // 3. Update market metadata with only new products count
       const { data: currentMarket } = await supabaseAdmin
         .from('markets')
         .select('total_products_analyzed, products_verified')
         .eq('id', existingMarketId)
         .single()
 
-      if (currentMarket) {
+      if (currentMarket && insertedProducts.length > 0) {
         await supabaseAdmin
           .from('markets')
           .update({
-            total_products_analyzed: (currentMarket.total_products_analyzed || 0) + products.length,
-            products_verified: (currentMarket.products_verified || 0) + products.length,
+            total_products_analyzed: (currentMarket.total_products_analyzed || 0) + insertedProducts.length,
+            products_verified: (currentMarket.products_verified || 0) + insertedProducts.length,
             updated_at: new Date().toISOString()
           })
           .eq('id', existingMarketId)
@@ -431,7 +450,7 @@ export async function POST(request: NextRequest) {
     const response: any = {
       success: true,
       message: refreshMode === 'refresh' 
-        ? `Successfully added ${savedProducts.length} new products to existing market`
+        ? `Successfully added ${savedProducts.length} new products to existing market${duplicateCount > 0 ? ` (${duplicateCount} duplicates skipped)` : ''}`
         : savedMarket 
           ? `Successfully saved market analysis and ${savedProducts.length} products`
           : `Successfully saved ${savedProducts.length} products`,
@@ -440,6 +459,8 @@ export async function POST(request: NextRequest) {
       // Refresh mode specific data
       mode: refreshMode || 'new',
       newProductsAdded: refreshMode === 'refresh' ? savedProducts.length : 0,
+      duplicatesSkipped: duplicateCount,
+      totalProductsAttempted: products.length,
       totalProducts: refreshMode === 'refresh' && savedMarket ? savedMarket.total_products_analyzed : savedProducts.length,
       recalculationTriggered,
       marketGrade: savedMarket?.market_grade,
