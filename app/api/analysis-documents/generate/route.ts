@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { generateComprehensiveAnalysisHTML } from '@/lib/document-templates'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,17 +15,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get product data with AI analysis
-    const { data: productData, error: productError } = await supabase
+    // Get authenticated user
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    console.log('DEBUG: Looking for product with ID:', productId, 'for user:', user.id)
+    
+    // Get product data with AI analysis using admin client to bypass RLS
+    const { data: productData, error: productError } = await supabaseAdmin
       .from('products')
       .select(`
         *,
         ai_analysis (*)
       `)
       .eq('id', productId)
+      .eq('user_id', user.id)  // Ensure user owns the product
       .single()
 
+    console.log('DEBUG: Product query result:', {
+      found: !!productData,
+      error: productError?.message,
+      hasAiAnalysis: !!productData?.ai_analysis,
+      aiAnalysisArray: Array.isArray(productData?.ai_analysis),
+      aiAnalysisLength: productData?.ai_analysis?.length
+    })
+
     if (productError || !productData) {
+      console.log('DEBUG: Product not found. Error:', productError)
       return NextResponse.json(
         { error: 'Product not found or no AI analysis available' },
         { status: 404 }
@@ -101,7 +134,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Check if document already exists
-    const { data: existingDoc } = await supabase
+    const { data: existingDoc } = await supabaseAdmin
       .from('analysis_documents')
       .select('id')
       .eq('ai_analysis_id', productData.ai_analysis.id)
@@ -111,7 +144,7 @@ export async function POST(request: NextRequest) {
 
     if (existingDoc) {
       // Update existing document
-      const { data: updatedDoc, error: updateError } = await supabase
+      const { data: updatedDoc, error: updateError } = await supabaseAdmin
         .from('analysis_documents')
         .update({
           document_title: documentTitle,
@@ -134,7 +167,7 @@ export async function POST(request: NextRequest) {
       documentId = updatedDoc.id
     } else {
       // Create new document
-      const { data: newDoc, error: insertError } = await supabase
+      const { data: newDoc, error: insertError } = await supabaseAdmin
         .from('analysis_documents')
         .insert({
           ai_analysis_id: productData.ai_analysis.id,
