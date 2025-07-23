@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cannot cancel this subscription type' }, { status: 400 })
     }
 
+    console.log('Attempting to cancel subscription:', profile.stripe_subscription_id)
+    
     // Update the subscription in Stripe to cancel at period end
     const subscription = await stripe.subscriptions.update(
       profile.stripe_subscription_id,
@@ -52,6 +54,12 @@ export async function POST(request: NextRequest) {
         cancel_at_period_end: true,
       }
     )
+    
+    console.log('Stripe subscription updated:', {
+      id: subscription.id,
+      cancel_at_period_end: subscription.cancel_at_period_end,
+      current_period_end: subscription.current_period_end
+    })
 
     // Update the database to reflect the cancellation
     const { error: updateError } = await supabase
@@ -76,8 +84,21 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error cancelling subscription:', error)
+    
+    // Provide more specific error information
+    let errorMessage = 'Failed to cancel subscription'
+    if (error instanceof Error) {
+      if (error.message.includes('STRIPE_SECRET_KEY')) {
+        errorMessage = 'Stripe configuration error - missing API key'
+      } else if (error.message.includes('stripe')) {
+        errorMessage = `Stripe API error: ${error.message}`
+      } else {
+        errorMessage = error.message
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to cancel subscription' },
+      { error: errorMessage, details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
@@ -151,8 +172,21 @@ export async function DELETE(request: NextRequest) {
 
   } catch (error) {
     console.error('Error reactivating subscription:', error)
+    
+    // Provide more specific error information
+    let errorMessage = 'Failed to reactivate subscription'
+    if (error instanceof Error) {
+      if (error.message.includes('STRIPE_SECRET_KEY')) {
+        errorMessage = 'Stripe configuration error - missing API key'
+      } else if (error.message.includes('stripe')) {
+        errorMessage = `Stripe API error: ${error.message}`
+      } else {
+        errorMessage = error.message
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to reactivate subscription' },
+      { error: errorMessage, details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
