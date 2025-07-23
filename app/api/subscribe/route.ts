@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createServerClient } from '@supabase/ssr'
+import { supabaseAdmin } from '@/lib/supabase'
+import { PRICE_IDS } from '@/lib/customer-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,12 +24,38 @@ export async function GET(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
     
-    // Create checkout session with or without user metadata
+    // Determine price based on customer verification
+    let priceId = PRICE_IDS.NEW_CUSTOMER; // Default: new customer price
+    let customerType = 'new';
+    const customerEmail = email || user?.email;
+
+    if (customerEmail) {
+      try {
+        // Verify if customer is legacy customer - direct database call for server-side
+        const { data: legacyCustomer, error } = await supabaseAdmin
+          .from('legacyx_customers')
+          .select('id, customer_name, customer_email')
+          .eq('customer_email', customerEmail.toLowerCase().trim())
+          .single();
+
+        if (!error && legacyCustomer) {
+          priceId = PRICE_IDS.LEGACY_CUSTOMER;
+          customerType = 'legacy';
+        }
+      } catch (error) {
+        console.error('Customer verification failed, using new customer pricing:', error);
+        // Continue with new customer pricing on verification failure - this ensures checkout always works
+        priceId = PRICE_IDS.NEW_CUSTOMER;
+        customerType = 'new';
+      }
+    }
+    
+    // Create checkout session with dynamic pricing
     const sessionData: any = {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1RnAMaDWe1hjENea37Yg5myP', // LaunchFast Pro $50/month
+          price: priceId, // Dynamic pricing based on customer verification
           quantity: 1,
         },
       ],
@@ -36,13 +64,19 @@ export async function GET(request: NextRequest) {
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}?canceled=true`,
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
-      customer_email: email || user?.email || undefined,
+      customer_email: customerEmail || undefined,
       metadata: {
-        plan: 'pro'
+        plan: 'pro',
+        customer_type: customerType,
+        customer_email: customerEmail || '',
+        price_id: priceId
       },
       subscription_data: {
         metadata: {
-          plan: 'pro'
+          plan: 'pro',
+          customer_type: customerType,
+          customer_email: customerEmail || '',
+          price_id: priceId
         }
       }
     }

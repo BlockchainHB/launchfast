@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe, SUBSCRIPTION_PLANS, SubscriptionPlan } from '@/lib/stripe'
 import { supabaseAdmin } from '@/lib/supabase'
 import { createServerClient } from '@supabase/ssr'
+import { PRICE_IDS } from '@/lib/customer-utils'
 
 interface CreateCheckoutRequest {
   plan: SubscriptionPlan
+  email?: string // For customer verification
   successUrl?: string
   cancelUrl?: string
 }
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { plan, successUrl, cancelUrl }: CreateCheckoutRequest = await request.json()
+    const { plan, email, successUrl, cancelUrl }: CreateCheckoutRequest = await request.json()
 
     // Validate plan
     if (!plan || !SUBSCRIPTION_PLANS[plan]) {
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return await createCheckoutSession({ plan, successUrl, cancelUrl }, request)
+    return await createCheckoutSession({ plan, email, successUrl, cancelUrl }, request)
 
   } catch (error) {
     console.error('Stripe checkout creation error:', error)
@@ -62,10 +64,34 @@ export async function POST(request: NextRequest) {
 }
 
 async function createCheckoutSession(
-  { plan, successUrl, cancelUrl }: CreateCheckoutRequest,
+  { plan, email, successUrl, cancelUrl }: CreateCheckoutRequest,
   request: NextRequest
 ) {
   const subscriptionPlan = SUBSCRIPTION_PLANS[plan]
+
+  // Determine price ID based on customer verification
+  let priceId = subscriptionPlan.stripeId; // Default price
+
+  if (email) {
+    try {
+      // Verify if customer is legacy customer - direct database call for server-side
+      const { data: legacyCustomer, error } = await supabaseAdmin
+        .from('legacyx_customers')
+        .select('id, customer_name, customer_email')
+        .eq('customer_email', email.toLowerCase().trim())
+        .single();
+
+      if (!error && legacyCustomer) {
+        priceId = PRICE_IDS.LEGACY_CUSTOMER;
+      } else {
+        priceId = PRICE_IDS.NEW_CUSTOMER;
+      }
+    } catch (error) {
+      console.error('Customer verification failed, using default pricing:', error);
+      // Continue with default pricing on verification failure - this ensures checkout always works
+      priceId = subscriptionPlan.stripeId;
+    }
+  }
 
   // Get authenticated user
   const supabase = createServerClient(
@@ -134,7 +160,7 @@ async function createCheckoutSession(
     payment_method_types: ['card'],
     line_items: [
       {
-        price: subscriptionPlan.stripeId, // Using lookup key: 'launchfastpro'
+        price: priceId, // Dynamic pricing based on customer verification
         quantity: 1,
       },
     ],
@@ -143,12 +169,16 @@ async function createCheckoutSession(
     cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}?canceled=true`,
     metadata: {
       supabase_user_id: user.id,
-      plan: plan
+      plan: plan,
+      customer_email: email || user.email || '',
+      price_id: priceId
     },
     subscription_data: {
       metadata: {
         supabase_user_id: user.id,
-        plan: plan
+        plan: plan,
+        customer_email: email || user.email || '',
+        price_id: priceId
       }
     },
     allow_promotion_codes: true,

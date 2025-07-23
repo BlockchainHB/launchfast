@@ -91,8 +91,12 @@ export async function middleware(request: NextRequest) {
       
       if (error) {
         console.error('Error fetching user profile:', error)
-        // If profile doesn't exist or error, redirect to subscribe
-        return NextResponse.redirect(new URL('/api/subscribe', request.url))
+        // If profile doesn't exist or error, redirect to subscribe with email
+        const subscribeUrl = new URL('/api/subscribe', request.url)
+        if (user.email) {
+          subscribeUrl.searchParams.set('email', user.email)
+        }
+        return NextResponse.redirect(subscribeUrl)
       }
       
       const subscriptionTier = profile?.subscription_tier || 'expired'
@@ -101,8 +105,12 @@ export async function middleware(request: NextRequest) {
       const hasValidSubscription = subscriptionTier === 'pro' || subscriptionTier === 'unlimited'
       
       if (!hasValidSubscription) {
-        // Redirect to subscription page for hard paywall
-        return NextResponse.redirect(new URL('/api/subscribe', request.url))
+        // Redirect to subscription page with user email for customer verification
+        const subscribeUrl = new URL('/api/subscribe', request.url)
+        if (user.email) {
+          subscribeUrl.searchParams.set('email', user.email)
+        }
+        return NextResponse.redirect(subscribeUrl)
       }
     } catch (error) {
       console.error('Middleware subscription check error:', error)
