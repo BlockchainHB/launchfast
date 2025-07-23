@@ -33,9 +33,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user exists
-    const { data: existingUser, error: userError } = await supabaseAdmin.auth.admin.getUserByEmail(email)
+    const { data: existingUser, error: userError } = await supabaseAdmin.auth.admin.listUsers({
+      filter: `email.eq.${email}`
+    })
     
-    if (userError || !existingUser.user) {
+    if (userError || !existingUser.users || existingUser.users.length === 0) {
       // Don't reveal whether the email exists for security reasons
       // Always return success to prevent email enumeration
       return NextResponse.json(
