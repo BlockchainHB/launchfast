@@ -40,17 +40,11 @@ export function PricingSection() {
           className="text-center mb-12"
         >
           <h2 
-            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tighter text-foreground mb-3 leading-none"
+            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tighter text-foreground leading-none"
             style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif' }}
           >
             Simple, Transparent Pricing
           </h2>
-          <p 
-            className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
-            style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif' }}
-          >
-            Choose the plan that fits your Amazon selling journey
-          </p>
         </motion.div>
 
         {/* Pricing Cards */}
