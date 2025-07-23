@@ -60,7 +60,7 @@ const data = {
   documents: [
     {
       name: "Product Analysis",
-      url: "#",
+      url: "/dashboard/product-analysis",
       icon: IconFileAnalytics,
     },
   ],

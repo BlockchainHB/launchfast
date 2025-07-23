@@ -42,7 +42,7 @@ function calculateDynamicGrade(
     avgCPC: mergedProduct.keywords?.length > 0 
       ? mergedProduct.keywords.reduce((sum, kw) => sum + (kw.cpc || 0), 0) / mergedProduct.keywords.length
       : 0,
-    riskClassification: mergedProduct.aiAnalysis?.riskClassification || 'No Risk',
+    riskClassification: mergedProduct.aiAnalysis?.riskClassification || 'Safe',
     consistencyRating: mergedProduct.aiAnalysis?.consistencyRating || 'Consistent',
     ppu: mergedProduct.salesData?.ppu || 0,
     bsr: mergedProduct.bsr,

@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
-import { IconCreditCard, IconExternalLink, IconCheck, IconX } from '@tabler/icons-react'
+import { IconCreditCard, IconExternalLink, IconCheck, IconX, IconAlertTriangle } from '@tabler/icons-react'
 import { SUBSCRIPTION_PLANS, getSubscriptionPlan, hasUnlimitedSearches } from '@/lib/stripe'
 
 interface SubscriptionData {
@@ -40,6 +40,7 @@ export function SubscriptionSettings() {
   const [usage, setUsage] = useState<UsageData | null>(null)
   const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([])
   const [isManagingSubscription, setIsManagingSubscription] = useState(false)
+  const [isCancellingSubscription, setIsCancellingSubscription] = useState(false)
 
   useEffect(() => {
     fetchSubscriptionData()

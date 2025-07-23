@@ -28,6 +28,7 @@ import {
   IconEdit,
   IconTrash,
   IconDots,
+  IconBrain,
 } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -648,6 +649,7 @@ export function DataTable({
     }
   }
 
+
   const handleBatchDelete = async () => {
     if (!hasSelection) return
 
@@ -682,6 +684,46 @@ export function DataTable({
     } catch (error) {
       console.error('Error deleting products:', error)
       toast.error('Failed to delete products', {
+        description: 'Network error occurred'
+      })
+    }
+  }
+
+  const handleGenerateAnalysis = async () => {
+    if (selectedRows.length !== 1) {
+      toast.error('Please select exactly one product for analysis')
+      return
+    }
+
+    const product = selectedProducts[0]
+    
+    try {
+      const loadingToast = toast.loading('Generating AI analysis document...')
+      
+      const response = await fetch('/api/analysis-documents/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id }),
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        toast.success('AI analysis document generated successfully!', {
+          id: loadingToast,
+          description: 'View it in the Product Analysis page'
+        })
+        // Optionally redirect to analysis page
+        // window.location.href = '/dashboard/product-analysis'
+      } else {
+        toast.error('Failed to generate analysis document', {
+          id: loadingToast,
+          description: result.error || 'Please try again'
+        })
+      }
+    } catch (error) {
+      console.error('Error generating analysis:', error)
+      toast.error('Failed to generate analysis document', {
         description: 'Network error occurred'
       })
     }
@@ -830,6 +872,16 @@ export function DataTable({
           >
             <IconEdit className="mr-2 h-4 w-4" />
             Edit Selected ({selectedRows.length})
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleGenerateAnalysis}
+            disabled={selectedRows.length !== 1}
+            className={selectedRows.length === 1 ? "border-blue-500 text-blue-500" : ""}
+          >
+            <IconBrain className="mr-2 h-4 w-4" />
+            Generate AI Analysis
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
