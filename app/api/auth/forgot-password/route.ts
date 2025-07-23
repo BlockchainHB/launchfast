@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`
       }
     })
 

@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
           type: 'confirmation',
           email: email,
           options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard`
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`
           }
         })
 
