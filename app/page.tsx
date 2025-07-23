@@ -1,4 +1,5 @@
 import WaitlistPage from '@/components/mvpblocks/waitlist'
+import { AuthRedirectHandler } from '@/components/auth-redirect-handler'
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -7,5 +8,10 @@ export const metadata: Metadata = {
 }
 
 export default function HomePage() {
-  return <WaitlistPage />
+  return (
+    <>
+      <AuthRedirectHandler />
+      <WaitlistPage />
+    </>
+  )
 }

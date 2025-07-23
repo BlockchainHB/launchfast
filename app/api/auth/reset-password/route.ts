@@ -40,31 +40,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify the reset token and update the password
-    // First, create a temporary session with the token to verify it
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.verifyOtp({
-      token_hash: token,
-      type: 'recovery'
-    })
-
-    if (sessionError || !sessionData.user) {
+    // Parse the JWT access token to get user ID
+    let userId: string
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      userId = payload.sub
+      
+      // Verify the email matches the token
+      if (payload.email !== email) {
+        return NextResponse.json(
+          { error: 'Token and email do not match' },
+          { status: 400 }
+        )
+      }
+      
+      // Check if token is expired
+      if (payload.exp < Date.now() / 1000) {
+        return NextResponse.json(
+          { error: 'Reset token has expired' },
+          { status: 400 }
+        )
+      }
+    } catch (error) {
       return NextResponse.json(
-        { error: 'Invalid or expired reset token' },
-        { status: 400 }
-      )
-    }
-
-    // Verify the email matches
-    if (sessionData.user.email !== email) {
-      return NextResponse.json(
-        { error: 'Token and email do not match' },
+        { error: 'Invalid reset token' },
         { status: 400 }
       )
     }
 
     // Update the user's password using admin API
     const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      sessionData.user.id,
+      userId,
       { password: password }
     )
 
