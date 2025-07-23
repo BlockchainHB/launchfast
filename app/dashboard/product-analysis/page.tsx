@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
-import { SectionCards } from "@/components/section-cards"
 import {
   SidebarInset,
   SidebarProvider,
@@ -52,14 +51,6 @@ export default function ProductAnalysisPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDocument, setSelectedDocument] = useState<AnalysisDocument | null>(null)
   const [viewModalOpen, setViewModalOpen] = useState(false)
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    highGradeProducts: 0,
-    avgMonthlyRevenue: 0,
-    totalProfitPotential: 0,
-    highGradePercentage: 0,
-    recentActivity: 0
-  })
 
   useEffect(() => {
     document.title = "Product Analysis - LaunchFast"
@@ -74,21 +65,6 @@ export default function ProductAnalysisPage() {
       
       if (data.success) {
         setDocuments(data.documents)
-        
-        // Calculate stats from documents
-        const totalDocs = data.documents.length
-        const highGrade = data.documents.filter(doc => 
-          doc.ai_analysis?.product?.grade && ['A+', 'A', 'B+', 'B'].includes(doc.ai_analysis.product.grade)
-        ).length
-        
-        setStats({
-          totalProducts: totalDocs,
-          highGradeProducts: highGrade,
-          avgMonthlyRevenue: 0,
-          totalProfitPotential: 0,
-          highGradePercentage: totalDocs > 0 ? Math.round((highGrade / totalDocs) * 100) : 0,
-          recentActivity: 0
-        })
       } else {
         console.error('Error fetching documents:', data.error)
         toast.error("Failed to load analysis documents")
@@ -142,7 +118,6 @@ export default function ProductAnalysisPage() {
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                <SectionCards loading={true} mode="product" />
                 <div className="px-4 lg:px-6">
                   <div className="flex items-center justify-center py-16">
                     <div className="text-center">
@@ -174,7 +149,6 @@ export default function ProductAnalysisPage() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <SectionCards stats={stats} loading={false} mode="product" />
               <div className="px-4 lg:px-6 space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -243,32 +217,12 @@ export default function ProductAnalysisPage() {
                               <CardTitle className="text-base font-semibold line-clamp-2 mb-2">
                                 {document.document_title}
                               </CardTitle>
-                              <div className="space-y-1">
-                                <CardDescription className="text-sm">
-                                  <span className="font-medium">ASIN:</span> {document.ai_analysis?.product?.asin || 'N/A'}
-                                </CardDescription>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-muted-foreground">Risk:</span>
-                                  <Badge 
-                                    variant={document.ai_analysis?.risk_classification === 'Safe' ? 'default' : 'destructive'}
-                                    className="text-xs"
-                                  >
-                                    {document.ai_analysis?.risk_classification || 'N/A'}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-muted-foreground">Consistency:</span>
-                                  <Badge 
-                                    variant={document.ai_analysis?.consistency_rating === 'High' ? 'default' : 'secondary'}
-                                    className="text-xs"
-                                  >
-                                    {document.ai_analysis?.consistency_rating || 'N/A'}
-                                  </Badge>
-                                </div>
-                              </div>
+                              <CardDescription className="text-sm">
+                                Professional AI Analysis Report
+                              </CardDescription>
                             </div>
-                            <Badge variant="outline" className="ml-2">
-                              {document.ai_analysis?.product?.grade || 'N/A'}
+                            <Badge variant="secondary" className="ml-2">
+                              V1.0
                             </Badge>
                           </div>
                         </CardHeader>
@@ -307,46 +261,46 @@ export default function ProductAnalysisPage() {
 
                 {/* Document Viewer Modal */}
                 <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
-                  <DialogContent className="max-w-7xl max-h-[95vh] flex flex-col">
-                    <DialogHeader className="flex-shrink-0">
-                      <DialogTitle className="text-xl font-semibold">
-                        {selectedDocument?.document_title}
+                  <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="flex-shrink-0 px-6 py-4 border-b">
+                      <DialogTitle className="text-lg font-semibold truncate">
+                        AI Analysis Report
                       </DialogTitle>
-                      <DialogDescription>
-                        Professional AI Analysis Report • Generated {selectedDocument && new Date(selectedDocument.created_at).toLocaleDateString()}
+                      <DialogDescription className="text-sm">
+                        Generated {selectedDocument && new Date(selectedDocument.created_at).toLocaleDateString()} • Launch Fast V1.0
                       </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="flex-1 mt-4 overflow-auto">
+                    <div className="flex-1 overflow-auto p-4">
                       {selectedDocument?.document_html && (
                         <div 
                           dangerouslySetInnerHTML={{ 
                             __html: selectedDocument.document_html 
                           }}
-                          className="w-full [&>div]:!max-w-none [&>div]:!margin-0 [&>div]:!padding-0"
-                          style={{
-                            '--content-max-width': 'none'
-                          } as React.CSSProperties}
+                          className="w-full"
                         />
                       )}
                     </div>
                     
-                    <div className="flex justify-between items-center pt-4 border-t mt-4 flex-shrink-0">
-                      <div className="text-sm text-muted-foreground">
-                        Use print function (Ctrl/Cmd + P) for best PDF quality
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => handleDownloadPDF(selectedDocument!)}
-                          disabled={!selectedDocument}
-                        >
-                          <IconExternalLink className="mr-2 h-4 w-4" />
-                          Print Version
-                        </Button>
-                        <Button onClick={() => setViewModalOpen(false)}>
-                          Close
-                        </Button>
+                    <div className="flex-shrink-0 px-6 py-4 border-t bg-muted/30">
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-muted-foreground">
+                          💡 Tip: Use browser's print function (Ctrl/Cmd + P) for best PDF quality
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadPDF(selectedDocument!)}
+                            disabled={!selectedDocument}
+                          >
+                            <IconExternalLink className="mr-1 h-3 w-3" />
+                            Print View
+                          </Button>
+                          <Button size="sm" onClick={() => setViewModalOpen(false)}>
+                            Close
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </DialogContent>

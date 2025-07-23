@@ -23,28 +23,28 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         }
         
         body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
           line-height: 1.6;
-          color: #333;
-          background: #f8fafc;
-          padding: 20px;
+          color: #1f2937;
+          background: #ffffff;
+          margin: 0;
+          padding: 0;
         }
         
         .container {
-          max-width: 1200px;
-          margin: 0 auto;
+          max-width: 100%;
+          margin: 0;
           background: white;
-          border-radius: 12px;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          overflow: hidden;
+          min-height: 100vh;
         }
         
         .header {
-          background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%, #1e40af 100%);
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
           color: white;
-          padding: 50px 40px;
+          padding: 60px 40px;
           text-align: center;
           position: relative;
+          border-bottom: 1px solid #e2e8f0;
         }
         
         .header::before {
@@ -54,8 +54,8 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
           left: 0;
           right: 0;
           bottom: 0;
-          background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-          opacity: 0.3;
+          background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="rgba(255,255,255,0.05)" fill-opacity="0.4"><circle cx="30" cy="30" r="2"/></g></svg>');
+          opacity: 0.6;
         }
         
         .header > * {
@@ -64,64 +64,99 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         }
         
         .header h1 {
-          font-size: 2.8rem;
-          margin-bottom: 15px;
-          font-weight: 800;
-          letter-spacing: -0.02em;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          font-size: 3.5rem;
+          margin-bottom: 20px;
+          font-weight: 900;
+          letter-spacing: -0.025em;
+          text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+          background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
         
         .header p {
-          font-size: 1.2rem;
-          opacity: 0.95;
-          font-weight: 300;
+          font-size: 1.4rem;
+          opacity: 0.9;
+          font-weight: 400;
           letter-spacing: 0.5px;
+          margin-bottom: 10px;
         }
         
         .brand-badge {
           display: inline-block;
-          background: rgba(255,255,255,0.2);
-          padding: 8px 16px;
-          border-radius: 25px;
-          font-size: 0.9rem;
-          font-weight: 500;
-          margin-top: 15px;
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.3);
+          background: rgba(255,255,255,0.15);
+          padding: 12px 24px;
+          border-radius: 30px;
+          font-size: 1rem;
+          font-weight: 600;
+          margin-top: 20px;
+          backdrop-filter: blur(15px);
+          border: 2px solid rgba(255,255,255,0.2);
+          box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         
         .content {
-          padding: 40px;
+          padding: 50px;
+          max-width: 1200px;
+          margin: 0 auto;
         }
         
         .product-overview {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 30px;
-          margin-bottom: 40px;
-          padding: 35px;
-          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-          border-radius: 12px;
-          border-left: 5px solid #3b82f6;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          gap: 40px;
+          margin-bottom: 50px;
+          padding: 40px;
+          background: #ffffff;
+          border-radius: 16px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
           position: relative;
         }
         
         .product-overview::before {
           content: '';
           position: absolute;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+          bottom: -1px;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+          border-radius: 16px;
+          z-index: -1;
+        }
+        
+        .product-overview::after {
+          content: '';
+          position: absolute;
           top: 0;
+          left: 0;
           right: 0;
-          width: 100px;
-          height: 100px;
-          background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
-          border-radius: 50%;
+          bottom: 0;
+          background: #ffffff;
+          border-radius: 15px;
+          z-index: -1;
         }
         
         .product-details h2 {
-          color: #1e293b;
-          margin-bottom: 20px;
-          font-size: 1.5rem;
+          color: #0f172a;
+          margin-bottom: 25px;
+          font-size: 1.8rem;
+          font-weight: 700;
+          position: relative;
+          padding-bottom: 10px;
+        }
+        
+        .product-details h2::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 40px;
+          height: 3px;
+          background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+          border-radius: 2px;
         }
         
         .product-info {
@@ -129,59 +164,89 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         }
         
         .product-info li {
-          margin-bottom: 12px;
+          margin-bottom: 16px;
           display: flex;
           justify-content: space-between;
-          padding: 8px 0;
-          border-bottom: 1px solid #e2e8f0;
+          align-items: center;
+          padding: 12px 20px;
+          background: #f8fafc;
+          border-radius: 8px;
+          border-left: 4px solid #e2e8f0;
+          transition: all 0.2s ease;
+        }
+        
+        .product-info li:hover {
+          background: #f1f5f9;
+          border-left-color: #3b82f6;
+          transform: translateX(2px);
         }
         
         .product-info li:last-child {
-          border-bottom: none;
+          margin-bottom: 0;
         }
         
         .label {
           font-weight: 600;
-          color: #475569;
+          color: #374151;
+          font-size: 0.95rem;
         }
         
         .value {
-          color: #1e293b;
-          font-weight: 500;
+          color: #111827;
+          font-weight: 600;
+          font-size: 1rem;
         }
         
         .metrics-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 20px;
-          margin-bottom: 40px;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 25px;
+          margin-bottom: 50px;
         }
         
         .metric-card {
-          background: white;
+          background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
           border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 24px;
+          border-radius: 16px;
+          padding: 30px;
           text-align: center;
-          transition: transform 0.2s ease;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .metric-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
         }
         
         .metric-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          transform: translateY(-4px);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+          border-color: #3b82f6;
         }
         
         .metric-value {
-          font-size: 2rem;
-          font-weight: 700;
-          margin-bottom: 8px;
+          font-size: 2.5rem;
+          font-weight: 800;
+          margin-bottom: 12px;
+          background: linear-gradient(135deg, #1e293b, #3b82f6);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
         
         .metric-label {
           color: #64748b;
-          font-size: 0.9rem;
+          font-size: 0.95rem;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 1px;
+          font-weight: 600;
         }
         
         .risk-high { color: #dc2626; }
@@ -197,30 +262,48 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         }
         
         .section-title {
-          font-size: 1.5rem;
-          color: #1e293b;
-          margin-bottom: 20px;
-          padding-bottom: 10px;
-          border-bottom: 2px solid #e2e8f0;
+          font-size: 2rem;
+          color: #0f172a;
+          margin-bottom: 30px;
+          padding-bottom: 15px;
+          border-bottom: 3px solid transparent;
+          background: linear-gradient(90deg, #3b82f6, #8b5cf6) bottom / 100px 3px no-repeat;
+          font-weight: 700;
+          position: relative;
         }
         
         .insights-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 30px;
+          gap: 35px;
         }
         
         .insight-card {
-          background: #f8fafc;
-          border-radius: 8px;
-          padding: 24px;
-          border-left: 4px solid #667eea;
+          background: #ffffff;
+          border-radius: 16px;
+          padding: 30px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .insight-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 4px;
+          height: 100%;
+          background: linear-gradient(180deg, #3b82f6, #8b5cf6);
         }
         
         .insight-card h3 {
-          color: #1e293b;
-          margin-bottom: 12px;
-          font-size: 1.2rem;
+          color: #0f172a;
+          margin-bottom: 18px;
+          font-size: 1.4rem;
+          font-weight: 700;
+          padding-left: 15px;
         }
         
         .insight-list {
@@ -228,32 +311,33 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         }
         
         .insight-list li {
-          margin-bottom: 8px;
-          padding-left: 20px;
+          margin-bottom: 12px;
+          padding-left: 25px;
           position: relative;
+          line-height: 1.6;
+          color: #374151;
+          font-size: 1rem;
         }
         
         .insight-list li:before {
-          content: "•";
-          color: #667eea;
+          content: "▶";
+          color: #3b82f6;
           position: absolute;
-          left: 0;
+          left: 15px;
           font-weight: bold;
+          font-size: 0.8rem;
         }
         
-        .risk-factors {
-          background: #fef2f2;
-          border-left-color: #dc2626;
+        .risk-factors::before {
+          background: linear-gradient(180deg, #dc2626, #ef4444);
         }
         
-        .market-insights {
-          background: #f0f9ff;
-          border-left-color: #0284c7;
+        .market-insights::before {
+          background: linear-gradient(180deg, #0284c7, #0ea5e9);
         }
         
-        .opportunity-insights {
-          background: #f0fdf4;
-          border-left-color: #16a34a;
+        .opportunity-insights::before {
+          background: linear-gradient(180deg, #16a34a, #22c55e);
         }
         
         .footer {
@@ -395,7 +479,7 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
             </div>
             
             <div class="metric-card">
-              <div class="metric-value" style="color: #667eea;">${aiAnalysis.opportunity_score}/100</div>
+              <div class="metric-value">${aiAnalysis.opportunity_score}/100</div>
               <div class="metric-label">Opportunity Score</div>
             </div>
           </div>
@@ -433,25 +517,44 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
           
           <div class="analysis-section">
             <h2 class="section-title">Executive Summary</h2>
-            <div class="insight-card opportunity-insights">
-              <p style="font-size: 1.1rem; line-height: 1.7; color: #374151;">
-                This ${product.title} (ASIN: ${product.asin}) has been classified as <strong>${aiAnalysis.risk_classification}</strong> risk 
-                with a <strong>${aiAnalysis.consistency_rating}</strong> consistency rating for Amazon FBA private label opportunities. 
-                The product shows an opportunity score of <strong>${aiAnalysis.opportunity_score}/100</strong>, indicating 
-                ${aiAnalysis.opportunity_score >= 70 ? 'strong potential' : 
-                  aiAnalysis.opportunity_score >= 50 ? 'moderate potential' : 'limited potential'} 
-                for private label success.
+            <div class="insight-card opportunity-insights" style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 2px solid #22c55e; border-radius: 20px; padding: 40px; position: relative;">
+              <div style="display: flex; align-items: center; margin-bottom: 25px;">
+                <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 20px;">
+                  <span style="color: white; font-size: 24px; font-weight: bold;">✓</span>
+                </div>
+                <h3 style="margin: 0; font-size: 1.8rem; color: #0f172a; font-weight: 800;">Analysis Complete</h3>
+              </div>
+              
+              <p style="font-size: 1.2rem; line-height: 1.8; color: #374151; margin-bottom: 25px;">
+                This <strong>${product.title}</strong> (ASIN: <span style="background: #e5e7eb; padding: 4px 8px; border-radius: 6px; font-family: monospace;">${product.asin}</span>) has been classified as <span style="background: ${aiAnalysis.risk_classification === 'Safe' ? '#dcfce7' : '#fef2f2'}; color: ${aiAnalysis.risk_classification === 'Safe' ? '#16a34a' : '#dc2626'}; padding: 4px 12px; border-radius: 20px; font-weight: 700;">${aiAnalysis.risk_classification}</span> risk 
+                with <span style="background: #dbeafe; color: #1d4ed8; padding: 4px 12px; border-radius: 20px; font-weight: 700;">${aiAnalysis.consistency_rating}</span> consistency rating for Amazon FBA private label opportunities.
               </p>
               
-              <p style="font-size: 1rem; line-height: 1.6; color: #6b7280; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                <strong>Key Recommendation:</strong> 
-                ${aiAnalysis.opportunity_score >= 70 && aiAnalysis.risk_classification === 'Safe' ? 
-                  'This product shows excellent potential for private label development with minimal regulatory concerns.' :
-                  aiAnalysis.risk_classification === 'Prohibited' || aiAnalysis.risk_classification === 'Medical' ?
-                  'Avoid this product due to high regulatory risks and compliance requirements.' :
-                  'Consider this product with caution and conduct additional market research before proceeding.'
-                }
-              </p>
+              <div style="background: #ffffff; padding: 25px; border-radius: 16px; border: 1px solid #e5e7eb; margin-bottom: 25px;">
+                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                  <div style="font-size: 3rem; font-weight: 900; background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${aiAnalysis.opportunity_score}</div>
+                  <div style="font-size: 1.5rem; color: #6b7280; margin-left: 8px;">/100</div>
+                </div>
+                <p style="text-align: center; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem;">Opportunity Score</p>
+                <p style="text-align: center; color: #374151; font-size: 1.1rem; margin-top: 10px; font-weight: 600;">
+                  ${aiAnalysis.opportunity_score >= 70 ? '🚀 Strong Potential' : 
+                    aiAnalysis.opportunity_score >= 50 ? '⚡ Moderate Potential' : '⚠️ Limited Potential'}
+                </p>
+              </div>
+              
+              <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 25px; border-radius: 16px; border-left: 4px solid #3b82f6;">
+                <h4 style="color: #0f172a; font-size: 1.3rem; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center;">
+                  <span style="margin-right: 10px;">💡</span> Key Recommendation
+                </h4>
+                <p style="font-size: 1.1rem; line-height: 1.7; color: #374151; margin: 0;">
+                  ${aiAnalysis.opportunity_score >= 70 && aiAnalysis.risk_classification === 'Safe' ? 
+                    '🎯 This product shows <strong>excellent potential</strong> for private label development with minimal regulatory concerns. Consider moving forward with supplier research and competitive analysis.' :
+                    aiAnalysis.risk_classification === 'Prohibited' || aiAnalysis.risk_classification === 'Medical' ?
+                    '🚫 <strong>Avoid this product</strong> due to high regulatory risks and compliance requirements. Focus efforts on safer product categories.' :
+                    '🔍 Consider this product with <strong>caution</strong> and conduct additional market research before proceeding. Review competitive landscape and compliance requirements.'
+                  }
+                </p>
+              </div>
             </div>
           </div>
         </div>
