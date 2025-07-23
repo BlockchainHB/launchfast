@@ -8,14 +8,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-const features = [
+const regularFeatures = [
   'Unlimited product searches',
   'Unlimited CSV exports', 
   'Advanced market analytics',
   'Risk assessment tools',
   'Keyword intelligence',
   'Batch operations',
-  'API access',
+  'Priority support'
+];
+
+const studentFeatures = [
+  'Unlimited product searches',
+  'Unlimited CSV exports', 
+  'Advanced market analytics',
+  'Risk assessment tools',
+  'Keyword intelligence',
+  'Batch operations',
   'Priority support'
 ];
 
@@ -78,7 +87,7 @@ export function PricingSection() {
               
               <CardContent className="space-y-4">
                 <ul className="space-y-2">
-                  {features.map((feature, i) => (
+                  {regularFeatures.map((feature, i) => (
                     <li key={i} className="flex items-center gap-2">
                       <div className="p-0.5 rounded-full bg-primary/10">
                         <Check className="h-3 w-3 text-primary" />
@@ -150,7 +159,7 @@ export function PricingSection() {
                 </div>
                 
                 <ul className="space-y-2">
-                  {features.map((feature, i) => (
+                  {studentFeatures.map((feature, i) => (
                     <li key={i} className="flex items-center gap-2">
                       <div className="p-0.5 rounded-full bg-primary/20">
                         <Check className="h-3 w-3 text-primary" />
