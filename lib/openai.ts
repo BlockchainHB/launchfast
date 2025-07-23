@@ -69,7 +69,39 @@ Be specific and practical in your analysis.`
       messages: [
         {
           role: 'system',
-          content: 'You are an expert Amazon FBA business analyst specializing in product sourcing, competitive analysis, and market differentiation. Analyze customer feedback to identify improvement opportunities that competitors could exploit.'
+          content: `You are an expert Amazon FBA business analyst specializing in product sourcing, competitive analysis, and market differentiation. Analyze customer feedback to identify improvement opportunities that competitors could exploit.
+
+AMAZON PROHIBITED ITEMS - Classify as 'Prohibited' if product matches any of these:
+- Aerosol paint
+- Airsoft/BB guns, paintball guns
+- Alcohol products intended to disguise or conceal alcohol
+- Bows and arrows, slingshots, and other projectile weapons
+- Dance poles
+- Escort services, adult dating, sex toys, and merchandise
+- Etching creams
+- Illicit and recreational drugs, drug paraphernalia, drug testing equipment, or products to beat drug tests
+- Oils, supplements, or ingestibles derived from or containing hemp, cannabidiol (CBD), THC, or cannabis-related
+- Tobacco or tobacco-related products, including e-cigarettes
+- Knives (except kitchen knives, cutlery, and general multi-purpose camping knives)
+- Lethal and non-lethal weapon sales, including guns, gun parts, kits, gun racks, mace, black powder, and ammunition
+- Products that infringe intellectual property or promote illegal activity, including counterfeit goods, cable descramblers, fireworks, hacking tools
+- Shock collars (including pet training collars with shock function) and pinch or choke collars
+- Spy cameras/voice bugs disguised as everyday items capable of transmitting video/audio without knowledge
+- Tattooing and body branding products and services
+- Weapons
+
+MEDICAL ITEMS - Classify as 'Medical' if product is:
+- Health/medical devices requiring FDA approval
+- Medical supplements or ingestibles
+- Medical equipment or diagnostic tools
+- Any health-related product with medical claims
+
+RISK CATEGORIES:
+- Electric: Electrical products requiring compliance
+- Breakable: Fragile items with high shipping damage risk
+- Medical: Health/medical devices and supplements
+- Prohibited: Amazon banned items (see list above)
+- Safe: Standard products with no restrictions`
         },
         {
           role: 'user',
@@ -84,8 +116,8 @@ Be specific and practical in your analysis.`
           properties: {
             riskClassification: {
               type: 'string',
-              enum: ['Electric', 'Breakable', 'Banned', 'No Risk'],
-              description: 'Primary risk category for Amazon selling'
+              enum: ['Electric', 'Breakable', 'Medical', 'Prohibited', 'Safe'],
+              description: 'Primary risk category for Amazon selling based on Amazon policies'
             },
             consistencyRating: {
               type: 'string',
@@ -183,7 +215,7 @@ Be specific and practical in your analysis.`
     
     // Return fallback analysis
     return {
-      riskClassification: 'No Risk',
+      riskClassification: 'Safe',
       consistencyRating: 'Consistent',
       estimatedDimensions: 'Unknown',
       estimatedWeight: 'Unknown',
@@ -227,7 +259,39 @@ Be specific and practical in your analysis.`
       messages: [
         {
           role: 'system',
-          content: 'You are an expert Amazon FBA business analyst with deep knowledge of product sourcing, market analysis, and e-commerce risk assessment. Provide accurate, actionable insights based on the product data.'
+          content: `You are an expert Amazon FBA business analyst with deep knowledge of product sourcing, market analysis, and e-commerce risk assessment. Provide accurate, actionable insights based on the product data.
+
+AMAZON PROHIBITED ITEMS - Classify as 'Prohibited' if product matches any of these:
+- Aerosol paint
+- Airsoft/BB guns, paintball guns
+- Alcohol products intended to disguise or conceal alcohol
+- Bows and arrows, slingshots, and other projectile weapons
+- Dance poles
+- Escort services, adult dating, sex toys, and merchandise
+- Etching creams
+- Illicit and recreational drugs, drug paraphernalia, drug testing equipment, or products to beat drug tests
+- Oils, supplements, or ingestibles derived from or containing hemp, cannabidiol (CBD), THC, or cannabis-related
+- Tobacco or tobacco-related products, including e-cigarettes
+- Knives (except kitchen knives, cutlery, and general multi-purpose camping knives)
+- Lethal and non-lethal weapon sales, including guns, gun parts, kits, gun racks, mace, black powder, and ammunition
+- Products that infringe intellectual property or promote illegal activity, including counterfeit goods, cable descramblers, fireworks, hacking tools
+- Shock collars (including pet training collars with shock function) and pinch or choke collars
+- Spy cameras/voice bugs disguised as everyday items capable of transmitting video/audio without knowledge
+- Tattooing and body branding products and services
+- Weapons
+
+MEDICAL ITEMS - Classify as 'Medical' if product is:
+- Health/medical devices requiring FDA approval
+- Medical supplements or ingestibles
+- Medical equipment or diagnostic tools
+- Any health-related product with medical claims
+
+RISK CATEGORIES:
+- Electric: Electrical products requiring compliance
+- Breakable: Fragile items with high shipping damage risk
+- Medical: Health/medical devices and supplements
+- Prohibited: Amazon banned items (see list above)
+- Safe: Standard products with no restrictions`
         },
         {
           role: 'user',
@@ -242,8 +306,8 @@ Be specific and practical in your analysis.`
           properties: {
             riskClassification: {
               type: 'string',
-              enum: ['Electric', 'Breakable', 'Banned', 'No Risk'],
-              description: 'Primary risk category for Amazon selling'
+              enum: ['Electric', 'Breakable', 'Medical', 'Prohibited', 'Safe'],
+              description: 'Primary risk category for Amazon selling based on Amazon policies'
             },
             consistencyRating: {
               type: 'string',
@@ -314,7 +378,7 @@ Be specific and practical in your analysis.`
     
     // Return fallback analysis
     return {
-      riskClassification: 'No Risk',
+      riskClassification: 'Safe',
       consistencyRating: 'Consistent',
       estimatedDimensions: 'Unknown',
       estimatedWeight: 'Unknown',
@@ -343,7 +407,7 @@ export async function analyzeProductsBatch(products: ProductData[]): Promise<Map
         return {
           asin: product.asin,
           analysis: {
-            riskClassification: 'No Risk' as const,
+            riskClassification: 'Safe' as const,
             consistencyRating: 'Consistent' as const,
             estimatedDimensions: 'Unknown',
             estimatedWeight: 'Unknown',
@@ -422,13 +486,13 @@ export async function enhanceProductAnalysis(
 
 // Function to validate and sanitize AI analysis results
 export function validateAIAnalysis(analysis: any): AIAnalysis {
-  const validRiskClassifications = ['Electric', 'Breakable', 'Banned', 'No Risk']
+  const validRiskClassifications = ['Electric', 'Breakable', 'Medical', 'Prohibited', 'Safe']
   const validConsistencyRatings = ['Consistent', 'Seasonal', 'Trendy']
 
   return {
     riskClassification: validRiskClassifications.includes(analysis.riskClassification) 
       ? analysis.riskClassification 
-      : 'No Risk',
+      : 'Safe',
     consistencyRating: validConsistencyRatings.includes(analysis.consistencyRating) 
       ? analysis.consistencyRating 
       : 'Consistent',

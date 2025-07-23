@@ -61,6 +61,9 @@ export interface ProductMetrics {
   // Metadata
   isValid: boolean
   validationErrors: string[]
+  
+  // AI Analysis
+  riskClassification?: string
 }
 
 export interface MarketMetrics {
@@ -695,11 +698,38 @@ export class CalculationEngine {
 
   /**
    * Calculate market risk from individual product risks
+   * Uses risk hierarchy: Prohibited > Medical > Breakable > Electric > Safe
    */
   private calculateMarketRisk(productMetrics: ProductMetrics[]): string {
-    // Extract risk classifications from products (would need to be added to ProductMetrics)
-    // For now, return a default - this would be enhanced with actual risk data
-    return 'No Risk'
+    // Extract valid risk classifications from products
+    const riskClassifications = productMetrics
+      .map(p => p.riskClassification)
+      .filter((risk): risk is string => Boolean(risk))
+    
+    if (riskClassifications.length === 0) {
+      return 'Safe' // Default if no risk data available
+    }
+    
+    // Risk hierarchy (highest risk wins)
+    const riskHierarchy = ['Prohibited', 'Medical', 'Breakable', 'Electric', 'Safe']
+    
+    // Find the highest risk level present
+    for (const risk of riskHierarchy) {
+      if (riskClassifications.includes(risk)) {
+        return risk
+      }
+    }
+    
+    // Fallback to most common risk classification
+    const riskCounts = riskClassifications.reduce((acc, risk) => {
+      acc[risk] = (acc[risk] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    
+    const mostCommonRisk = Object.entries(riskCounts)
+      .sort(([,a], [,b]) => b - a)[0]?.[0]
+    
+    return mostCommonRisk || 'Safe'
   }
 
   /**

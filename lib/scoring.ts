@@ -122,8 +122,8 @@ function checkDisqualifiers(inputs: ScoringInputs): string[] {
     disqualifiers.push('Margin below 15%')
   }
 
-  if (inputs.riskClassification === 'Banned') {
-    disqualifiers.push('Banned Product')
+  if (inputs.riskClassification === 'Banned' || inputs.riskClassification === 'Prohibited') {
+    disqualifiers.push('Prohibited Product')
   }
 
   if (inputs.consistencyRating === 'Trendy') {
@@ -163,6 +163,9 @@ function calculatePenalties(inputs: ScoringInputs): { total: number; details: st
   } else if (inputs.riskClassification === 'Breakable') {
     total += 5
     details.push('Breakable product risk (-5 pts)')
+  } else if (inputs.riskClassification === 'Medical') {
+    total += 6
+    details.push('Medical product risk (-6 pts)')
   }
 
   // Margin penalties - Recalibrated for dynamic Amazon fee structure

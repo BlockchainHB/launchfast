@@ -51,7 +51,7 @@ interface ProductEditForm {
   notes?: string
 }
 
-const riskOptions = ['No Risk', 'Electric', 'Breakable', 'Banned']
+const riskOptions = ['Safe', 'Electric', 'Breakable', 'Medical', 'Prohibited']
 const consistencyOptions = ['Consistent', 'Seasonal', 'Trendy']
 
 export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpdated, onDashboardRefresh }: BatchEditModalProps) {

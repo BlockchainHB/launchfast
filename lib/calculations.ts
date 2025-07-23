@@ -198,10 +198,13 @@ export function formatWeight(dimensions?: any): string {
  */
 export function getRiskColor(riskClassification: string): string {
   switch (riskClassification) {
-    case 'No Risk': return 'text-green-600'
+    case 'Safe': 
+    case 'No Risk': return 'text-green-600' // Backward compatibility
     case 'Electric': return 'text-yellow-600' 
     case 'Breakable': return 'text-orange-600'
-    case 'Banned': return 'text-red-600'
+    case 'Medical': return 'text-blue-600'
+    case 'Prohibited':
+    case 'Banned': return 'text-red-600' // Backward compatibility
     default: return 'text-gray-600'
   }
 }

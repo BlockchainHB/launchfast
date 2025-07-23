@@ -60,7 +60,7 @@ export interface OpportunityData {
 }
 
 export interface AIAnalysis {
-  riskClassification: 'Electric' | 'Breakable' | 'Banned' | 'No Risk'
+  riskClassification: 'Electric' | 'Breakable' | 'Medical' | 'Prohibited' | 'Safe'
   consistencyRating: 'Consistent' | 'Seasonal' | 'Trendy'
   estimatedDimensions: string
   estimatedWeight: string

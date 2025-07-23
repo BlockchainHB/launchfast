@@ -33,7 +33,7 @@ function transformProductForTable(product: any): EnhancedProduct {
     
     // AI analysis from actual database data
     aiAnalysis: product.ai_analysis ? {
-      riskClassification: product.ai_analysis.risk_classification || 'No Risk',
+      riskClassification: product.ai_analysis.risk_classification || 'Safe',
       consistencyRating: product.ai_analysis.consistency_rating || 'Consistent',
       estimatedDimensions: product.ai_analysis.estimated_dimensions || '',
       estimatedWeight: product.ai_analysis.estimated_weight || '',
@@ -41,7 +41,7 @@ function transformProductForTable(product: any): EnhancedProduct {
       marketInsights: product.ai_analysis.market_insights || [],
       riskFactors: product.ai_analysis.risk_factors || []
     } : {
-      riskClassification: 'No Risk',
+      riskClassification: 'Safe',
       consistencyRating: 'Consistent',
       estimatedDimensions: '',
       estimatedWeight: '',
