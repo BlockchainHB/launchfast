@@ -45,7 +45,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cannot cancel this subscription type' }, { status: 400 })
     }
 
-    console.log('Attempting to cancel subscription:', profile.stripe_subscription_id)
+    console.log('Debug info:', {
+      stripe_subscription_id: profile.stripe_subscription_id,
+      subscription_tier: profile.subscription_tier,
+      subscription_status: profile.subscription_status,
+      stripe_key_present: !!process.env.STRIPE_SECRET_KEY,
+      stripe_key_type: process.env.STRIPE_SECRET_KEY?.substring(0, 8) + '...'
+    })
+    
+    // Verify subscription exists in Stripe first
+    let existingSubscription
+    try {
+      existingSubscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id)
+      console.log('Existing subscription in Stripe:', {
+        id: existingSubscription.id,
+        status: existingSubscription.status,
+        cancel_at_period_end: existingSubscription.cancel_at_period_end,
+        current_period_end: existingSubscription.current_period_end
+      })
+    } catch (stripeError) {
+      console.error('Failed to retrieve subscription from Stripe:', stripeError)
+      return NextResponse.json({ 
+        error: 'Subscription not found in Stripe',
+        details: stripeError instanceof Error ? stripeError.message : String(stripeError)
+      }, { status: 404 })
+    }
     
     // Update the subscription in Stripe to cancel at period end
     const subscription = await stripe.subscriptions.update(
@@ -58,7 +82,8 @@ export async function POST(request: NextRequest) {
     console.log('Stripe subscription updated:', {
       id: subscription.id,
       cancel_at_period_end: subscription.cancel_at_period_end,
-      current_period_end: subscription.current_period_end
+      current_period_end: subscription.current_period_end,
+      status: subscription.status
     })
 
     // Update the database to reflect the cancellation
