@@ -666,44 +666,37 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
 
     return (
       <div className="space-y-6">
-        <Card className="border-amber-200/60 bg-amber-50/80 dark:bg-amber-950/20 dark:border-amber-800/30 shadow-sm hover:shadow-md transition-all duration-300 fade-in-subtle">
-          <CardContent className="pt-5">
-            <div className="flex items-start space-x-4">
-              <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                <IconSearch className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-amber-900 dark:text-amber-100 mb-2">Market Already Exists</h4>
-                <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
-                  You previously researched <span className="font-medium">"{existingMarket.keyword}"</span> with {existingMarket.productCount} products.
-                </p>
-                <div className="mt-3 flex items-center space-x-2">
-                  <div className="flex items-center space-x-1">
-                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
-                    <span className="text-xs text-amber-700 dark:text-amber-300">
-                      Last updated: {new Date(existingMarket.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
+        {/* Simplified, elegant info banner */}
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200/60 dark:border-amber-800/30 rounded-lg p-4 fade-in-subtle">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                <span className="font-semibold">"{existingMarket.keyword}"</span> previously researched
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                {existingMarket.productCount} products • Updated {new Date(existingMarket.updatedAt).toLocaleDateString()}
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+          </div>
+        </div>
 
-        <div className="space-y-4 scale-in-gentle">
-          {/* Primary Action: Add to Existing Market */}
+        <div className="space-y-3 scale-in-gentle">
+          {/* Primary Action: Add to Market - Using plus icon instead of search */}
           <Button 
             onClick={() => startResearch('refresh')}
             className="group w-full h-auto p-5 flex items-center justify-between bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.01] hover:-translate-y-0.5 border-0"
           >
             <div className="flex items-center space-x-4">
               <div className="p-2.5 bg-primary-foreground/20 rounded-lg group-hover:bg-primary-foreground/30 transition-all duration-300">
-                <IconSearch className="w-5 h-5" />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
               </div>
               <div className="text-left">
                 <div className="font-semibold text-base mb-0.5">Add to Market</div>
                 <div className="text-sm text-primary-foreground/80">
-                  Expand "{existingMarket.keyword}" with fresh products
+                  Expand with fresh products
                 </div>
               </div>
             </div>
@@ -712,7 +705,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
             </div>
           </Button>
           
-          {/* Secondary Action: Create New Market */}
+          {/* Secondary Action: Create New Market - Using refresh icon */}
           <Button 
             variant="outline"
             onClick={() => startResearch('new')}
@@ -720,7 +713,9 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
           >
             <div className="flex items-center space-x-4">
               <div className="p-2.5 bg-muted rounded-lg group-hover:bg-primary/10 transition-all duration-300">
-                <IconSearch className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                <svg className="w-5 h-5 text-muted-foreground group-hover:text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
               </div>
               <div className="text-left">
                 <div className="font-semibold text-base text-foreground mb-0.5">Create New Market</div>
