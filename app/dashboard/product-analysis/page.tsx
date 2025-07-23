@@ -1,6 +1,12 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
+import {
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -123,16 +129,30 @@ export default function ProductAnalysisPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Product Analysis</h1>
-          <p className="text-muted-foreground">
-            Professional AI analysis documents for your products
-          </p>
-        </div>
-      </div>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold">Product Analysis</h1>
+                    <p className="text-muted-foreground">
+                      Professional AI analysis documents for your products
+                    </p>
+                  </div>
+                </div>
 
       {/* Search and Filters */}
       <Card>
@@ -245,37 +265,42 @@ export default function ProductAnalysisPage() {
         </div>
       )}
 
-      {/* Document Viewer Modal */}
-      <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>{selectedDocument?.document_title}</DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-auto">
-            {selectedDocument?.document_html && (
-              <div 
-                dangerouslySetInnerHTML={{ 
-                  __html: selectedDocument.document_html 
-                }}
-                className="w-full"
-              />
-            )}
+                {/* Document Viewer Modal */}
+                <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
+                  <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+                    <DialogHeader>
+                      <DialogTitle>{selectedDocument?.document_title}</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-auto">
+                      {selectedDocument?.document_html && (
+                        <div 
+                          dangerouslySetInnerHTML={{ 
+                            __html: selectedDocument.document_html 
+                          }}
+                          className="w-full"
+                        />
+                      )}
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDownloadPDF(selectedDocument!)}
+                        disabled={!selectedDocument}
+                      >
+                        <IconDownload className="mr-2 h-4 w-4" />
+                        Download PDF
+                      </Button>
+                      <Button onClick={() => setViewModalOpen(false)}>
+                        Close
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => handleDownloadPDF(selectedDocument!)}
-              disabled={!selectedDocument}
-            >
-              <IconDownload className="mr-2 h-4 w-4" />
-              Download PDF
-            </Button>
-            <Button onClick={() => setViewModalOpen(false)}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { generateComprehensiveAnalysisHTML } from '@/lib/document-templates'
+import { generateAnalysisDocument } from '@/lib/document-templates'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -116,8 +116,8 @@ export async function POST(request: NextRequest) {
     const documentTitle = `${productData.title.slice(0, 100)}${productData.title.length > 100 ? '...' : ''} - AI Analysis Report`
 
     // Generate HTML document
-    const documentHTML = generateComprehensiveAnalysisHTML({
-      product: {
+    const documentHTML = generateAnalysisDocument(
+      {
         asin: productData.asin,
         title: productData.title,
         brand: productData.brand,
@@ -129,9 +129,8 @@ export async function POST(request: NextRequest) {
         monthly_revenue: productData.monthly_revenue,
         monthly_profit: productData.monthly_profit
       },
-      aiAnalysis: productData.ai_analysis,
-      reportTitle: documentTitle
-    })
+      productData.ai_analysis
+    )
 
     // Check if document already exists
     const { data: existingDoc } = await supabaseAdmin
