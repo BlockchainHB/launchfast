@@ -11,7 +11,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-interface ContactFormData {
+interface LandingContactFormData {
   name: string
   email: string
   subject: string
@@ -19,14 +19,63 @@ interface ContactFormData {
   type: 'payment' | 'general'
 }
 
+interface DashboardContactFormData {
+  name: string
+  email: string
+  category: string
+  message: string
+}
+
+type ContactFormData = LandingContactFormData | DashboardContactFormData
+
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, subject, message, type }: ContactFormData = await request.json()
+    const formData = await request.json()
+    const { name, email, message } = formData
 
-    // Validate required fields
-    if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim() || !type) {
+    // Validate common required fields
+    if (!name?.trim() || !email?.trim() || !message?.trim()) {
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Name, email, and message are required' },
+        { status: 400 }
+      )
+    }
+
+    // Determine which form type and validate accordingly
+    let subject: string
+    let type: string
+    
+    if ('subject' in formData && 'type' in formData) {
+      // Landing page contact form
+      if (!formData.subject?.trim() || !formData.type) {
+        return NextResponse.json(
+          { error: 'Subject and type are required' },
+          { status: 400 }
+        )
+      }
+      subject = formData.subject.trim()
+      type = formData.type
+    } else if ('category' in formData) {
+      // Dashboard contact form
+      if (!formData.category) {
+        return NextResponse.json(
+          { error: 'Category is required' },
+          { status: 400 }
+        )
+      }
+      // Map category to subject and type
+      const categoryMappings: Record<string, { subject: string; type: string }> = {
+        'billing': { subject: 'Billing Support', type: 'payment' },
+        'error-report': { subject: 'Error Report', type: 'general' },
+        'customer-service': { subject: 'Customer Service', type: 'general' },
+        'feedback': { subject: 'Feedback', type: 'general' }
+      }
+      const mapping = categoryMappings[formData.category] || { subject: formData.category, type: 'general' }
+      subject = mapping.subject
+      type = mapping.type
+    } else {
+      return NextResponse.json(
+        { error: 'Either subject/type or category is required' },
         { status: 400 }
       )
     }
@@ -64,7 +113,7 @@ export async function POST(request: NextRequest) {
           {
             name: name.trim(),
             email: email.toLowerCase().trim(),
-            subject: subject.trim(),
+            subject: subject,
             type,
             message: message.trim(),
             status: 'pending',
