@@ -58,7 +58,7 @@ export function calculateGrade(inputs: ScoringInputs): {
   if (disqualifiers.length > 0) {
     breakdown.disqualifiers = disqualifiers
     if (disqualifiers.includes('Prohibited Product')) {
-      breakdown.finalGrade = 'F1'
+      breakdown.finalGrade = 'Avoid'
     } else if (disqualifiers.includes('Medical Product Risk')) {
       breakdown.finalGrade = 'Avoid'
     } else if (disqualifiers.includes('Risky Consistency Pattern')) {
