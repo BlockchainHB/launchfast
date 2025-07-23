@@ -269,9 +269,13 @@ export async function POST(request: NextRequest) {
       Logger.save.productsBatchSaved(batchSavedProducts.length)
 
       // 2. Batch insert AI analyses (1 call instead of N calls)
+      console.log('DEBUG: First product aiAnalysis structure:', JSON.stringify(products[0]?.aiAnalysis, null, 2))
+      console.log('DEBUG: First product keys:', Object.keys(products[0] || {}))
+      
       const aiAnalysesPayloads = batchSavedProducts
         .map((savedProduct, index) => {
           const product = products[index]
+          console.log(`DEBUG: Product ${index} aiAnalysis exists:`, !!product.aiAnalysis)
           return product.aiAnalysis ? {
             user_id: userId,
             product_id: savedProduct.id,
