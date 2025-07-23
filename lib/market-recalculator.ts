@@ -3,6 +3,78 @@ import type { EnhancedProduct } from '@/types'
 import { mergeProductsWithOverrides, type ProductOverride } from '@/lib/product-overrides'
 import { calculateMarketMetrics, convertToOverrideData, type MarketOverrideData } from '@/lib/shared-market-calculator'
 
+// Transform database product to EnhancedProduct format (copied from dashboard API)
+function transformProductForTable(product: any): EnhancedProduct {
+  return {
+    id: product.id,
+    asin: product.asin,
+    title: product.title,
+    brand: product.brand || 'Unknown',
+    price: product.price,
+    bsr: product.bsr,
+    reviews: product.reviews,
+    rating: product.rating,
+    grade: product.grade,
+    images: product.images || [],
+    dimensions: product.dimensions || {},
+    reviewsData: product.reviews_data || {},
+    
+    // Sales data structure
+    salesData: {
+      monthlyRevenue: product.monthly_revenue,
+      monthlySales: product.monthly_sales,
+      monthlyProfit: product.profit_estimate,
+      margin: product.sales_data?.margin || 0,
+      ppu: product.sales_data?.ppu || 0,
+      fbaCost: product.sales_data?.fbaCost || 0,
+      cogs: product.sales_data?.cogs || 0,
+      ...(product.sales_data || {})
+    },
+    
+    // AI analysis from actual database data
+    aiAnalysis: product.ai_analysis ? {
+      riskClassification: product.ai_analysis.risk_classification || 'No Risk',
+      consistencyRating: product.ai_analysis.consistency_rating || 'Consistent',
+      estimatedDimensions: product.ai_analysis.estimated_dimensions || '',
+      estimatedWeight: product.ai_analysis.estimated_weight || '',
+      opportunityScore: product.ai_analysis.opportunity_score || 0,
+      marketInsights: product.ai_analysis.market_insights || [],
+      riskFactors: product.ai_analysis.risk_factors || []
+    } : {
+      riskClassification: 'No Risk',
+      consistencyRating: 'Consistent',
+      estimatedDimensions: '',
+      estimatedWeight: '',
+      opportunityScore: 0,
+      marketInsights: [],
+      riskFactors: []
+    },
+    
+    // Keywords
+    keywords: product.product_keywords?.map((pk: any) => ({
+      keyword: pk.keywords?.keyword || '',
+      searchVolume: pk.keywords?.search_volume || 0,
+      rankingPosition: pk.ranking_position || 0,
+      trafficPercentage: pk.traffic_percentage || 0,
+      cpc: pk.keywords?.avg_cpc || 0,
+      competitionScore: pk.keywords?.competition_score || 0
+    })) || [],
+    
+    calculatedMetrics: product.calculated_metrics || {},
+    competitiveIntelligence: product.competitive_intelligence || '',
+    apifySource: product.apify_source || false,
+    sellerSpriteVerified: product.seller_sprite_verified || false, // CRITICAL: Boolean field
+    
+    // Legacy fields for backward compatibility
+    monthlyRevenue: product.monthly_revenue || 0,
+    monthlySales: product.monthly_sales || 0,
+    profitEstimate: product.profit_estimate || 0,
+    
+    createdAt: product.created_at,
+    updatedAt: product.updated_at
+  } as EnhancedProduct
+}
+
 export interface MarketRecalculationResult {
   marketId: string
   keyword: string
@@ -20,13 +92,34 @@ export class MarketRecalculator {
     try {
       console.log(`🔄 Recalculating market ${marketId} for user ${userId}`)
       
-      // Get market and its products
+      // Get market and its products with complete data
       const { data: market, error: marketError } = await supabaseAdmin
         .from('markets')
         .select(`
           id,
           keyword,
-          products(*)
+          products(
+            *,
+            ai_analysis(
+              risk_classification,
+              consistency_rating,
+              estimated_dimensions,
+              estimated_weight,
+              opportunity_score,
+              market_insights,
+              risk_factors
+            ),
+            product_keywords(
+              ranking_position,
+              traffic_percentage,
+              keywords(
+                keyword,
+                search_volume,
+                competition_score,
+                avg_cpc
+              )
+            )
+          )
         `)
         .eq('id', marketId)
         .eq('user_id', userId)
@@ -37,11 +130,14 @@ export class MarketRecalculator {
         return null
       }
 
+      // Transform database products to proper format with boolean fields
+      const transformedProducts = (market.products || []).map(transformProductForTable)
+      
       // Get product overrides for this user
       const productOverrides = await this.fetchProductOverridesForMarket(marketId, userId)
       
       // Apply overrides to get "effective" product data
-      const effectiveProducts = mergeProductsWithOverrides(market.products, productOverrides)
+      const effectiveProducts = mergeProductsWithOverrides(transformedProducts, productOverrides)
       const overriddenProductCount = effectiveProducts.filter(p => p.hasOverrides).length
 
       console.log(`📊 Market ${market.keyword}: ${effectiveProducts.length} products, ${overriddenProductCount} with overrides`)
