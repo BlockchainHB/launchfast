@@ -261,31 +261,31 @@ export default function ProductAnalysisPage() {
 
                 {/* Document Viewer Modal */}
                 <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
-                  <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0">
-                    <DialogHeader className="flex-shrink-0 px-6 py-4 border-b">
-                      <DialogTitle className="text-lg font-semibold truncate">
+                  <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-0 shadow-2xl">
+                    <DialogHeader className="flex-shrink-0 px-6 py-4 border-b bg-background">
+                      <DialogTitle className="text-lg font-semibold">
                         AI Analysis Report
                       </DialogTitle>
-                      <DialogDescription className="text-sm">
+                      <DialogDescription className="text-sm text-muted-foreground">
                         Generated {selectedDocument && new Date(selectedDocument.created_at).toLocaleDateString()} • Launch Fast V1.0
                       </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="flex-1 overflow-auto p-4">
+                    <div className="flex-1 overflow-auto bg-background">
                       {selectedDocument?.document_html && (
                         <div 
                           dangerouslySetInnerHTML={{ 
                             __html: selectedDocument.document_html 
                           }}
-                          className="w-full"
+                          className="w-full min-h-full"
                         />
                       )}
                     </div>
                     
-                    <div className="flex-shrink-0 px-6 py-4 border-t bg-muted/30">
+                    <div className="flex-shrink-0 px-6 py-3 border-t bg-muted/20">
                       <div className="flex justify-between items-center">
                         <div className="text-xs text-muted-foreground">
-                          💡 Tip: Use browser's print function (Ctrl/Cmd + P) for best PDF quality
+                          💡 Use Ctrl/Cmd + P for best PDF quality
                         </div>
                         <div className="flex space-x-2">
                           <Button
