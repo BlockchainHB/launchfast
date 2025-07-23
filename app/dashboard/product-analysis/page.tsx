@@ -12,7 +12,9 @@ import {
   IconEye, 
   IconSearch,
   IconCalendar,
-  IconFilter
+  IconFilter,
+  IconPlus,
+  IconLoader2
 } from "@tabler/icons-react"
 import { toast } from "sonner"
 
@@ -34,6 +36,22 @@ interface AnalysisDocument {
       asin: string
       grade: string
     }
+  }
+}
+
+interface AvailableAnalysis {
+  id: string
+  product_id: string
+  risk_classification: string
+  consistency_rating: string
+  opportunity_score: number
+  created_at: string
+  product: {
+    id: string
+    title: string
+    asin: string
+    grade: string
+    price: number
   }
 }
 

@@ -31,10 +31,52 @@ export async function POST(request: NextRequest) {
     }
 
     if (!productData.ai_analysis) {
-      return NextResponse.json(
-        { error: 'No AI analysis found for this product' },
-        { status: 404 }
-      )
+      // Generate AI analysis first if it doesn't exist
+      const analysisResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/products/research`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          productData: {
+            id: productData.id,
+            asin: productData.asin,
+            title: productData.title,
+            brand: productData.brand,
+            price: productData.price,
+            bsr: productData.bsr,
+            reviews: productData.reviews,
+            rating: productData.rating,
+            monthly_revenue: productData.monthly_revenue,
+            monthly_profit: productData.monthly_profit,
+            grade: productData.grade
+          }
+        })
+      })
+
+      if (!analysisResponse.ok) {
+        return NextResponse.json(
+          { error: 'Failed to generate AI analysis for this product' },
+          { status: 500 }
+        )
+      }
+
+      // Refetch the product with the new AI analysis
+      const { data: updatedProductData, error: refetchError } = await supabase
+        .from('products')
+        .select(`
+          *,
+          ai_analysis (*)
+        `)
+        .eq('id', productId)
+        .single()
+
+      if (refetchError || !updatedProductData?.ai_analysis) {
+        return NextResponse.json(
+          { error: 'Failed to retrieve generated AI analysis' },
+          { status: 500 }
+        )
+      }
+
+      productData = updatedProductData
     }
 
     // Generate document title
