@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   IconFileAnalytics, 
   IconDownload, 
@@ -318,7 +317,7 @@ export default function ProductAnalysisPage() {
                       </DialogDescription>
                     </DialogHeader>
                     
-                    <ScrollArea className="flex-1 mt-4">
+                    <div className="flex-1 mt-4 overflow-auto">
                       {selectedDocument?.document_html && (
                         <div 
                           dangerouslySetInnerHTML={{ 
@@ -330,7 +329,7 @@ export default function ProductAnalysisPage() {
                           } as React.CSSProperties}
                         />
                       )}
-                    </ScrollArea>
+                    </div>
                     
                     <div className="flex justify-between items-center pt-4 border-t mt-4 flex-shrink-0">
                       <div className="text-sm text-muted-foreground">
