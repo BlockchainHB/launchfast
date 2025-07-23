@@ -6,6 +6,7 @@ import { ArrowRight, Target, DollarSign, Shield, TrendingUp, BarChart3, Zap } fr
 import { motion } from 'framer-motion';
 import Navbar from '@/components/ui/navbar';
 import { VideoModal } from '@/components/ui/video-modal';
+import { PricingSection } from '@/components/ui/pricing-section';
 import { cn } from '@/lib/utils';
 
 // Product metrics for social proof
@@ -154,6 +155,9 @@ export default function WaitlistPage() {
             ))}
           </motion.div>
         </div>
+
+        {/* Pricing Section */}
+        <PricingSection />
       </main>
       
       <VideoModal
