@@ -97,16 +97,23 @@ AMAZON PROHIBITED ITEMS - Classify as 'Prohibited' if product matches any of the
 
 MEDICAL ITEMS - Classify as 'Medical' if product is:
 - Health/medical devices requiring FDA approval
-- Medical supplements or ingestibles
+- Medical supplements or ingestibles for humans
 - Medical equipment or diagnostic tools
-- Any health-related product with medical claims
+- Any health-related product with medical claims for humans
+- Veterinary medical devices or prescription pet medications
+
+DO NOT classify as Medical:
+- Regular pet products (toys, beds, cushions, collars, bowls, carriers)
+- Pet grooming products (brushes, shampoos, nail clippers)
+- Pet food and treats (unless medicinal/prescription)
+- Standard pet accessories and supplies
 
 RISK CATEGORIES:
 - Electric: Electrical products requiring compliance
-- Breakable: Fragile items with high shipping damage risk
-- Medical: Health/medical devices and supplements
+- Breakable: Fragile items with high shipping damage risk  
+- Medical: Health/medical devices and supplements (human or veterinary medical)
 - Prohibited: Amazon banned items (see list above)
-- Safe: Standard products with no restrictions`
+- Safe: Standard products with no restrictions (includes normal pet products)`
         },
         {
           role: 'user',
@@ -292,16 +299,23 @@ AMAZON PROHIBITED ITEMS - Classify as 'Prohibited' if product matches any of the
 
 MEDICAL ITEMS - Classify as 'Medical' if product is:
 - Health/medical devices requiring FDA approval
-- Medical supplements or ingestibles
+- Medical supplements or ingestibles for humans
 - Medical equipment or diagnostic tools
-- Any health-related product with medical claims
+- Any health-related product with medical claims for humans
+- Veterinary medical devices or prescription pet medications
+
+DO NOT classify as Medical:
+- Regular pet products (toys, beds, cushions, collars, bowls, carriers)
+- Pet grooming products (brushes, shampoos, nail clippers)
+- Pet food and treats (unless medicinal/prescription)
+- Standard pet accessories and supplies
 
 RISK CATEGORIES:
 - Electric: Electrical products requiring compliance
-- Breakable: Fragile items with high shipping damage risk
-- Medical: Health/medical devices and supplements
+- Breakable: Fragile items with high shipping damage risk  
+- Medical: Health/medical devices and supplements (human or veterinary medical)
 - Prohibited: Amazon banned items (see list above)
-- Safe: Standard products with no restrictions`
+- Safe: Standard products with no restrictions (includes normal pet products)`
         },
         {
           role: 'user',
