@@ -59,6 +59,8 @@ export function calculateGrade(inputs: ScoringInputs): {
     breakdown.disqualifiers = disqualifiers
     if (disqualifiers.includes('Prohibited Product')) {
       breakdown.finalGrade = 'F1'
+    } else if (disqualifiers.includes('Medical Product Risk')) {
+      breakdown.finalGrade = 'Avoid'
     } else if (disqualifiers.includes('Risky Consistency Pattern')) {
       breakdown.finalGrade = 'Avoid'
     } else {
@@ -130,6 +132,10 @@ function checkDisqualifiers(inputs: ScoringInputs): string[] {
 
   if (inputs.riskClassification === 'Banned' || inputs.riskClassification === 'Prohibited') {
     disqualifiers.push('Prohibited Product')
+  }
+
+  if (inputs.riskClassification === 'Medical') {
+    disqualifiers.push('Medical Product Risk')
   }
 
   if (inputs.consistencyRating === 'Trendy' || inputs.consistencyRating === 'Low') {
@@ -435,7 +441,7 @@ export const scoringUtils = {
 
   // Get grade description
   getGradeDescription: (grade: string): string => {
-    if (grade === 'Avoid') return 'Avoid - Risky Consistency'
+    if (grade === 'Avoid') return 'Avoid - High Risk'
     if (grade.startsWith('A')) return 'Excellent Opportunity'
     if (grade.startsWith('B')) return 'Good Opportunity'
     if (grade.startsWith('C')) return 'Fair Opportunity'
