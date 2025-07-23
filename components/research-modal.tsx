@@ -312,7 +312,12 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
       }
       
       // Show success toast with duplicate information
-      if (data.duplicatesSkipped > 0) {
+      if (data.count === 0 && data.duplicatesSkipped > 0) {
+        toast.info("No new products to save", {
+          description: `All ${data.duplicatesSkipped} products were already in your database`,
+          duration: 4000,
+        })
+      } else if (data.duplicatesSkipped > 0) {
         toast.success("Products saved successfully!", {
           description: `${data.count} new products added, ${data.duplicatesSkipped} duplicates skipped`,
           duration: 4000,
