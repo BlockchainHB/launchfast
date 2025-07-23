@@ -261,7 +261,7 @@ export default function ProductAnalysisPage() {
 
                 {/* Document Viewer Modal */}
                 <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
-                  <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-0 shadow-2xl">
+                  <DialogContent className="max-w-[95vw] max-h-[95vh] w-full flex flex-col p-0 overflow-hidden border-0 shadow-2xl">
                     <DialogHeader className="flex-shrink-0 px-6 py-4 border-b bg-background">
                       <DialogTitle className="text-lg font-semibold">
                         AI Analysis Report
@@ -278,6 +278,12 @@ export default function ProductAnalysisPage() {
                             __html: selectedDocument.document_html 
                           }}
                           className="w-full min-h-full"
+                          style={{ 
+                            transform: 'scale(0.85)',
+                            transformOrigin: 'top left',
+                            width: '117.65%',
+                            minHeight: '117.65%'
+                          }}
                         />
                       )}
                     </div>
