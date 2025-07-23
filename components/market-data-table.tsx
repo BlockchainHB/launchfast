@@ -790,13 +790,15 @@ export function MarketDataTable({
 
   return (
     <div className="w-full px-4 lg:px-6">
-      <TableFilters
-        table={table}
-        searchColumn="select-keyword"
-        searchPlaceholder="Filter markets by keyword..."
-        filters={marketFilters}
-      />
-      <div className="flex items-center justify-end py-2">
+      <div className="flex items-center justify-between py-4">
+        <div className="flex-1 max-w-lg">
+          <TableFilters
+            table={table}
+            searchColumn="select-keyword"
+            searchPlaceholder="Filter markets by keyword..."
+            filters={marketFilters}
+          />
+        </div>
         <div className="flex items-center space-x-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
