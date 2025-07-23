@@ -147,6 +147,8 @@ const columns: ColumnDef<EnhancedProduct>[] = [
               </TooltipProvider>
               <div className="flex items-center space-x-2">
                 <span className="text-xs text-muted-foreground">{product.asin}</span>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">${product.price}</span>
                 <Button
                   variant="ghost"
                   size="sm"

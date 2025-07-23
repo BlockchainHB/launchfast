@@ -352,6 +352,7 @@ export function mergeMarketWithOverrides(market: any, override?: MarketOverride)
     avg_bsr: override.avg_bsr ?? market.avg_bsr,
     avg_cpc: override.avg_cpc ?? market.avg_cpc,
     avg_launch_budget: override.avg_launch_budget ?? market.avg_launch_budget,
+    avg_cogs: override.avg_cogs ?? market.avg_cogs,
     
     // Override scoring fields
     market_grade: override.market_grade ?? market.market_grade,
