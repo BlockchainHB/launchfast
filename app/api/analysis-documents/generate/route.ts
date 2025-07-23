@@ -172,7 +172,8 @@ export async function POST(request: NextRequest) {
           ai_analysis_id: productData.ai_analysis.id,
           document_title: documentTitle,
           document_html: documentHTML,
-          document_status: 'generated'
+          document_status: 'generated',
+          user_id: user.id
         })
         .select()
         .single()

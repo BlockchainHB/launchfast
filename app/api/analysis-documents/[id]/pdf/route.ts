@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 
 export async function GET(
   request: NextRequest,
@@ -8,11 +8,34 @@ export async function GET(
   try {
     const documentId = params.id
 
-    // Get the document HTML
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    // Get the document HTML - FILTERED BY USER
     const { data: document, error } = await supabase
       .from('analysis_documents')
       .select('document_html, document_title')
       .eq('id', documentId)
+      .eq('user_id', user.id)
       .single()
 
     if (error || !document) {
@@ -37,6 +60,7 @@ export async function GET(
         updated_at: new Date().toISOString()
       })
       .eq('id', documentId)
+      .eq('user_id', user.id)
 
     // For now, return the HTML with print-friendly styling
     // In production, you'd want to use a proper PDF generation service

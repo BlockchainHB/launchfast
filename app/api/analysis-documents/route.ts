@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get analysis documents with related data
+    // Get authenticated user from session
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please login' },
+        { status: 401 }
+      )
+    }
+
+    // Get analysis documents with related data - FILTERED BY USER
     const { data: documents, error } = await supabase
       .from('analysis_documents')
       .select(`
@@ -20,6 +42,7 @@ export async function GET(request: NextRequest) {
           )
         )
       `)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) {
