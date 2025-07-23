@@ -215,8 +215,9 @@ export function getRiskColor(riskClassification: string): string {
 export function getConsistencyColor(consistencyRating: string): string {
   switch (consistencyRating) {
     case 'Consistent': return 'text-green-600'
-    case 'Seasonal': return 'text-blue-600'
-    case 'Trendy': return 'text-purple-600'
+    case 'Low': return 'text-red-600' // Risky for private label
+    case 'Trendy': return 'text-red-600' // Risky for private label  
+    case 'Seasonal': return 'text-blue-600' // Backward compatibility
     default: return 'text-gray-600'
   }
 }

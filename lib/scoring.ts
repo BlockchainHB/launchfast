@@ -57,7 +57,13 @@ export function calculateGrade(inputs: ScoringInputs): {
   const disqualifiers = checkDisqualifiers(inputs)
   if (disqualifiers.length > 0) {
     breakdown.disqualifiers = disqualifiers
-    breakdown.finalGrade = disqualifiers.includes('Banned Product') ? 'F1' : 'D1'
+    if (disqualifiers.includes('Prohibited Product')) {
+      breakdown.finalGrade = 'F1'
+    } else if (disqualifiers.includes('Risky Consistency Pattern')) {
+      breakdown.finalGrade = 'Avoid'
+    } else {
+      breakdown.finalGrade = 'D1'
+    }
     breakdown.details.push(`Instant disqualifier: ${disqualifiers.join(', ')}`)
     
     return {
@@ -126,8 +132,8 @@ function checkDisqualifiers(inputs: ScoringInputs): string[] {
     disqualifiers.push('Prohibited Product')
   }
 
-  if (inputs.consistencyRating === 'Trendy') {
-    disqualifiers.push('Trendy Product')
+  if (inputs.consistencyRating === 'Trendy' || inputs.consistencyRating === 'Low') {
+    disqualifiers.push('Risky Consistency Pattern')
   }
 
   return disqualifiers
@@ -419,6 +425,7 @@ export function scoreApifyProduct(apifyProduct: any): {
 export const scoringUtils = {
   // Get grade color for UI
   getGradeColor: (grade: string): string => {
+    if (grade === 'Avoid') return 'text-red-700'
     if (grade.startsWith('A')) return 'text-green-600'
     if (grade.startsWith('B')) return 'text-blue-600'
     if (grade.startsWith('C')) return 'text-yellow-600'
@@ -428,6 +435,7 @@ export const scoringUtils = {
 
   // Get grade description
   getGradeDescription: (grade: string): string => {
+    if (grade === 'Avoid') return 'Avoid - Risky Consistency'
     if (grade.startsWith('A')) return 'Excellent Opportunity'
     if (grade.startsWith('B')) return 'Good Opportunity'
     if (grade.startsWith('C')) return 'Fair Opportunity'

@@ -56,13 +56,18 @@ Focus on competitive differentiation opportunities:
 
 Please provide a comprehensive analysis focusing on:
 1. Risk classification for Amazon selling
-2. Market demand consistency
+2. Market demand consistency FOR PRIVATE LABEL (analyze demand stability, not seasonality)
 3. Physical product characteristics
 4. Business opportunity scoring
 5. Market insights and competitive differentiation opportunities
 6. Potential risk factors
 
-Be specific and practical in your analysis.`
+CONSISTENCY ANALYSIS FOR PRIVATE LABEL:
+- Consistent: Stable year-round demand, problem-solving products, established markets
+- Low: Inconsistent demand patterns, niche markets, unpredictable sales
+- Trendy: Short-lived popularity, viral products, fad items, trend-dependent
+
+Analyze the product's necessity level, market maturity, and demand predictability.`
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -121,7 +126,7 @@ RISK CATEGORIES:
             },
             consistencyRating: {
               type: 'string',
-              enum: ['Consistent', 'Seasonal', 'Trendy'],
+              enum: ['Consistent', 'Low', 'Trendy'],
               description: 'Market demand consistency pattern'
             },
             estimatedDimensions: {
@@ -246,13 +251,18 @@ Product Details:
 
 Please provide a comprehensive analysis focusing on:
 1. Risk classification for Amazon selling
-2. Market demand consistency
+2. Market demand consistency FOR PRIVATE LABEL (analyze demand stability, not seasonality)
 3. Physical product characteristics
 4. Business opportunity scoring
 5. Market insights and trends
 6. Potential risk factors
 
-Be specific and practical in your analysis.`
+CONSISTENCY ANALYSIS FOR PRIVATE LABEL:
+- Consistent: Stable year-round demand, problem-solving products, established markets
+- Low: Inconsistent demand patterns, niche markets, unpredictable sales
+- Trendy: Short-lived popularity, viral products, fad items, trend-dependent
+
+Analyze the product's necessity level, market maturity, and demand predictability.`
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -311,7 +321,7 @@ RISK CATEGORIES:
             },
             consistencyRating: {
               type: 'string',
-              enum: ['Consistent', 'Seasonal', 'Trendy'],
+              enum: ['Consistent', 'Low', 'Trendy'],
               description: 'Market demand consistency pattern'
             },
             estimatedDimensions: {
@@ -487,7 +497,7 @@ export async function enhanceProductAnalysis(
 // Function to validate and sanitize AI analysis results
 export function validateAIAnalysis(analysis: any): AIAnalysis {
   const validRiskClassifications = ['Electric', 'Breakable', 'Medical', 'Prohibited', 'Safe']
-  const validConsistencyRatings = ['Consistent', 'Seasonal', 'Trendy']
+  const validConsistencyRatings = ['Consistent', 'Low', 'Trendy']
 
   return {
     riskClassification: validRiskClassifications.includes(analysis.riskClassification) 

@@ -52,7 +52,7 @@ interface ProductEditForm {
 }
 
 const riskOptions = ['Safe', 'Electric', 'Breakable', 'Medical', 'Prohibited']
-const consistencyOptions = ['Consistent', 'Seasonal', 'Trendy']
+const consistencyOptions = ['Consistent', 'Low', 'Trendy']
 
 export function BatchEditModal({ open, onClose, selectedProducts, onProductsUpdated, onDashboardRefresh }: BatchEditModalProps) {
   const [currentProductIndex, setCurrentProductIndex] = React.useState(0)
