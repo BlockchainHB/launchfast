@@ -76,7 +76,7 @@ export function ContactForm() {
 
   if (submitStatus === 'success') {
     return (
-      <section className="py-16 px-6">
+      <section id="contact-section" className="py-16 px-6">
         <div className="mx-auto max-w-2xl">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -112,7 +112,7 @@ export function ContactForm() {
   }
 
   return (
-    <section className="py-16 px-6">
+    <section id="contact-section" className="py-16 px-6">
       <div className="mx-auto max-w-4xl">
         {/* Header */}
         <motion.div

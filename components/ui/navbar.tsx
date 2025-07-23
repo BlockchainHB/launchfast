@@ -2,8 +2,19 @@
 
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { HelpCircle } from 'lucide-react'
 
 export default function Navbar() {
+  const scrollToContact = () => {
+    const contactSection = document.getElementById('contact-section');
+    if (contactSection) {
+      contactSection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-background/95 backdrop-blur-md border-b">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -21,6 +32,14 @@ export default function Navbar() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
+            <Button 
+              onClick={scrollToContact}
+              variant="ghost" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              <HelpCircle className="h-4 w-4 mr-2" />
+              Get Help
+            </Button>
             <Button 
               asChild
               variant="ghost" 
