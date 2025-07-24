@@ -75,18 +75,35 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
       background: white;
     }
     
-    /* Header with cover image aesthetic */
+    /* Header with custom image */
     .header {
-      background: linear-gradient(135deg, rgb(79, 172, 254) 0%, rgb(0, 122, 255) 100%);
+      background: url('/analysis-header.png') center center / cover;
       color: white;
       padding: 96px 48px 48px;
       position: relative;
       margin-bottom: 0;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 1;
     }
     
     .header-content {
       position: relative;
       z-index: 2;
+      text-align: center;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     }
     
     .header h1 {
@@ -519,9 +536,23 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
         </div>
         <div class="property">
           <span class="property-name">Monthly Revenue</span>
-          <span class="property-value">$${product.monthlyRevenue?.toLocaleString() || product.monthly_revenue?.toLocaleString() || 'N/A'}</span>
+          <span class="property-value">${product.monthly_revenue ? '$' + product.monthly_revenue.toLocaleString() : (product.salesData?.monthlyRevenue ? '$' + product.salesData.monthlyRevenue.toLocaleString() : 'N/A')}</span>
         </div>
       </div>
+      
+      <!-- Product Image -->
+      ${product.images ? `
+      <section class="section">
+        <div class="product-image-container" style="text-align: center; margin-bottom: 32px;">
+          <img 
+            src="${Array.isArray(product.images) ? product.images[0] : product.images}" 
+            alt="Product Image - ${product.title}"
+            style="max-width: 300px; max-height: 300px; border-radius: 12px; box-shadow: rgb(15 15 15 / 10%) 0px 0px 0px 1px, rgb(15 15 15 / 10%) 0px 2px 8px; object-fit: contain; background: white; padding: 16px;"
+            onerror="this.style.display='none'"
+          />
+        </div>
+      </section>
+      ` : ''}
       
       <!-- Key metrics -->
       <section class="section">
@@ -561,23 +592,27 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
           </div>
           <div class="database-row">
             <div class="database-cell">Rating</div>
-            <div class="database-cell">${product.rating || 'N/A'} ⭐ (${product.reviews?.toLocaleString() || 'N/A'} reviews)</div>
+            <div class="database-cell">${product.rating || 'N/A'} ⭐ (${product.reviews?.toLocaleString() || product.reviewsData?.total?.toLocaleString() || 'N/A'} reviews)</div>
           </div>
           <div class="database-row">
             <div class="database-cell">Dimensions</div>
-            <div class="database-cell">${aiAnalysis.estimatedDimensions || 'N/A'}</div>
+            <div class="database-cell">${product.dimensions ? (product.dimensions.length && product.dimensions.width && product.dimensions.height ? `${product.dimensions.length}" × ${product.dimensions.width}" × ${product.dimensions.height}" (${product.dimensions.unit || 'inches'})` : aiAnalysis.estimatedDimensions || 'N/A') : aiAnalysis.estimatedDimensions || 'N/A'}</div>
           </div>
           <div class="database-row">
             <div class="database-cell">Weight</div>
-            <div class="database-cell">${aiAnalysis.estimatedWeight || 'N/A'}</div>
+            <div class="database-cell">${product.dimensions?.weight ? `${product.dimensions.weight} ${product.dimensions.weightUnit || 'lbs'}` : aiAnalysis.estimatedWeight || 'N/A'}</div>
           </div>
           <div class="database-row">
             <div class="database-cell">Monthly Sales</div>
-            <div class="database-cell">${product.monthlySales?.toLocaleString() || product.monthly_sales?.toLocaleString() || 'N/A'}</div>
+            <div class="database-cell">${product.monthly_sales ? product.monthly_sales.toLocaleString() : (product.salesData?.monthlySales ? product.salesData.monthlySales.toLocaleString() : 'N/A')}</div>
           </div>
           <div class="database-row">
-            <div class="database-cell">Profit Estimate</div>
-            <div class="database-cell">$${product.profitEstimate?.toLocaleString() || product.profit_estimate?.toLocaleString() || 'N/A'}</div>
+            <div class="database-cell">COGS</div>
+            <div class="database-cell">${product.salesData?.cogs ? '$' + product.salesData.cogs.toFixed(2) : 'N/A'}</div>
+          </div>
+          <div class="database-row">
+            <div class="database-cell">FBA Fees</div>
+            <div class="database-cell">${product.salesData?.fbaCost ? '$' + product.salesData.fbaCost.toFixed(2) : 'N/A'}</div>
           </div>
           <div class="database-row">
             <div class="database-cell">Product Grade</div>
@@ -630,7 +665,28 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
                      <li>Review count (${product.reviews?.toLocaleString() || 'N/A'}) suggests customer engagement level</li>
                      <li>Rating (${product.rating || 'N/A'} ⭐) reflects product satisfaction</li>
                      <li>Price point ($${product.price?.toFixed(2) || 'N/A'}) positioned for competitive analysis</li>
-                     <li>Monthly revenue ($${product.monthlyRevenue?.toLocaleString() || product.monthly_revenue?.toLocaleString() || 'N/A'}) indicates market potential</li>`
+                     <li>Monthly revenue ($${product.monthly_revenue ? product.monthly_revenue.toLocaleString() : (product.salesData?.monthlyRevenue ? product.salesData.monthlyRevenue.toLocaleString() : 'N/A')}) indicates market potential</li>`
+                }
+              </ul>
+            </div>
+          </div>
+          
+          <div class="toggle-item">
+            <div class="toggle-header" onclick="toggleSection(this)">
+              <span class="toggle-icon">▶</span>
+              Customer Reviews Analysis
+            </div>
+            <div class="toggle-content" style="display: none;">
+              <ul>
+                ${product.reviewsData ? `
+                  <li>Total Reviews: ${product.reviewsData.total || 0} (${product.reviewsData.positive?.length || 0} positive, ${product.reviewsData.negative?.length || 0} negative)</li>
+                  <li>Positive Sentiment Rate: ${product.reviewsData.total ? Math.round((product.reviewsData.positive?.length || 0) / product.reviewsData.total * 100) : 0}%</li>
+                  ${product.reviewsData.positive?.length > 0 ? `<li>Recent Positive: "${product.reviewsData.positive[0].text.substring(0, 100)}..."</li>` : ''}
+                  ${product.reviewsData.negative?.length > 0 ? `<li>Recent Concern: "${product.reviewsData.negative[0].text.substring(0, 100)}..."</li>` : '<li>No negative reviews identified</li>'}
+                  <li>Average Helpful Votes: ${product.reviewsData.positive?.length ? Math.round(product.reviewsData.positive.reduce((sum: number, review: any) => sum + (review.helpful || 0), 0) / product.reviewsData.positive.length * 10) / 10 : 0}</li>`
+                  : `<li>Review analysis data not available</li>
+                     <li>Consider gathering customer feedback for product improvement insights</li>
+                     <li>Monitor review patterns for competitive intelligence</li>`
                 }
               </ul>
             </div>
