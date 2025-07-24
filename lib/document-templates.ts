@@ -75,66 +75,13 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
       background: white;
     }
     
-    /* Header with custom image */
+    /* Clean header with custom image */
     .header {
       background: url('/analysis-header.png') center center / cover, linear-gradient(135deg, rgb(0, 122, 255) 0%, rgb(79, 172, 254) 100%);
-      color: white;
-      padding: 96px 48px 48px;
-      position: relative;
       margin-bottom: 0;
-      min-height: 400px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      min-height: 300px;
     }
     
-    .header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.3);
-      z-index: 1;
-    }
-    
-    .header-content {
-      position: relative;
-      z-index: 2;
-      text-align: center;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    }
-    
-    .header h1 {
-      font-size: 40px;
-      font-weight: 700;
-      line-height: 1.2;
-      margin-bottom: 8px;
-      letter-spacing: -0.003em;
-    }
-    
-    .header-subtitle {
-      font-size: 16px;
-      opacity: 0.9;
-      font-weight: 400;
-      margin-bottom: 24px;
-    }
-    
-    .header-meta {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      font-size: 14px;
-      opacity: 0.8;
-    }
-    
-    .meta-badge {
-      background: rgba(255, 255, 255, 0.2);
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-weight: 500;
-    }
     
     /* Content area */
     .content {
@@ -490,17 +437,8 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
 </head>
 <body>
   <div class="container">
-    <!-- Cover-style header -->
+    <!-- Clean custom header image -->
     <header class="header">
-      <div class="header-content">
-        <h1>📊 Product Analysis Report</h1>
-        <p class="header-subtitle">Amazon FBA Private Label Assessment</p>
-        <div class="header-meta">
-          <span class="meta-badge">Launch Fast V1.0</span>
-          <span>•</span>
-          <span>Generated ${currentDate}</span>
-        </div>
-      </div>
     </header>
     
     <main class="content">
@@ -538,6 +476,13 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
           <span class="property-name">Monthly Revenue</span>
           <span class="property-value">${product.monthly_revenue ? '$' + product.monthly_revenue.toLocaleString() : (product.salesData?.monthlyRevenue ? '$' + product.salesData.monthlyRevenue.toLocaleString() : 'N/A')}</span>
         </div>
+      </div>
+      
+      <!-- Generated Date -->
+      <div style="text-align: center; margin-bottom: 32px; padding: 16px; background: rgb(251, 250, 249); border-radius: 8px; border: 1px solid rgb(227, 226, 224);">
+        <p style="margin: 0; color: rgb(120, 119, 116); font-size: 14px; font-weight: 500;">
+          Generated on ${currentDate}
+        </p>
       </div>
       
       <!-- Product Image -->
