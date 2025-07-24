@@ -49,8 +49,7 @@ export default function ProductAnalysisPage() {
   const [documents, setDocuments] = useState<AnalysisDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedDocument, setSelectedDocument] = useState<AnalysisDocument | null>(null)
-  const [viewModalOpen, setViewModalOpen] = useState(false)
+  // Modal state removed - View button now opens directly in new tab
 
   useEffect(() => {
     document.title = "Product Analysis - LaunchFast"
@@ -83,8 +82,18 @@ export default function ProductAnalysisPage() {
   )
 
   const handleViewDocument = (document: AnalysisDocument) => {
-    setSelectedDocument(document)
-    setViewModalOpen(true)
+    try {
+      toast("Opening analysis document...")
+      
+      // Open the document directly in a new tab/window
+      const printUrl = `/api/analysis-documents/${document.id}/pdf`
+      window.open(printUrl, '_blank', 'width=1200,height=900')
+      
+      toast.success("Analysis document opened!")
+    } catch (error) {
+      console.error('Error opening analysis document:', error)
+      toast.error("Failed to open analysis document")
+    }
   }
 
   const handleDownloadPDF = async (document: AnalysisDocument) => {
@@ -241,8 +250,8 @@ export default function ProductAnalysisPage() {
                                 className="flex-1"
                                 onClick={() => handleViewDocument(document)}
                               >
-                                <IconEye className="mr-1 h-3 w-3" />
-                                View
+                                <IconExternalLink className="mr-1 h-3 w-3" />
+                                Open Report
                               </Button>
                               <Button 
                                 size="sm" 
@@ -259,58 +268,7 @@ export default function ProductAnalysisPage() {
                   </div>
                 )}
 
-                {/* Document Viewer Modal */}
-                <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
-                  <DialogContent className="max-w-[95vw] max-h-[95vh] w-full flex flex-col p-0 overflow-hidden border-0 shadow-2xl">
-                    <DialogHeader className="flex-shrink-0 px-6 py-4 border-b bg-background">
-                      <DialogTitle className="text-lg font-semibold">
-                        AI Analysis Report
-                      </DialogTitle>
-                      <DialogDescription className="text-sm text-muted-foreground">
-                        Generated {selectedDocument && new Date(selectedDocument.created_at).toLocaleDateString()} • Launch Fast V1.0
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="flex-1 overflow-auto bg-background">
-                      {selectedDocument?.document_html && (
-                        <div 
-                          dangerouslySetInnerHTML={{ 
-                            __html: selectedDocument.document_html 
-                          }}
-                          className="w-full min-h-full"
-                          style={{ 
-                            transform: 'scale(0.85)',
-                            transformOrigin: 'top left',
-                            width: '117.65%',
-                            minHeight: '117.65%'
-                          }}
-                        />
-                      )}
-                    </div>
-                    
-                    <div className="flex-shrink-0 px-6 py-3 border-t bg-muted/20">
-                      <div className="flex justify-between items-center">
-                        <div className="text-xs text-muted-foreground">
-                          💡 Use Ctrl/Cmd + P for best PDF quality
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDownloadPDF(selectedDocument!)}
-                            disabled={!selectedDocument}
-                          >
-                            <IconExternalLink className="mr-1 h-3 w-3" />
-                            Print View
-                          </Button>
-                          <Button size="sm" onClick={() => setViewModalOpen(false)}>
-                            Close
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                {/* Modal removed - View button now opens directly in new tab */}
               </div>
             </div>
           </div>

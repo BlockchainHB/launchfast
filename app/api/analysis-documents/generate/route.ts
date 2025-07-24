@@ -127,7 +127,12 @@ export async function POST(request: NextRequest) {
         rating: productData.rating,
         grade: productData.grade,
         monthly_revenue: productData.monthly_revenue,
-        monthly_profit: productData.monthly_profit
+        monthly_sales: productData.monthly_sales,
+        profit_estimate: productData.profit_estimate,
+        images: productData.images,
+        dimensions: productData.dimensions,
+        salesData: productData.sales_data,
+        reviewsData: productData.reviews_data
       },
       productData.ai_analysis
     )
