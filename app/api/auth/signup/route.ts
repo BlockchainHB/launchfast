@@ -73,8 +73,9 @@ export async function POST(request: NextRequest) {
       // Generate confirmation token and send custom email
       try {
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'confirmation',
+          type: 'signup',
           email: email,
+          password: password,
           options: {
             redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`
           }
