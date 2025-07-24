@@ -77,9 +77,9 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
     
     /* Clean header with custom image - matches content width */
     .header {
-      background: url('/analysis-header.png') center center / contain no-repeat, linear-gradient(135deg, rgb(0, 122, 255) 0%, rgb(79, 172, 254) 100%);
+      background: url('/analysis-header.png') center center / cover;
       margin-bottom: 0;
-      height: 300px;
+      height: 225px;
     }
     
     
