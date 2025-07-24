@@ -77,7 +77,7 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
     
     /* Header with custom image */
     .header {
-      background: url('/analysis-header.png') center center / cover;
+      background: url('/analysis-header.png') center center / cover, linear-gradient(135deg, rgb(0, 122, 255) 0%, rgb(79, 172, 254) 100%);
       color: white;
       padding: 96px 48px 48px;
       position: relative;
