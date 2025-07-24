@@ -75,22 +75,11 @@ export function generateAnalysisDocument(product: any, aiAnalysis: any): string 
       background: white;
     }
     
-    /* Clean header with custom image (1200x400) */
+    /* Clean header with custom image - matches content width */
     .header {
       background: url('/analysis-header.png') center center / contain no-repeat, linear-gradient(135deg, rgb(0, 122, 255) 0%, rgb(79, 172, 254) 100%);
       margin-bottom: 0;
-      height: 400px;
-      max-width: 1200px;
-      margin: 0 auto;
-      position: relative;
-    }
-    
-    @media (max-width: 1200px) {
-      .header {
-        background-size: cover;
-        height: calc(100vw * 400 / 1200);
-        max-height: 400px;
-      }
+      height: 300px;
     }
     
     
