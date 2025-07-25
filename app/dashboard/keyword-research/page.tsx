@@ -26,6 +26,12 @@ export default function Page() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [isResearching, setIsResearching] = useState(false)
+  const [progressInfo, setProgressInfo] = useState<{
+    phase: string
+    message: string
+    progress: number
+    data?: any
+  } | null>(null)
   
   // Research options state
   const [researchOptions, setResearchOptions] = useState({
@@ -64,73 +70,167 @@ export default function Page() {
   const startKeywordResearch = async (asins: string[]) => {
     if (!asins.length) return
 
+    // TODO: Replace with user ID from auth
+    const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+    const sessionName = `Research Session ${new Date().toLocaleDateString()}`
+
     try {
       setIsResearching(true)
       setError(null)
       setKeywordResearchData(null)
+      setProgressInfo(null)
 
-      // TODO: Replace with user ID from auth
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+      // Try streaming API first
+      await tryStreamingAPI(asins, userId, sessionName)
+    } catch (streamError) {
+      console.warn('⚠️ Streaming API failed, falling back to regular API:', streamError)
       
-      // Build query parameters
-      const params = new URLSearchParams({
-        asins: asins.join(','),
-        userId,
-        maxKeywordsPerAsin: researchOptions.maxKeywordsPerAsin.toString(),
-        minSearchVolume: researchOptions.minSearchVolume.toString(),
-        includeOpportunities: researchOptions.includeOpportunities.toString(),
-        includeGapAnalysis: researchOptions.includeGapAnalysis.toString()
-      })
+      try {
+        // Fallback to regular API
+        await tryRegularAPI(asins, userId, sessionName)
+      } catch (regularError) {
+        console.error('❌ Both APIs failed:', regularError)
+        setError(regularError instanceof Error ? regularError.message : 'Failed to complete keyword research')
+        setIsResearching(false)
+        setProgressInfo(null)
+      }
+    }
+  }
 
-      // Start streaming research
-      const response = await fetch(`/api/keywords/research/stream?${params}`)
+  const tryStreamingAPI = async (asins: string[], userId: string, sessionName: string) => {
+    // Build query parameters
+    const params = new URLSearchParams({
+      userId,
+      asins: asins.join(','),
+      sessionName,
+      maxKeywordsPerAsin: researchOptions.maxKeywordsPerAsin.toString(),
+      minSearchVolume: researchOptions.minSearchVolume.toString(),
+      includeOpportunities: researchOptions.includeOpportunities.toString(),
+      includeGapAnalysis: researchOptions.includeGapAnalysis.toString()
+    })
+
+    // Start streaming research
+    const response = await fetch(`/api/keywords/research/stream?${params}`)
+    
+    if (!response.ok) {
+      throw new Error('Failed to start streaming keyword research')
+    }
+
+    if (!response.body) {
+      throw new Error('No response body received')
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    while (true) {
+      const { done, value } = await reader.read()
       
-      if (!response.ok) {
-        throw new Error('Failed to start keyword research')
-      }
+      if (done) break
 
-      if (!response.body) {
-        throw new Error('No response body received')
-      }
+      const chunk = decoder.decode(value)
+      const lines = chunk.split('\n')
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-
-      while (true) {
-        const { done, value } = await reader.read()
-        
-        if (done) break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const eventData = JSON.parse(line.slice(6))
-              
-              if (eventData.phase === 'complete' && eventData.data) {
-                // Research completed successfully
-                setKeywordResearchData(eventData.data)
-                setIsResearching(false)
-                console.log('✅ Keyword research completed:', eventData.data.overview)
-              } else if (eventData.phase === 'error') {
-                // Research failed
-                setError(eventData.message)
-                setIsResearching(false)
-              }
-              // TODO: Add progress tracking UI for other phases
-            } catch (parseError) {
-              console.warn('Failed to parse SSE event:', line)
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const eventData = JSON.parse(line.slice(6))
+            
+            if (eventData.phase === 'complete' && eventData.data?.sessionId) {
+              // Research completed successfully - fetch data from database
+              await fetchSessionResults(eventData.data.sessionId)
+              setIsResearching(false)
+              setProgressInfo(null)
+              console.log('✅ Streaming keyword research completed, session:', eventData.data.sessionId)
+              return
+            } else if (eventData.phase === 'error') {
+              // Research failed
+              throw new Error(eventData.message)
+            } else {
+              // Progress update
+              setProgressInfo({
+                phase: eventData.phase || 'processing',
+                message: eventData.message || 'Processing...',
+                progress: eventData.progress || 0,
+                data: eventData.data
+              })
             }
+          } catch (parseError) {
+            console.warn('Failed to parse SSE event:', line)
           }
         }
       }
-    } catch (err) {
-      console.error('❌ Keyword research error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to complete keyword research')
-      setIsResearching(false)
     }
+  }
+
+  const fetchSessionResults = async (sessionId: string) => {
+    try {
+      // TODO: Replace with user ID from auth
+      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+      const response = await fetch(`/api/keywords/sessions/${sessionId}?userId=${userId}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch session results')
+      }
+      
+      const sessionData = await response.json()
+      
+      if (sessionData.success && sessionData.data && sessionData.data.results) {
+        setKeywordResearchData(sessionData.data.results)
+        console.log('✅ Session data loaded:', sessionData.data.results.overview)
+      } else {
+        throw new Error(sessionData.error || 'Invalid session data')
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch session results:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load results')
+    }
+  }
+
+  const tryRegularAPI = async (asins: string[], userId: string, sessionName: string) => {
+    setProgressInfo({
+      phase: 'fallback',
+      message: 'Using regular API as fallback...',
+      progress: 10,
+      data: null
+    })
+
+    const requestBody = {
+      userId,
+      asins,
+      sessionName,
+      options: {
+        maxKeywordsPerAsin: researchOptions.maxKeywordsPerAsin,
+        minSearchVolume: researchOptions.minSearchVolume,
+        includeOpportunities: researchOptions.includeOpportunities,
+        includeGapAnalysis: researchOptions.includeGapAnalysis,
+        opportunityFilters: researchOptions.opportunityFilters,
+        gapAnalysisOptions: researchOptions.gapAnalysisOptions
+      }
+    }
+
+    const response = await fetch('/api/keywords/research', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to complete keyword research')
+    }
+
+    const result = await response.json()
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Invalid response from server')
+    }
+
+    setKeywordResearchData(result.data)
+    setIsResearching(false)
+    setProgressInfo(null)
+    console.log('✅ Regular API keyword research completed:', result.data.overview)
   }
 
   const handleRefresh = () => {
@@ -244,6 +344,39 @@ export default function Page() {
                         </p>
                       )}
                     </div>
+
+                    {/* Progress Display */}
+                    {progressInfo && (
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                              <span className="text-sm font-medium text-blue-900">
+                                {progressInfo.phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                            </div>
+                            <span className="text-sm font-medium text-blue-700">
+                              {progressInfo.progress}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-blue-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${progressInfo.progress}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-sm text-blue-700">
+                            {progressInfo.message}
+                          </p>
+                          {progressInfo.data && progressInfo.data.currentAsin && (
+                            <p className="text-xs text-blue-600">
+                              Processing ASIN {progressInfo.data.currentAsin} of {progressInfo.data.totalAsins}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Research Options Toggle */}
                     <div className="relative">

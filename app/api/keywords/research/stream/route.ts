@@ -171,13 +171,15 @@ export async function GET(request: NextRequest) {
         message: `Keyword research complete! Found ${finalResult.overview.totalKeywords} keywords and ${finalResult.opportunities.length} opportunities`,
         progress: 100,
         data: {
-          ...finalResult,
           sessionId
         },
         timestamp: new Date().toISOString()
       })
 
       Logger.dev.trace(`Streaming keyword research completed in ${finalResult.overview.processingTime}ms${sessionId ? ` (saved as ${sessionId})` : ''}`)
+      
+      // Close the stream
+      controller.close()
 
     } catch (error) {
       Logger.error('Keyword research stream error', error)

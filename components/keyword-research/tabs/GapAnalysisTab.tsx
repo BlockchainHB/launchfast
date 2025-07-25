@@ -56,7 +56,7 @@ import {
   Zap
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { GapAnalysisResult, GapOpportunity } from '@/lib/keyword-research'
+import type { GapAnalysisResult, GapOpportunity } from '@/types'
 
 interface GapAnalysisTabProps {
   data: GapAnalysisResult
@@ -323,14 +323,14 @@ export function GapAnalysisTab({
       size: 100,
     },
     {
-      accessorKey: 'avgCpc',
+      accessorKey: 'gapScore',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           className="hover:bg-transparent p-0 h-auto font-semibold"
         >
-          CPC
+          Gap Score
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
@@ -340,11 +340,14 @@ export function GapAnalysisTab({
           )}
         </Button>
       ),
-      cell: ({ row }) => (
-        <div className="font-medium">
-          ${row.getValue<number>('avgCpc').toFixed(2)}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const gapScore = row.getValue<number>('gapScore')
+        return (
+          <div className="font-medium">
+            {gapScore ? gapScore.toFixed(1) : 'N/A'}
+          </div>
+        )
+      },
       size: 80,
     },
   ], [])

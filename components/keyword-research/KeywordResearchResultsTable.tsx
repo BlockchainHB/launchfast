@@ -29,10 +29,9 @@ import { GapAnalysisTab } from './tabs/GapAnalysisTab'
 import type { 
   KeywordResearchResult,
   AsinKeywordResult,
-  AggregatedKeyword,
-  OpportunityData,
-  GapAnalysisResult
+  AggregatedKeyword
 } from '@/lib/keyword-research'
+import type { OpportunityData, GapAnalysisResult } from '@/types'
 
 interface KeywordResearchResultsTableProps {
   data: KeywordResearchResult | null

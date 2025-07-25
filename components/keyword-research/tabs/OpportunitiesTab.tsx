@@ -55,7 +55,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { OpportunityData } from '@/lib/keyword-research'
+import type { OpportunityData } from '@/types'
 
 interface OpportunitiesTabProps {
   data: OpportunityData[]
@@ -83,7 +83,7 @@ export function OpportunitiesTab({
     const mediumVolumeOpps = data.filter(opp => opp.searchVolume >= 1000 && opp.searchVolume <= 5000).length
     const lowCompetitionOpps = data.filter(opp => opp.competitionScore <= 3).length
     const totalVolume = data.reduce((sum, opp) => sum + opp.searchVolume, 0)
-    const avgCpc = data.length > 0 ? data.reduce((sum, opp) => sum + opp.avgCpc, 0) / data.length : 0
+    const avgCpc = data.length > 0 ? data.reduce((sum, opp) => sum + (opp.avgCpc || 0), 0) / data.length : 0
     
     const typeBreakdown = data.reduce((acc, opp) => {
       const type = opp.opportunityType || 'unknown'
@@ -191,7 +191,7 @@ export function OpportunitiesTab({
         
         return (
           <Badge className={cn('font-medium', getCompetitionColor(score))}>
-            {getCompetitionText(score)} ({score.toFixed(1)})
+            {getCompetitionText(score)} ({score ? score.toFixed(1) : '0.0'})
           </Badge>
         )
       },
@@ -231,14 +231,14 @@ export function OpportunitiesTab({
       size: 150,
     },
     {
-      accessorKey: 'avgCpc',
+      accessorKey: 'opportunityType',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           className="hover:bg-transparent p-0 h-auto font-semibold"
         >
-          Avg CPC
+          Opportunity Type
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
@@ -248,12 +248,15 @@ export function OpportunitiesTab({
           )}
         </Button>
       ),
-      cell: ({ row }) => (
-        <div className="font-medium">
-          ${row.getValue<number>('avgCpc').toFixed(2)}
-        </div>
-      ),
-      size: 100,
+      cell: ({ row }) => {
+        const type = row.getValue<string>('opportunityType')
+        return (
+          <div className="font-medium">
+            {type ? type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A'}
+          </div>
+        )
+      },
+      size: 120,
     },
     {
       id: 'competitorPerformance',
@@ -266,7 +269,7 @@ export function OpportunitiesTab({
           <div className="text-xs space-y-1">
             <div>Ranking: {performance.competitorsRanking}</div>
             <div>Top 15: {performance.competitorsInTop15}</div>
-            <div>Strength: {performance.competitorStrength?.toFixed(1)}</div>
+            <div>Strength: {performance.competitorStrength ? performance.competitorStrength.toFixed(1) : '0.0'}</div>
           </div>
         )
       },
