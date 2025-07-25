@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Keyword Research Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .test-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+        input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .status.idle {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .status.running {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .status.complete {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #3b82f6;
+            transition: width 0.3s ease;
+        }
+        .events {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .event {
+            margin-bottom: 8px;
+            padding: 4px 0;
+        }
+        .event-time {
+            color: #6b7280;
+            font-size: 11px;
+        }
+        .event-phase {
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .event-message {
+            color: #374151;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        .results-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+        }
+        .results-card h3 {
+            margin: 0 0 12px 0;
+            color: #1f2937;
+            font-size: 16px;
+        }
+        .keyword-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .keyword-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+        }
+        .keyword-item:last-child {
+            border-bottom: none;
+        }
+        .keyword-name {
+            font-weight: 500;
+            color: #1f2937;
+        }
+        .keyword-volume {
+            color: #6b7280;
+            font-size: 12px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e7eb;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Stream Keyword Research Test</h1>
+        
+        <div class="test-controls">
+            <input 
+                type="text" 
+                id="asins" 
+                placeholder="Enter ASINs (comma-separated - first is YOUR product)" 
+                value="B0CZC4NSK3,B08N5WRWNW,B07FZ8S74R"
+                style="width: 350px;"
+            >
+            <button id="startBtn" onclick="startTest()">Start Research</button>
+            <button id="stopBtn" onclick="stopTest()" disabled>Stop</button>
+            <button onclick="clearEvents()">Clear</button>
+        </div>
+
+        <div id="status" class="status idle">
+            <span id="statusIcon">⏸️</span>
+            <span id="statusText">Ready to start</span>
+        </div>
+
+        <div class="progress-bar">
+            <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+        </div>
+
+        <div id="events" class="events">
+            <div class="event">
+                <span class="event-time">Ready</span> - 
+                <span class="event-message">Enter ASINs and click Start Research</span>
+            </div>
+        </div>
+
+        <div id="results" class="results-grid" style="display: none;">
+            <!-- Results will be populated here -->
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let startTime = null;
+
+        function updateStatus(status, text, icon = null) {
+            const statusEl = document.getElementById('status');
+            const statusTextEl = document.getElementById('statusText');
+            const statusIconEl = document.getElementById('statusIcon');
+            
+            statusEl.className = `status ${status}`;
+            statusTextEl.textContent = text;
+            if (icon) statusIconEl.textContent = icon;
+        }
+
+        function updateProgress(progress) {
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+        }
+
+        function addEvent(phase, message, data = null) {
+            const eventsEl = document.getElementById('events');
+            const eventEl = document.createElement('div');
+            eventEl.className = 'event';
+            
+            const time = new Date().toLocaleTimeString();
+            const elapsed = startTime ? `+${Math.round((Date.now() - startTime) / 1000)}s` : '';
+            
+            eventEl.innerHTML = `
+                <span class="event-time">${time} ${elapsed}</span> - 
+                <span class="event-phase">${phase.toUpperCase()}</span>: 
+                <span class="event-message">${message}</span>
+                ${data ? `<br><small style="color: #6b7280; margin-left: 16px;">${JSON.stringify(data, null, 2)}</small>` : ''}
+            `;
+            
+            eventsEl.appendChild(eventEl);
+            eventsEl.scrollTop = eventsEl.scrollHeight;
+        }
+
+        function displayResults(data) {
+            const resultsEl = document.getElementById('results');
+            resultsEl.style.display = 'grid';
+            
+            let gapAnalysisCard = '';
+            if (data.gapAnalysis && data.gapAnalysis.gaps.length > 0) {
+                const gap = data.gapAnalysis;
+                gapAnalysisCard = `
+                    <div class="results-card">
+                        <h3>🔍 Market Gap Analysis</h3>
+                        <p><strong>Your Product:</strong> ${gap.userAsin}</p>
+                        <p><strong>Competitors:</strong> ${gap.competitorAsins.join(', ')}</p>
+                        <p><strong>Total Gaps Found:</strong> ${gap.analysis.totalGapsFound}</p>
+                        <p><strong>High-Volume Gaps:</strong> ${gap.analysis.highVolumeGaps}</p>
+                        <p><strong>Gap Potential:</strong> ${gap.analysis.totalGapPotential.toLocaleString()} searches</p>
+                        <ul class="keyword-list">
+                            ${gap.gaps.slice(0, 5).map(g => `
+                                <li class="keyword-item">
+                                    <span class="keyword-name">${g.keyword} (${g.gapType})</span>
+                                    <span class="keyword-volume">Score: ${g.gapScore}/10</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            let comparisonCards = '';
+            if (data.comparisonView && data.comparisonView.length > 0) {
+                comparisonCards = data.comparisonView.map(cv => `
+                    <div class="results-card">
+                        <h3>🔍 ${cv.asin} Performance</h3>
+                        <p><strong>Status:</strong> <span style="color: ${cv.status === 'success' ? 'green' : 'red'}">${cv.status}</span></p>
+                        ${cv.status === 'success' ? `
+                            <p><strong>Total Keywords:</strong> ${cv.totalKeywords}</p>
+                            <p><strong>Avg Search Volume:</strong> ${cv.avgSearchVolume.toLocaleString()}</p>
+                            <p><strong>Strong Keywords (Rank 1-15):</strong> ${cv.strongKeywords.length}</p>
+                            <p><strong>Weak Keywords (Rank 16+):</strong> ${cv.weakKeywords.length}</p>
+                            ${cv.strongKeywords.length > 0 ? `
+                                <div style="margin-top: 8px;">
+                                    <strong>Top Strong Keywords:</strong>
+                                    <ul class="keyword-list" style="max-height: 120px; overflow-y: auto;">
+                                        ${cv.strongKeywords.slice(0, 5).map(kw => `
+                                            <li class="keyword-item">
+                                                <span class="keyword-name">${kw.keyword}</span>
+                                                <span class="keyword-volume">Rank ${kw.rankingPosition}</span>
+                                            </li>
+                                        `).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                        ` : `
+                            <p style="color: red;"><strong>Error:</strong> ${cv.error || 'Failed to load'}</p>
+                        `}
+                    </div>
+                `).join('');
+            }
+
+            // Enhanced opportunities with competitor info
+            let opportunitiesHtml = '';
+            if (data.opportunities.length > 0) {
+                opportunitiesHtml = `
+                    <div class="results-card">
+                        <h3>💎 Enhanced Opportunities</h3>
+                        <p><em>Filtered by: 500+ volume, ≤2 competitors in top 15, ≤5 strength</em></p>
+                        <ul class="keyword-list">
+                            ${data.opportunities.slice(0, 10).map(opp => `
+                                <li class="keyword-item">
+                                    <div>
+                                        <span class="keyword-name">${opp.keyword}</span>
+                                        <small style="color: #6b7280; margin-left: 8px;">(${opp.opportunityType || 'standard'})</small>
+                                    </div>
+                                    <div>
+                                        <span class="keyword-volume">${opp.searchVolume.toLocaleString()} vol</span>
+                                        ${opp.competitorPerformance ? `
+                                            <br><small style="color: #6b7280;">
+                                                ${opp.competitorPerformance.competitorsInTop15} in top 15, 
+                                                strength: ${opp.competitorPerformance.competitorStrength}
+                                            </small>
+                                        ` : ''}
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            resultsEl.innerHTML = `
+                <div class="results-card">
+                    <h3>📊 Overview</h3>
+                    <p><strong>Total ASINs:</strong> ${data.overview.totalAsins}</p>
+                    <p><strong>Keywords Found:</strong> ${data.overview.totalKeywords}</p>
+                    <p><strong>Market Keywords:</strong> ${data.aggregatedKeywords.length}</p>
+                    <p><strong>Products Analyzed:</strong> ${data.comparisonView ? data.comparisonView.length : 0}</p>
+                    <p><strong>Opportunities:</strong> ${data.opportunities.length}</p>
+                    ${data.gapAnalysis ? `<p><strong>Market Gaps:</strong> ${data.gapAnalysis.analysis.totalGapsFound}</p>` : ''}
+                    <p><strong>Processing Time:</strong> ${data.overview.processingTime}ms</p>
+                    <p><strong>Avg Search Volume:</strong> ${data.overview.avgSearchVolume.toLocaleString()}</p>
+                </div>
+                
+                <div class="results-card">
+                    <h3>🌍 Market Analysis (Aggregated)</h3>
+                    <p><em>Keywords across all products for market insights</em></p>
+                    <ul class="keyword-list">
+                        ${data.aggregatedKeywords.slice(0, 10).map(kw => `
+                            <li class="keyword-item">
+                                <span class="keyword-name">${kw.keyword}</span>
+                                <span class="keyword-volume">${kw.searchVolume.toLocaleString()} vol</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                
+                ${opportunitiesHtml}
+                
+                ${comparisonCards}
+                
+                ${gapAnalysisCard}
+            `;
+        }
+
+        function startTest() {
+            const asinsInput = document.getElementById('asins').value.trim();
+            if (!asinsInput) {
+                alert('Please enter at least one ASIN');
+                return;
+            }
+
+            const asins = asinsInput.split(',').map(asin => asin.trim()).filter(Boolean);
+            if (asins.length === 0 || asins.length > 10) {
+                alert('Please enter 1-10 valid ASINs');
+                return;
+            }
+
+            // Update UI
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('results').style.display = 'none';
+            updateStatus('running', 'Connecting...', '🔄');
+            updateProgress(0);
+            startTime = Date.now();
+
+            clearEvents();
+            addEvent('start', `Starting keyword research for ${asins.length} ASINs: ${asins.join(', ')}`);
+
+            // Build URL with query parameters (matching your existing GET pattern)
+            const params = new URLSearchParams({
+                asins: asins.join(','),
+                maxKeywordsPerAsin: '30',
+                minSearchVolume: '100',
+                includeOpportunities: 'true'
+            });
+
+            const url = `http://localhost:3000/api/keywords/research/stream?${params}`;
+            console.log('🔌 Connecting to:', url);
+
+            // Create EventSource connection (matching your existing pattern)
+            eventSource = new EventSource(url);
+
+            eventSource.onopen = function(event) {
+                console.log('✅ EventSource connected');
+                updateStatus('running', 'Connected - waiting for data...', '🔄');
+                addEvent('connected', 'EventSource connection established');
+            };
+
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('📡 Received event:', data);
+
+                    const phase = data.phase;
+                    const message = data.message;
+                    const progress = data.progress || 0;
+                    const eventData = data.data;
+
+                    // Update UI based on phase
+                    switch (phase) {
+                        case 'keyword_extraction':
+                            updateStatus('running', `Extracting keywords... ${progress}%`, '🔍');
+                            updateProgress(progress);
+                            addEvent(phase, message, eventData);
+                            break;
+
+                        case 'keyword_aggregation':
+                            updateStatus('running', 'Aggregating keywords...', '🔄');
+                            updateProgress(progress);
+                            addEvent(phase, message, eventData);
+                            break;
+
+                        case 'opportunity_mining':
+                            updateStatus('running', 'Mining opportunities...', '⛏️');
+                            updateProgress(progress);
+                            addEvent(phase, message, eventData);
+                            break;
+
+                        case 'gap_analysis':
+                            updateStatus('running', 'Analyzing market gaps...', '🔍');
+                            updateProgress(progress);
+                            addEvent(phase, message, eventData);
+                            break;
+
+                        case 'complete':
+                            updateStatus('complete', `Complete! Found ${eventData.overview.totalKeywords} keywords`, '✅');
+                            updateProgress(100);
+                            addEvent(phase, message);
+                            displayResults(eventData);
+                            stopTest();
+                            break;
+
+                        case 'error':
+                            updateStatus('error', `Error: ${message}`, '❌');
+                            addEvent(phase, message, eventData);
+                            stopTest();
+                            break;
+
+                        default:
+                            addEvent(phase || 'unknown', message, eventData);
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error parsing event data:', error, event.data);
+                    addEvent('parse_error', `Failed to parse server response: ${error.message}`);
+                }
+            };
+
+            eventSource.onerror = function(error) {
+                console.error('❌ EventSource error:', error);
+                console.log('EventSource readyState:', eventSource.readyState);
+                
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    updateStatus('error', 'Connection closed by server', '❌');
+                    addEvent('connection_error', 'EventSource connection closed');
+                    stopTest();
+                } else {
+                    updateStatus('error', 'Connection error - retrying...', '⚠️');
+                    addEvent('connection_error', 'EventSource connection issue, may retry automatically');
+                }
+            };
+        }
+
+        function stopTest() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                console.log('🔌 EventSource connection closed');
+            }
+
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            
+            if (startTime) {
+                const duration = Math.round((Date.now() - startTime) / 1000);
+                addEvent('stopped', `Test stopped after ${duration} seconds`);
+            }
+        }
+
+        function clearEvents() {
+            document.getElementById('events').innerHTML = '';
+            updateProgress(0);
+        }
+
+        // Auto-stop on page unload
+        window.addEventListener('beforeunload', stopTest);
+    </script>
+</body>
+</html>

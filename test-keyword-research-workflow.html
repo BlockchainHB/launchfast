@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyword Research Database Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .test-section h3 {
+            margin: 0 0 12px 0;
+            color: #1f2937;
+        }
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: #6b7280;
+        }
+        button.danger {
+            background: #dc2626;
+        }
+        .results {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .session-item {
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .session-info {
+            flex: 1;
+        }
+        .session-actions {
+            display: flex;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Keyword Research Database Integration Test</h1>
+        <p>Test the complete workflow: Research → Save → Load → Cache → Session Management</p>
+        
+        <!-- Test Configuration -->
+        <div class="test-section">
+            <h3>🔧 Test Configuration</h3>
+            <div class="controls">
+                <input type="text" id="userId" placeholder="User ID (UUID)" value="550e8400-e29b-41d4-a716-446655440000">
+                <input type="text" id="asins" placeholder="ASINs (comma-separated)" value="B0CZC4NSK3,B08N5WRWNW">
+                <input type="text" id="sessionName" placeholder="Session Name (optional)">
+                <button onclick="clearLogs()">Clear Logs</button>
+            </div>
+        </div>
+
+        <!-- Research Decision Test -->
+        <div class="test-section">
+            <h3>🤔 Research Decision Analysis</h3>
+            <div class="controls">
+                <button onclick="testResearchDecision()">Get Research Decision</button>
+                <button onclick="testResearchDecisionPost()">Test Decision POST</button>
+            </div>
+            <div id="decisionResults" class="results" style="display: none;"></div>
+        </div>
+
+        <!-- Fresh Research Test -->
+        <div class="test-section">
+            <h3>🔍 Fresh Research & Database Save</h3>
+            <div class="controls">
+                <button onclick="testFreshResearch()">Perform Fresh Research</button>
+                <button onclick="testStreamingResearch()">Test Streaming Research</button>
+            </div>
+            <div id="researchResults" class="results" style="display: none;"></div>
+        </div>
+
+        <!-- Session Management Test -->
+        <div class="test-section">
+            <h3>📁 Session Management</h3>
+            <div class="controls">
+                <button onclick="loadUserSessions()">Load User Sessions</button>
+                <button onclick="testSessionOperations()">Test Session Operations</button>
+            </div>
+            <div id="sessionsList"></div>
+        </div>
+
+        <!-- Cache Testing -->
+        <div class="test-section">
+            <h3>⚡ Cache Testing</h3>
+            <div class="controls">
+                <button onclick="testCachePerformance()">Test Cache Performance</button>
+                <button onclick="testCacheInvalidation()">Test Cache Invalidation</button>
+            </div>
+            <div id="cacheResults" class="results" style="display: none;"></div>
+        </div>
+
+        <!-- Error Handling Test -->
+        <div class="test-section">
+            <h3>🚨 Error Handling</h3>
+            <div class="controls">
+                <button onclick="testValidationErrors()">Test Validation Errors</button>
+                <button onclick="testUnauthorizedAccess()">Test Unauthorized Access</button>
+                <button onclick="testNetworkErrors()">Test Network Errors</button>
+            </div>
+            <div id="errorResults" class="results" style="display: none;"></div>
+        </div>
+
+        <!-- Test Log -->
+        <div class="test-section">
+            <h3>📋 Test Log</h3>
+            <div id="testLog" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let testSessionId = null;
+        
+        function log(message, type = 'info') {
+            const testLog = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const statusClass = type === 'error' ? 'color: #dc2626' : 
+                               type === 'success' ? 'color: #065f46' : 'color: #1d4ed8';
+            
+            testLog.innerHTML += `<div style="${statusClass}">[${timestamp}] ${message}</div>`;
+            testLog.scrollTop = testLog.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('testLog').innerHTML = '';
+            ['decisionResults', 'researchResults', 'cacheResults', 'errorResults'].forEach(id => {
+                const el = document.getElementById(id);
+                el.style.display = 'none';
+                el.innerHTML = '';
+            });
+        }
+
+        function showResults(elementId, data, title) {
+            const el = document.getElementById(elementId);
+            el.style.display = 'block';
+            el.innerHTML = `=== ${title} ===\n${JSON.stringify(data, null, 2)}`;
+        }
+
+        async function makeRequest(url, options = {}) {
+            try {
+                log(`Making request to ${url}`);
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    log(`Request failed: ${response.status} - ${data.error}`, 'error');
+                    return { success: false, error: data.error, status: response.status };
+                }
+                
+                log(`Request successful: ${url}`, 'success');
+                return data;
+            } catch (error) {
+                log(`Request error: ${error.message}`, 'error');
+                return { success: false, error: error.message };
+            }
+        }
+
+        // Test Research Decision
+        async function testResearchDecision() {
+            const userId = document.getElementById('userId').value;
+            const asins = document.getElementById('asins').value.split(',').map(s => s.trim());
+            
+            const url = `/api/keywords/sessions/decision?userId=${userId}&asins=${asins.join(',')}`;
+            const result = await makeRequest(url);
+            
+            showResults('decisionResults', result, 'Research Decision Analysis');
+        }
+
+        async function testResearchDecisionPost() {
+            const userId = document.getElementById('userId').value;
+            const asins = document.getElementById('asins').value.split(',').map(s => s.trim());
+            
+            const result = await makeRequest('/api/keywords/sessions/decision', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId,
+                    asins,
+                    options: {
+                        maxKeywordsPerAsin: 30,
+                        minSearchVolume: 100,
+                        includeOpportunities: true,
+                        includeGapAnalysis: true
+                    }
+                })
+            });
+            
+            showResults('decisionResults', result, 'Research Decision POST');
+        }
+
+        // Test Fresh Research
+        async function testFreshResearch() {
+            const userId = document.getElementById('userId').value;
+            const asins = document.getElementById('asins').value.split(',').map(s => s.trim());
+            const sessionName = document.getElementById('sessionName').value || undefined;
+            
+            log('Starting fresh research...');
+            
+            const result = await makeRequest('/api/keywords/research', {
+                method: 'POST',
+                body: JSON.stringify({
+                    userId,
+                    asins,
+                    sessionName,
+                    options: {
+                        maxKeywordsPerAsin: 10, // Smaller for testing
+                        minSearchVolume: 100,
+                        includeOpportunities: true,
+                        includeGapAnalysis: true
+                    }
+                })
+            });
+            
+            if (result.success && result.sessionId) {
+                testSessionId = result.sessionId;
+                log(`Research completed! Session ID: ${result.sessionId}`, 'success');
+            }
+            
+            showResults('researchResults', result, 'Fresh Research Results');
+        }
+
+        // Test Streaming Research
+        async function testStreamingResearch() {
+            const userId = document.getElementById('userId').value;
+            const asins = document.getElementById('asins').value.split(',').map(s => s.trim());
+            const sessionName = document.getElementById('sessionName').value || undefined;
+            
+            log('Starting streaming research...');
+            
+            const params = new URLSearchParams({
+                userId,
+                asins: asins.join(','),
+                maxKeywordsPerAsin: '10',
+                minSearchVolume: '100',
+                includeOpportunities: 'true',
+                includeGapAnalysis: 'true'
+            });
+            
+            if (sessionName) params.set('sessionName', sessionName);
+            
+            const eventSource = new EventSource(`/api/keywords/research/stream?${params}`);
+            
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    log(`Streaming: ${data.phase} - ${data.message}`);
+                    
+                    if (data.phase === 'complete' && data.data?.sessionId) {
+                        testSessionId = data.data.sessionId;
+                        log(`Streaming completed! Session ID: ${data.data.sessionId}`, 'success');
+                        showResults('researchResults', data.data, 'Streaming Research Results');
+                        eventSource.close();
+                    }
+                } catch (error) {
+                    log(`Streaming parse error: ${error.message}`, 'error');
+                }
+            };
+            
+            eventSource.onerror = function(error) {
+                log('Streaming connection error', 'error');
+                eventSource.close();
+            };
+        }
+
+        // Load User Sessions
+        async function loadUserSessions() {
+            const userId = document.getElementById('userId').value;
+            
+            const result = await makeRequest(`/api/keywords/sessions?userId=${userId}`);
+            
+            if (result.success) {
+                displaySessions(result.data.sessions);
+                log(`Loaded ${result.data.sessions.length} user sessions`, 'success');
+            }
+        }
+
+        function displaySessions(sessions) {
+            const container = document.getElementById('sessionsList');
+            
+            if (sessions.length === 0) {
+                container.innerHTML = '<p>No sessions found</p>';
+                return;
+            }
+            
+            container.innerHTML = sessions.map(session => `
+                <div class="session-item">
+                    <div class="session-info">
+                        <strong>${session.name}</strong><br>
+                        <small>ID: ${session.sessionId}</small><br>
+                        <small>ASINs: ${session.asins.join(', ')}</small><br>
+                        <small>Created: ${new Date(session.createdAt).toLocaleString()}</small>
+                    </div>
+                    <div class="session-actions">
+                        <button onclick="loadSession('${session.sessionId}')">Load</button>
+                        <button onclick="renameSession('${session.sessionId}')" class="secondary">Rename</button>
+                        <button onclick="deleteSession('${session.sessionId}')" class="danger">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Session Operations
+        async function loadSession(sessionId) {
+            const userId = document.getElementById('userId').value;
+            
+            const result = await makeRequest(`/api/keywords/sessions/${sessionId}?userId=${userId}`);
+            
+            if (result.success) {
+                log(`Session ${sessionId} loaded successfully`, 'success');
+                showResults('researchResults', result.data, `Loaded Session ${sessionId}`);
+            }
+        }
+
+        async function renameSession(sessionId) {
+            const newName = prompt('Enter new session name:');
+            if (!newName) return;
+            
+            const userId = document.getElementById('userId').value;
+            
+            const result = await makeRequest(`/api/keywords/sessions/${sessionId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    userId,
+                    name: newName
+                })
+            });
+            
+            if (result.success) {
+                log(`Session ${sessionId} renamed to "${newName}"`, 'success');
+                loadUserSessions(); // Refresh list
+            }
+        }
+
+        async function deleteSession(sessionId) {
+            if (!confirm('Are you sure you want to delete this session?')) return;
+            
+            const userId = document.getElementById('userId').value;
+            
+            const result = await makeRequest(`/api/keywords/sessions/${sessionId}?userId=${userId}`, {
+                method: 'DELETE'
+            });
+            
+            if (result.success) {
+                log(`Session ${sessionId} deleted`, 'success');
+                loadUserSessions(); // Refresh list
+            }
+        }
+
+        // Test Session Operations
+        async function testSessionOperations() {
+            if (!testSessionId) {
+                log('No test session available. Run research first.', 'error');
+                return;
+            }
+            
+            log('Testing session operations...');
+            
+            // Test load
+            await loadSession(testSessionId);
+            
+            // Test rename
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const result = await makeRequest(`/api/keywords/sessions/${testSessionId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    userId: document.getElementById('userId').value,
+                    name: `Test Session - ${new Date().toLocaleTimeString()}`
+                })
+            });
+            
+            if (result.success) {
+                log('Session rename test passed', 'success');
+            }
+        }
+
+        // Test Cache Performance
+        async function testCachePerformance() {
+            if (!testSessionId) {
+                log('No test session available. Run research first.', 'error');
+                return;
+            }
+            
+            const userId = document.getElementById('userId').value;
+            
+            log('Testing cache performance...');
+            
+            // First load (should hit database)
+            const start1 = Date.now();
+            const result1 = await makeRequest(`/api/keywords/sessions/${testSessionId}?userId=${userId}`);
+            const time1 = Date.now() - start1;
+            
+            // Second load (should hit cache)
+            const start2 = Date.now();
+            const result2 = await makeRequest(`/api/keywords/sessions/${testSessionId}?userId=${userId}`);
+            const time2 = Date.now() - start2;
+            
+            const cacheResults = {
+                firstLoad: { time: time1, success: result1.success },
+                secondLoad: { time: time2, success: result2.success },
+                speedupRatio: time1 / time2,
+                cacheEffective: time2 < time1
+            };
+            
+            showResults('cacheResults', cacheResults, 'Cache Performance Test');
+            log(`Cache test completed. Speedup: ${cacheResults.speedupRatio.toFixed(2)}x`, 'success');
+        }
+
+        // Test Validation Errors
+        async function testValidationErrors() {
+            log('Testing validation errors...');
+            
+            const tests = [
+                {
+                    name: 'Invalid User ID',
+                    request: {
+                        userId: 'invalid-uuid',
+                        asins: ['B0CZC4NSK3']
+                    }
+                },
+                {
+                    name: 'Invalid ASINs',
+                    request: {
+                        userId: '550e8400-e29b-41d4-a716-446655440000',
+                        asins: ['INVALID', 'TOO_SHORT']
+                    }
+                },
+                {
+                    name: 'Too Many ASINs',
+                    request: {
+                        userId: '550e8400-e29b-41d4-a716-446655440000',
+                        asins: Array(15).fill('B0CZC4NSK3')
+                    }
+                }
+            ];
+            
+            const results = [];
+            
+            for (const test of tests) {
+                const result = await makeRequest('/api/keywords/research', {
+                    method: 'POST',
+                    body: JSON.stringify(test.request)
+                });
+                
+                results.push({
+                    test: test.name,
+                    statusCode: result.status,
+                    error: result.error,
+                    expectedFailure: !result.success
+                });
+                
+                log(`${test.name}: ${result.success ? 'UNEXPECTED SUCCESS' : 'Expected failure'}`, 
+                    result.success ? 'error' : 'success');
+            }
+            
+            showResults('errorResults', results, 'Validation Error Tests');
+        }
+
+        // Test Unauthorized Access
+        async function testUnauthorizedAccess() {
+            log('Testing unauthorized access...');
+            
+            const fakeUserId = '00000000-0000-0000-0000-000000000000';
+            
+            if (testSessionId) {
+                const result = await makeRequest(`/api/keywords/sessions/${testSessionId}?userId=${fakeUserId}`);
+                
+                const testResult = {
+                    test: 'Unauthorized Session Access',
+                    blocked: !result.success,
+                    statusCode: result.status,
+                    error: result.error
+                };
+                
+                showResults('errorResults', testResult, 'Unauthorized Access Test');
+                log(`Unauthorized access test: ${testResult.blocked ? 'PASSED' : 'FAILED'}`, 
+                    testResult.blocked ? 'success' : 'error');
+            } else {
+                log('No test session available for unauthorized access test', 'error');
+            }
+        }
+
+        // Initialize test
+        log('Test interface loaded. Ready to test keyword research workflow!');
+    </script>
+</body>
+</html>
