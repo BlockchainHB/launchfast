@@ -34,7 +34,7 @@
     "@stripe/stripe-js": "^7.5.0",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/ssr": "^0.6.1",
-    "@supabase/supabase-js": "^2.52.0",
+    "@supabase/supabase-js": "^2.52.1",
     "@tabler/icons-react": "^3.34.0",
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-table": "^8.21.3",

@@ -249,10 +249,22 @@ export class KeywordResearchDB {
       const keywordId = keywordMap.get(opp.keyword)
       if (!keywordId) return null
       
+      // Map opportunity types to match database constraint
+      // Database allows: 'keyword_gap' | 'ranking_opportunity' | 'volume_opportunity' | 'competition_gap'
+      const mapOpportunityType = (type?: string) => {
+        switch (type) {
+          case 'keyword_mining': return 'volume_opportunity'
+          case 'market_gap': return 'keyword_gap'
+          case 'weak_competitors': return 'competition_gap'  
+          case 'low_competition': return 'ranking_opportunity'
+          default: return 'ranking_opportunity' // Default fallback
+        }
+      }
+
       return {
         session_id: sessionId,
         keyword_id: keywordId,
-        opportunity_type: opp.opportunityType || 'standard',
+        opportunity_type: mapOpportunityType(opp.opportunityType),
         competition_score: opp.competitionScore,
         supply_demand_ratio: opp.supplyDemandRatio,
         competitor_performance: opp.competitorPerformance || {}
@@ -282,10 +294,20 @@ export class KeywordResearchDB {
       const keywordId = keywordMap.get(gap.keyword)
       if (!keywordId) return null
       
+      // Map service gap types to database gap types
+      const mapGapType = (serviceType: string) => {
+        switch (serviceType) {
+          case 'market_gap': return 'keyword_gap'
+          case 'competitor_weakness': return 'competition_gap'
+          case 'user_advantage': return 'ranking_gap'
+          default: return 'keyword_gap' // Default fallback
+        }
+      }
+      
       return {
         session_id: sessionId,
         keyword_id: keywordId,
-        gap_type: gap.gapType,
+        gap_type: mapGapType(gap.gapType),
         gap_score: gap.gapScore,
         user_ranking_position: gap.userRanking.position,
         competitors_data: {
@@ -514,11 +536,22 @@ export class KeywordResearchDB {
       const userAsin = data.asins.find(a => a.is_user_product)?.asin || data.asins[0]?.asin
       const competitorAsins = data.asins.filter(a => !a.is_user_product).map(a => a.asin)
       
+      // Map database gap types back to service gap types
+      const mapDatabaseGapType = (dbType: string) => {
+        switch (dbType) {
+          case 'keyword_gap': return 'market_gap'
+          case 'competition_gap': return 'competitor_weakness'
+          case 'ranking_gap': return 'user_advantage'
+          case 'traffic_gap': return 'user_advantage' // Map traffic_gap to user_advantage
+          default: return 'market_gap' // Default fallback
+        }
+      }
+      
       const gaps = data.gaps.map(gap => ({
         keyword: gap.keyword_research_keywords.keyword_text,
         searchVolume: gap.keyword_research_keywords.search_volume,
         avgCpc: gap.keyword_research_keywords.cpc,
-        gapType: gap.gap_type,
+        gapType: mapDatabaseGapType(gap.gap_type),
         gapScore: gap.gap_score,
         competitorRankings: gap.competitors_data.competitor_rankings || [],
         userRanking: gap.competitors_data.user_ranking || {

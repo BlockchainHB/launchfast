@@ -10,8 +10,9 @@ export interface KeywordResearchOptions {
   includeGapAnalysis?: boolean     // Default: true
   opportunityFilters?: {
     minSearchVolume?: number       // Default: 500 (for targeted opportunities)
+    maxSearchVolume?: number       // Default: 10000 (max search volume for opportunities)
     maxCompetitorsInTop15?: number // Default: 2 (max competitors ranking 1-15)
-    minCompetitorsRanking?: number // Default: 1 (min competitors ranking)
+    minCompetitorsRanking?: number // Default: 15 (min ranking position for competitors)
     maxCompetitorStrength?: number // Default: 5 (max avg competitor performance 1-10)
   }
   gapAnalysisOptions?: {
@@ -51,7 +52,9 @@ export interface KeywordResearchResult {
   }
   asinResults: AsinKeywordResult[]
   aggregatedKeywords: AggregatedKeyword[]
+  comparisonView: AsinComparisonData[]
   opportunities: OpportunityData[]
+  gapAnalysis?: GapAnalysisResult
 }
 
 export class KeywordResearchService {
@@ -62,8 +65,9 @@ export class KeywordResearchService {
     includeGapAnalysis: true,
     opportunityFilters: {
       minSearchVolume: 500,
+      maxSearchVolume: 10000,
       maxCompetitorsInTop15: 2,
-      minCompetitorsRanking: 1,
+      minCompetitorsRanking: 15,
       maxCompetitorStrength: 5
     },
     gapAnalysisOptions: {
@@ -82,11 +86,13 @@ export class KeywordResearchService {
    * Main keyword research method
    * @param asins Array of ASINs to research (1-10)
    * @param options Research options
+   * @param progressCallback Optional progress callback for streaming updates
    * @returns Complete keyword research results
    */
   async researchKeywords(
     asins: string[], 
-    options: KeywordResearchOptions = {}
+    options: KeywordResearchOptions = {},
+    progressCallback?: (phase: string, message: string, progress: number, data?: any) => void
   ): Promise<KeywordResearchResult> {
     const startTime = Date.now()
     const opts = { ...this.defaultOptions, ...options }
@@ -94,8 +100,12 @@ export class KeywordResearchService {
     this.validateAsins(asins)
     Logger.dev.trace(`Starting keyword research for ${asins.length} ASINs`)
 
+    progressCallback?.('keyword_extraction', 'Starting keyword extraction...', 0)
+
     // Process each ASIN for keyword data
-    const asinResults = await this.processAsins(asins, opts)
+    const asinResults = await this.processAsins(asins, opts, progressCallback)
+    
+    progressCallback?.('keyword_aggregation', 'Aggregating keywords and creating comparison views...', 50)
     
     // Aggregate keywords across all ASINs (for market analysis)
     const aggregatedKeywords = this.aggregateKeywords(asinResults)
@@ -103,10 +113,14 @@ export class KeywordResearchService {
     // Create comparison view (individual ASIN performance)
     const comparisonView = this.createComparisonView(asinResults)
     
+    progressCallback?.('opportunity_mining', 'Mining targeted opportunities...', 70)
+    
     // Get opportunity keywords with enhanced filtering
     const opportunities = opts.includeOpportunities 
       ? await this.findTargetedOpportunities(asinResults, opts)
       : []
+
+    progressCallback?.('gap_analysis', 'Performing gap analysis...', 85)
 
     // Perform GAP analysis if requested and we have multiple ASINs
     const gapAnalysis = opts.includeGapAnalysis && asins.length >= 2
@@ -152,68 +166,79 @@ export class KeywordResearchService {
    */
   private async processAsins(
     asins: string[], 
-    options: Required<KeywordResearchOptions>
+    options: Required<KeywordResearchOptions>,
+    progressCallback?: (phase: string, message: string, progress: number, data?: any) => void
   ): Promise<AsinKeywordResult[]> {
-    const results = await Promise.allSettled(
-      asins.map(async (asin): Promise<AsinKeywordResult> => {
-        try {
-          // Get keywords for this ASIN
-          const keywords = await sellerSpriteClient.reverseASIN(
-            asin, 
-            1, 
-            options.maxKeywordsPerAsin
-          )
-          
-          // Filter by minimum search volume
-          const filteredKeywords = keywords.filter(
-            keyword => keyword.searchVolume >= options.minSearchVolume
-          )
-
-          // Try to get product title (optional, don't fail if unavailable)
-          const productTitle = await this.getProductTitle(asin)
-
-          return {
-            asin,
-            productTitle,
-            keywordCount: filteredKeywords.length,
-            keywords: filteredKeywords,
-            status: 'success'
-          }
-        } catch (error) {
-          Logger.dev.error(`Failed to get keywords for ASIN ${asin}:`, error)
-          return {
-            asin,
-            productTitle: undefined,
-            keywordCount: 0,
-            keywords: [],
-            status: 'failed',
-            error: error instanceof Error ? error.message : 'Unknown error'
-          }
-        }
+    const results: AsinKeywordResult[] = []
+    
+    for (let i = 0; i < asins.length; i++) {
+      const asin = asins[i]
+      const progress = Math.round((i / asins.length) * 40) + 5 // 5-45% range
+      
+      progressCallback?.('keyword_extraction', `Processing ${asin}...`, progress, {
+        currentAsin: i + 1,
+        totalAsins: asins.length,
+        asin
       })
-    )
+      
+      try {
+        // Get keywords for this ASIN
+        const keywords = await sellerSpriteClient.reverseASIN(
+          asin, 
+          1, 
+          options.maxKeywordsPerAsin
+        )
+        
+        // Filter by minimum search volume
+        const filteredKeywords = keywords.filter(
+          keyword => keyword.searchVolume >= options.minSearchVolume
+        )
 
-    // Process settled results
-    return results.map((result, index) => {
-      if (result.status === 'fulfilled') {
-        return result.value
-      } else {
-        return {
-          asin: asins[index],
+        // Try to get product title (optional, don't fail if unavailable)
+        const productTitle = await this.getProductTitle(asin)
+
+        const result: AsinKeywordResult = {
+          asin,
+          productTitle,
+          keywordCount: filteredKeywords.length,
+          keywords: filteredKeywords,
+          status: 'success'
+        }
+        
+        results.push(result)
+        
+        progressCallback?.('keyword_extraction', `Found ${filteredKeywords.length} keywords for ${asin}`, progress + 2, {
+          currentAsin: i + 1,
+          totalAsins: asins.length,
+          asin,
+          keywordsFound: filteredKeywords.length
+        })
+        
+      } catch (error) {
+        Logger.dev.error(`Failed to get keywords for ASIN ${asin}:`, error)
+        results.push({
+          asin,
           productTitle: undefined,
           keywordCount: 0,
           keywords: [],
-          status: 'failed' as const,
-          error: result.reason?.message || 'Processing failed'
-        }
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
       }
-    })
+      
+      // Small delay between ASINs to avoid rate limiting
+      if (i < asins.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+    }
+
+    return results
   }
 
   /**
    * Aggregate keywords across all ASINs
    */
-  private aggregateKeywords(asinResults: AsinKeywordResult[]): AggregatedKeyword[] {
+  public aggregateKeywords(asinResults: AsinKeywordResult[]): AggregatedKeyword[] {
     const keywordMap = new Map<string, {
       keyword: string
       searchVolume: number
@@ -291,7 +316,7 @@ export class KeywordResearchService {
   /**
    * Create comparison view showing individual ASIN performance
    */
-  private createComparisonView(asinResults: AsinKeywordResult[]): AsinComparisonData[] {
+  public createComparisonView(asinResults: AsinKeywordResult[]): AsinComparisonData[] {
     return asinResults.map(result => {
       if (result.status !== 'success') {
         return {
@@ -339,7 +364,7 @@ export class KeywordResearchService {
   /**
    * Find targeted opportunity keywords based on specific competitor criteria
    */
-  private async findTargetedOpportunities(
+  public async findTargetedOpportunities(
     asinResults: AsinKeywordResult[],
     options: Required<KeywordResearchOptions>
   ): Promise<OpportunityData[]> {
@@ -400,11 +425,13 @@ export class KeywordResearchService {
 
       // Your filtering criteria:
       // - Min search volume: 500+
+      // - Max search volume: 10,000
       // - Max competitors in top 15: 2
-      // - Min competitors ranking (1-50): 1
+      // - Min competitors ranking position: 15 (competitors must rank 15+ or not rank)
       // - Max competitor strength: 5
       if (
         kwData.searchVolume >= filters.minSearchVolume &&
+        kwData.searchVolume <= filters.maxSearchVolume &&
         competitorsInTop15 <= filters.maxCompetitorsInTop15 &&
         competitorsRanking >= filters.minCompetitorsRanking &&
         competitorsRanking <= filters.maxCompetitorsInTop15 + 1 && // Max 2 competitors total
@@ -444,7 +471,10 @@ export class KeywordResearchService {
       const minedOpportunities = miningResults
         .filter(result => result.status === 'fulfilled')
         .flatMap(result => result.value)
-        .filter(opp => opp.searchVolume >= filters.minSearchVolume)
+        .filter(opp => 
+          opp.searchVolume >= filters.minSearchVolume && 
+          opp.searchVolume <= filters.maxSearchVolume
+        )
         .map(opp => ({
           ...opp,
           opportunityType: 'keyword_mining' as const
@@ -513,7 +543,7 @@ export class KeywordResearchService {
   /**
    * Perform GAP analysis to find market opportunities
    */
-  private performGapAnalysis(
+  public performGapAnalysis(
     asinResults: AsinKeywordResult[],
     options: Required<KeywordResearchOptions>
   ): GapAnalysisResult | undefined {

@@ -71,10 +71,10 @@ const data = {
     },
     {
       name: "Keyword Research",
-      url: "#",
+      url: "/dashboard/keyword-research",
       icon: IconBulb,
-      active: false,
-      comingSoon: true,
+      active: true,
+      beta: true,
     },
     {
       name: "Supplier Sourcing",

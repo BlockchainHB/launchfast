@@ -218,7 +218,7 @@ export class SellerSpriteClient {
       const keywords = items.map((item: any): KeywordData => ({
         keyword: item.keyword,
         searchVolume: item.searches,
-        rankingPosition: item.rankPosition?.position || 0,
+        rankingPosition: item.rankPosition?.position || null,
         trafficPercentage: item.purchaseRate * 100, // Convert to percentage
         cpc: item.bid,
         competitionScore: 0 // Will be calculated based on other factors

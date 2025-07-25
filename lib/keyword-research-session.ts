@@ -148,20 +148,40 @@ export class KeywordResearchSession {
     sessionId: string
     results: KeywordResearchResult
   }> {
+    return this.performFreshResearchWithProgress(userId, asins, options, sessionName)
+  }
+
+  /**
+   * Perform fresh research with progress callbacks for streaming
+   */
+  static async performFreshResearchWithProgress(
+    userId: string,
+    asins: string[],
+    options: KeywordResearchOptions = {},
+    sessionName?: string,
+    progressCallback?: (phase: string, message: string, progress: number, data?: any) => void
+  ): Promise<{
+    sessionId: string
+    results: KeywordResearchResult
+  }> {
     try {
       Logger.dev.trace(`Starting fresh research for ${asins.length} ASINs`)
       
       // Invalidate any existing cache for this user's similar research
       await kwCache.invalidateUserCache(userId)
       
-      // Perform the research
-      const results = await keywordResearchService.researchKeywords(asins, options)
+      // Perform the research with progress callbacks
+      const results = await keywordResearchService.researchKeywords(asins, options, progressCallback)
+      
+      progressCallback?.('complete', 'Research complete - saving session...', 95)
       
       // Save to database
       const sessionId = await this.saveToDatabase(userId, asins, results, options, sessionName)
       
       // Cache the results
       await kwCache.cacheSessionResult(userId, sessionId, results)
+      
+      progressCallback?.('complete', 'Session saved successfully', 100, { sessionId })
       
       Logger.dev.trace(`Fresh research completed and saved as session ${sessionId}`)
       
