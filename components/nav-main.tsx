@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { IconCirclePlusFilled, type Icon } from "@tabler/icons-react"
+import { Plus, type LucideIcon } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { ResearchModal } from "@/components/research-modal"
+import { cn } from "@/lib/utils"
 
 export function NavMain({
   items,
@@ -21,7 +22,8 @@ export function NavMain({
   items: {
     title: string
     url: string
-    icon?: Icon
+    icon?: LucideIcon
+    description?: string
   }[]
   onDataRefresh?: () => void
 }) {
@@ -30,48 +32,46 @@ export function NavMain({
   const pathname = usePathname()
 
   return (
-    <SidebarGroup>
-      <SidebarGroupContent className="flex flex-col gap-1 px-2">
-        <SidebarMenu>
+    <SidebarGroup className="pt-2">
+      <SidebarGroupContent className="px-2">
+        {/* Quick Research Button */}
+        <SidebarMenu className="pb-2">
           <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Quick Research"
-              className="bg-primary hover:bg-primary/90 active:bg-primary/90 h-9 rounded-md transition-all duration-200 ease-out flex items-center justify-start gap-3 px-3"
+            <Button
               onClick={() => setIsModalOpen(true)}
+              className="w-full h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm transition-all duration-200 flex items-center gap-2.5 font-medium text-sm"
             >
-              <IconCirclePlusFilled className="h-4 w-4" />
-              <span className="flex-1 sidebar-action-button">Quick Research</span>
-            </SidebarMenuButton>
+              <Plus className="h-4 w-4" />
+              Quick Research
+            </Button>
           </SidebarMenuItem>
         </SidebarMenu>
 
-        <div className="h-2"></div>
-
-        <SidebarMenu className="space-y-1">
+        {/* Main Navigation */}
+        <SidebarMenu className="space-y-0.5">
           {items.map((item) => {
-            const isActive = pathname === item.url || (pathname === '/dashboard' && item.url === '/dashboard')
-            const isDisabled = item.url === '#'
+            const isActive = pathname === item.url
+            const Icon = item.icon
             
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton 
-                  tooltip={item.title}
-                  onClick={() => {
-                    if (item.url && item.url !== '#') {
-                      router.push(item.url)
-                    }
-                  }}
-                  className={`
-                    h-9 rounded-md transition-all duration-200 ease-out px-3 flex items-center justify-start gap-3
-                    ${!isDisabled ? 'cursor-pointer' : 'cursor-default opacity-50'}
-                    ${isActive ? 'bg-secondary' : 'hover:bg-secondary/60'}
-                  `}
-                  data-active={isActive}
+                  tooltip={item.description || item.title}
+                  onClick={() => router.push(item.url)}
+                  className={cn(
+                    "group h-10 w-full justify-start gap-2.5 rounded-lg px-2.5 text-sm font-medium transition-all duration-200",
+                    isActive 
+                      ? "bg-gray-100 text-gray-900" 
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  )}
                 >
-                  {item.icon && <item.icon className="h-4 w-4" />}
-                  <span className={`flex-1 ${isActive ? 'sidebar-nav-item-active' : 'sidebar-nav-item'}`}>
-                    {item.title}
-                  </span>
+                  {Icon && (
+                    <Icon className={cn(
+                      "h-4 w-4 transition-colors",
+                      isActive ? "text-gray-900" : "text-gray-400 group-hover:text-gray-600"
+                    )} />
+                  )}
+                  <span className="flex-1 text-left">{item.title}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )

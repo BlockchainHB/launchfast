@@ -50,12 +50,9 @@ interface TabConfig {
   tooltip?: string
 }
 
-export function KeywordResearchResultsTable({
-  data,
-  loading = false,
-  error = null,
-  onRefresh,
-  className
+export function KeywordResearchResultsTable({ 
+  data, 
+  className 
 }: KeywordResearchResultsTableProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('overview')
 

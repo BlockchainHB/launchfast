@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import {
-  IconDotsVertical,
-  IconLogout,
-  IconSettings,
-} from "@tabler/icons-react"
+  MoreVertical,
+  LogOut,
+  Settings,
+  CreditCard,
+  User,
+} from "lucide-react"
 
 import {
   Avatar,
@@ -29,6 +31,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { authHelpers } from "@/lib/auth"
+import { cn } from "@/lib/utils"
 
 export function NavUser({
   user,
@@ -51,21 +54,16 @@ export function NavUser({
       const { error } = await authHelpers.signOut()
       if (error && error !== 'Auth session missing!') {
         console.error('Logout error:', error)
-        // Still redirect even if there's an error to ensure user is logged out
       }
       
-      // Clear any browser cache/cookies
       if (typeof window !== 'undefined') {
-        // Force reload to clear any cached state
         window.location.href = '/login'
         return
       }
       
-      // Fallback redirect
       router.push('/login')
     } catch (error) {
       console.error('Logout failed:', error)
-      // Force redirect anyway and clear browser state
       if (typeof window !== 'undefined') {
         window.location.href = '/login'
         return
@@ -76,6 +74,15 @@ export function NavUser({
     }
   }
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -83,52 +90,60 @@ export function NavUser({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="w-full px-2 py-2 hover:bg-gray-50 data-[state=open]:bg-gray-50 transition-colors duration-200"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
+              <Avatar className="h-8 w-8 rounded-full border border-gray-200">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-xs font-medium">
+                  {getInitials(user.name)}
+                </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="flex flex-col flex-1 text-left ml-2.5">
                 {loading ? (
                   <>
-                    <div className="animate-pulse bg-muted rounded h-4 w-20 mb-1"></div>
-                    <div className="animate-pulse bg-muted rounded h-3 w-24"></div>
+                    <div className="animate-pulse bg-gray-200 rounded h-3.5 w-20 mb-1"></div>
+                    <div className="animate-pulse bg-gray-200 rounded h-3 w-28"></div>
                   </>
                 ) : (
                   <>
-                    <span className="truncate font-medium">{user.name}</span>
-                    <span className="text-muted-foreground truncate text-xs">
+                    <span className="text-sm font-medium text-gray-900 truncate">
+                      {user.name}
+                    </span>
+                    <span className="text-xs text-gray-500 truncate">
                       {user.email}
                     </span>
                   </>
                 )}
               </div>
-              <IconDotsVertical className="ml-auto size-4" />
+              <MoreVertical className="h-4 w-4 text-gray-400" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-[220px] rounded-lg shadow-lg border border-gray-200"
             side={isMobile ? "bottom" : "right"}
             align="end"
-            sideOffset={4}
+            sideOffset={8}
           >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
+            <DropdownMenuLabel className="px-3 py-2">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 rounded-full border border-gray-200">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white text-sm font-medium">
+                    {getInitials(user.name)}
+                  </AvatarFallback>
                 </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="flex flex-col">
                   {loading ? (
                     <>
-                      <div className="animate-pulse bg-muted rounded h-4 w-20 mb-1"></div>
-                      <div className="animate-pulse bg-muted rounded h-3 w-24"></div>
+                      <div className="animate-pulse bg-gray-200 rounded h-4 w-24 mb-1"></div>
+                      <div className="animate-pulse bg-gray-200 rounded h-3 w-32"></div>
                     </>
                   ) : (
                     <>
-                      <span className="truncate font-medium">{user.name}</span>
-                      <span className="text-muted-foreground truncate text-xs">
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {user.name}
+                      </span>
+                      <span className="text-xs text-gray-500 truncate">
                         {user.email}
                       </span>
                     </>
@@ -136,16 +151,44 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            
+            <DropdownMenuSeparator className="bg-gray-100" />
+            
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => router.push('/dashboard/settings')}>
-                <IconSettings />
+              <DropdownMenuItem 
+                onClick={() => router.push('/dashboard/settings')}
+                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+              >
+                <User className="mr-2.5 h-4 w-4 text-gray-400" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => router.push('/dashboard/settings?tab=subscription')}
+                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+              >
+                <CreditCard className="mr-2.5 h-4 w-4 text-gray-400" />
+                Billing
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => router.push('/dashboard/settings')}
+                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+              >
+                <Settings className="mr-2.5 h-4 w-4 text-gray-400" />
                 Settings
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
-              <IconLogout />
+            
+            <DropdownMenuSeparator className="bg-gray-100" />
+            
+            <DropdownMenuItem 
+              onClick={handleLogout} 
+              disabled={isLoggingOut}
+              className={cn(
+                "px-3 py-2 text-sm cursor-pointer hover:bg-gray-50",
+                isLoggingOut && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <LogOut className="mr-2.5 h-4 w-4 text-gray-400" />
               {isLoggingOut ? 'Logging out...' : 'Log out'}
             </DropdownMenuItem>
           </DropdownMenuContent>

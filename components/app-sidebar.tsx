@@ -3,19 +3,25 @@
 import * as React from "react"
 import { useEffect, useState } from "react"
 import {
-  IconDashboard,
-  IconFileAnalytics,
-  IconMail,
-  IconSearch,
-  IconTool,
-  IconBulb,
-  IconUsers,
-  IconBox,
-} from "@tabler/icons-react"
+  LayoutDashboard,
+  Search,
+  Lightbulb,
+  BarChart3,
+  Users,
+  Package,
+  Settings,
+  HelpCircle,
+  MessageSquare,
+  Plus,
+  Sparkles,
+  FlaskConical,
+  BookOpen,
+  ShieldCheck,
+} from "lucide-react"
 
-import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
+import { NavTools } from "@/components/nav-tools"
+import { NavSupport } from "@/components/nav-support"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -25,6 +31,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
 } from "@/components/ui/sidebar"
 
 interface UserProfile {
@@ -42,53 +49,78 @@ const defaultUser = {
   avatar: "/avatars/user.svg",
 }
 
-const data = {
-  navMain: [
+const navData = {
+  // Primary navigation
+  main: [
     {
       title: "Dashboard",
       url: "/dashboard",
-      icon: IconDashboard,
+      icon: LayoutDashboard,
+      description: "Overview and analytics",
     },
     {
       title: "Product Search", 
       url: "/dashboard/products",
-      icon: IconSearch,
-    },
-    {
-      title: "Contact",
-      url: "/dashboard/contact",
-      icon: IconMail,
+      icon: Search,
+      description: "Find winning products",
     },
   ],
-  navSecondary: [],
+  // Power tools section
   tools: [
     {
       name: "Product Analysis",
       url: "/dashboard/product-analysis",
-      icon: IconFileAnalytics,
+      icon: BarChart3,
       active: true,
-      beta: true,
+      badge: "Enhanced",
+      badgeColor: "bg-emerald-100 text-emerald-700",
+      description: "Deep product insights",
     },
     {
       name: "Keyword Research",
       url: "/dashboard/keyword-research",
-      icon: IconBulb,
+      icon: Lightbulb,
       active: true,
-      beta: true,
+      badge: "New",
+      badgeColor: "bg-blue-100 text-blue-700",
+      description: "PPC & SEO optimization",
     },
     {
       name: "Supplier Sourcing",
       url: "#",
-      icon: IconUsers,
+      icon: Users,
       active: false,
-      comingSoon: true,
+      badge: "Soon",
+      badgeColor: "bg-gray-100 text-gray-600",
+      description: "Find reliable suppliers",
     },
     {
-      name: "Blackbox",
+      name: "Blackbox Analytics",
       url: "#",
-      icon: IconBox,
+      icon: Package,
       active: false,
-      comingSoon: true,
+      badge: "Pro",
+      badgeColor: "bg-purple-100 text-purple-700",
+      description: "Advanced market insights",
+    },
+  ],
+  // Support & settings
+  support: [
+    {
+      title: "Settings",
+      url: "/dashboard/settings",
+      icon: Settings,
+    },
+    {
+      title: "Help Center",
+      url: "/dashboard/help",
+      icon: HelpCircle,
+      external: true,
+    },
+    {
+      title: "Contact Support",
+      url: "/dashboard/contact",
+      icon: MessageSquare,
     },
   ],
 }
@@ -121,31 +153,36 @@ export function AppSidebar({
       }
     } catch (error) {
       console.error('Failed to fetch user profile:', error)
-      // Keep default user data on error
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader className="p-4 pb-2">
-        <div className="flex items-center space-x-2">
-          <img src="/favicon.svg" alt="Launch Fast" className="h-8 w-8 flex-shrink-0" />
-          <div className="flex flex-col min-w-0">
-            <span className="text-lg font-bold text-foreground">Launch Fast</span>
-            <span className="text-xs text-muted-foreground -mt-1">Built by <span className="text-primary">LegacyX FBA</span></span>
+    <Sidebar collapsible="offcanvas" className="border-r border-gray-200" {...props}>
+      <SidebarHeader className="border-b border-gray-100">
+        <div className="flex items-center gap-2.5 px-2.5 py-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-sm">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-gray-900">Launch Fast</span>
+            <span className="text-[10px] text-gray-500">by LegacyX FBA</span>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} onDataRefresh={onDataRefresh} />
-        <NavDocuments items={data.tools} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+      
+      <SidebarContent className="gap-0">
+        <NavMain items={navData.main} onDataRefresh={onDataRefresh} />
+        <NavTools items={navData.tools} />
+        <NavSupport items={navData.support} />
       </SidebarContent>
-      <SidebarFooter>
+      
+      <SidebarFooter className="border-t border-gray-100">
         <NavUser user={user} loading={loading} />
       </SidebarFooter>
+      
+      <SidebarRail />
     </Sidebar>
   )
 }
