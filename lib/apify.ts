@@ -104,6 +104,12 @@ export class ApifyAmazonCrawler {
       }
 
       const product = response.data[0]
+      
+      if (!product) {
+        console.log(`❌ Product data is empty for URL: ${amazonUrl}`)
+        return null
+      }
+      
       const enhancedProduct = this.enhanceProductData(product)
 
       if (!this.isValidProduct(enhancedProduct)) {
@@ -285,6 +291,10 @@ export class ApifyAmazonCrawler {
    * Extract main product image only
    */
   private extractImages(product: any): string[] {
+    if (!product) {
+      return []
+    }
+    
     // Only extract the main thumbnail image
     if (product.thumbnailImage) {
       return [product.thumbnailImage]

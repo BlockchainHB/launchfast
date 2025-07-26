@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
   })
 
   let controller: ReadableStreamDefaultController<Uint8Array> | null = null
+  let controllerClosed = false
   
   const stream = new ReadableStream({
     start(controllerArg) {
@@ -45,9 +46,16 @@ export async function GET(request: NextRequest) {
   })
 
   const sendEvent = (event: ProgressEvent) => {
-    if (controller) {
+    if (controller && !controllerClosed) {
       const data = `data: ${JSON.stringify(event)}\n\n`
       controller.enqueue(new TextEncoder().encode(data))
+    }
+  }
+  
+  const closeController = () => {
+    if (controller && !controllerClosed) {
+      controller.close()
+      controllerClosed = true
     }
   }
 
@@ -65,7 +73,7 @@ export async function GET(request: NextRequest) {
           progress: 0,
           timestamp: new Date().toISOString()
         })
-        if (controller) controller.close()
+        closeController()
         return
       }
 
@@ -91,7 +99,7 @@ export async function GET(request: NextRequest) {
           progress: 0,
           timestamp: new Date().toISOString()
         })
-        if (controller) controller.close()
+        closeController()
         return
       }
 
@@ -119,7 +127,7 @@ export async function GET(request: NextRequest) {
           },
           timestamp: new Date().toISOString()
         })
-        if (controller) controller.close()
+        closeController()
         return
       }
 
@@ -160,7 +168,7 @@ export async function GET(request: NextRequest) {
           },
           timestamp: new Date().toISOString()
         })
-        if (controller) controller.close()
+        closeController()
         return
       }
 
@@ -194,7 +202,7 @@ export async function GET(request: NextRequest) {
           },
           timestamp: new Date().toISOString()
         })
-        if (controller) controller.close()
+        closeController()
         return
       }
 
@@ -319,9 +327,7 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
     } finally {
-      if (controller) {
-        controller.close()
-      }
+      closeController()
     }
   })()
 

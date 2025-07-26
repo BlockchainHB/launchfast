@@ -632,7 +632,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
               <div className="flex items-center space-x-3">
                 <div className="animate-pulse">{getResearchPhaseIcon('validating_market', 24)}</div>
                 <div className="flex-1">
-                  <div className="text-sm font-medium">{phaseMessage}</div>
+                  <div className="text-sm font-medium">Validating Amazon Data</div>
                   {phaseData?.asin && (
                     <div className="text-xs text-muted-foreground mt-1">
                       Validating ASIN: {phaseData.asin}
@@ -645,7 +645,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
                 <div className="flex items-center space-x-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
                   <span className="text-xs text-emerald-700 font-medium">
-                    Verifying with SellerSprite analytics...
+                    Verifying product metrics and sales data...
                   </span>
                 </div>
               </div>
@@ -955,7 +955,7 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
 
     // Default: Show input form
     return (
-      <Tabs defaultValue="keyword" className="w-full">
+      <Tabs defaultValue="keyword" className="w-full" onValueChange={() => setError(null)}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="keyword">Keyword</TabsTrigger>
           <TabsTrigger value="asin">ASIN</TabsTrigger>
