@@ -7,7 +7,7 @@ import { Logger } from '@/lib/logger'
 
 // Progress event matching existing pattern
 interface ProgressEvent {
-  phase: 'keyword_extraction' | 'keyword_aggregation' | 'opportunity_mining' | 'gap_analysis' | 'complete' | 'error'
+  phase: 'keyword_extraction' | 'keyword_aggregation' | 'opportunity_mining' | 'gap_analysis' | 'keyword_enhancement' | 'complete' | 'error'
   message: string
   progress: number
   data?: any
@@ -40,9 +40,17 @@ function createSSEResponse() {
 }
 
 // Helper to send SSE event (matching existing pattern)
-function sendEvent(controller: ReadableStreamDefaultController, event: ProgressEvent) {
-  const data = `data: ${JSON.stringify(event)}\n\n`
-  controller.enqueue(new TextEncoder().encode(data))
+function sendEvent(controller: ReadableStreamDefaultController, event: ProgressEvent, isClosed: boolean) {
+  if (isClosed) {
+    Logger.dev.trace('Skipping event - controller is closed')
+    return
+  }
+  try {
+    const data = `data: ${JSON.stringify(event)}\n\n`
+    controller.enqueue(new TextEncoder().encode(data))
+  } catch (error) {
+    Logger.dev.trace('Failed to send event - controller may be closed')
+  }
 }
 
 // GET /api/keywords/research/stream
@@ -59,6 +67,7 @@ export async function GET(request: NextRequest) {
   })
 
   let controller: ReadableStreamDefaultController<Uint8Array>
+  let isClosed = false
   
   const stream = new ReadableStream({
     start(controllerArg) {
@@ -66,6 +75,7 @@ export async function GET(request: NextRequest) {
     },
     cancel() {
       Logger.dev.trace('Keyword research SSE stream cancelled by client')
+      isClosed = true
     }
   })
 
@@ -88,8 +98,11 @@ export async function GET(request: NextRequest) {
           message: 'User ID is required for streaming research',
           progress: 0,
           timestamp: new Date().toISOString()
-        })
-        controller.close()
+        }, isClosed)
+        if (!isClosed) {
+          controller.close()
+          isClosed = true
+        }
         return
       }
 
@@ -102,8 +115,11 @@ export async function GET(request: NextRequest) {
           message: error instanceof Error ? error.message : 'Invalid ASINs',
           progress: 0,
           timestamp: new Date().toISOString()
-        })
-        controller.close()
+        }, isClosed)
+        if (!isClosed) {
+          controller.close()
+          isClosed = true
+        }
         return
       }
 
@@ -117,7 +133,7 @@ export async function GET(request: NextRequest) {
           progress,
           data,
           timestamp: new Date().toISOString()
-        })
+        }, isClosed)
       }
 
       // Use the service layer for all business logic
@@ -142,6 +158,12 @@ export async function GET(request: NextRequest) {
 
       // Perform research using service layer
       const finalResult = await keywordResearchService.researchKeywords(asins, options, progressCallback)
+      
+      // Check if controller was closed during research
+      if (isClosed) {
+        Logger.dev.trace('Controller was closed during research, skipping completion')
+        return
+      }
 
       // Save to database in background
       let sessionId: string | undefined
@@ -152,7 +174,7 @@ export async function GET(request: NextRequest) {
           progress: 98,
           data: { saving: true },
           timestamp: new Date().toISOString()
-        })
+        }, isClosed)
 
         sessionId = await kwDB.saveResearchSession(userId, asins, finalResult, options, sessionName)
         
@@ -164,6 +186,12 @@ export async function GET(request: NextRequest) {
         Logger.error('Failed to save streaming research session', saveError)
         // Continue anyway - don't fail the stream for save errors
       }
+      
+      // Check again before final completion
+      if (isClosed) {
+        Logger.dev.trace('Controller was closed during save, skipping final completion')
+        return
+      }
 
       // Phase 5: Complete with session info
       sendEvent(controller, {
@@ -174,28 +202,43 @@ export async function GET(request: NextRequest) {
           sessionId
         },
         timestamp: new Date().toISOString()
-      })
+      }, isClosed)
 
       Logger.dev.trace(`Streaming keyword research completed in ${finalResult.overview.processingTime}ms${sessionId ? ` (saved as ${sessionId})` : ''}`)
-      
-      // Close the stream
-      controller.close()
 
     } catch (error) {
       Logger.error('Keyword research stream error', error)
       
-      sendEvent(controller, {
-        phase: 'error',
-        message: error instanceof Error ? error.message : 'Research failed',
-        progress: 0,
-        data: {
-          canRetry: true,
-          errorType: 'processing_error'
-        },
-        timestamp: new Date().toISOString()
-      })
+      try {
+        sendEvent(controller, {
+          phase: 'error',
+          message: error instanceof Error ? error.message : 'Research failed',
+          progress: 0,
+          data: {
+            canRetry: true,
+            errorType: 'processing_error'
+          },
+          timestamp: new Date().toISOString()
+        }, isClosed)
+      } catch (controllerError) {
+        Logger.dev.trace('Controller already closed, skipping error event')
+      }
     } finally {
-      controller.close()
+      // Safe close - only close if not already closed
+      if (!isClosed) {
+        try {
+          if (controller.desiredSize !== null) {
+            controller.close()
+            isClosed = true
+          } else {
+            Logger.dev.trace('Controller already closed (desiredSize is null)')
+            isClosed = true
+          }
+        } catch (closeError) {
+          Logger.dev.trace('Controller already closed in finally block:', closeError.message)
+          isClosed = true
+        }
+      }
     }
   })()
 

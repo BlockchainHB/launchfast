@@ -48,6 +48,28 @@ export interface KeywordData {
   trafficPercentage?: number
   cpc: number
   competitionScore?: number
+  // Enhanced reverse ASIN fields
+  products?: number // Number of products ranking for this keyword
+  purchaseRate?: number // Conversion rate (searches to purchases)
+  // PPC/Advertising metrics
+  bidMax?: number // Maximum PPC bid price
+  bidMin?: number // Minimum PPC bid price
+  badges?: string[] // Special badges/labels for the product
+  // Ranking data
+  rank?: number // Overall rank for the keyword
+  position?: number // Absolute position in search results
+  page?: number // Which page the item appears on
+  // Advertising competition
+  latest1DaysAds?: number // Number of advertised competitors in the last 1 day
+  latest7DaysAds?: number // Number of advertised competitors in the last 7 days
+  latest30DaysAds?: number // Number of advertised competitors in the last 30 days
+  // Market analysis
+  supplyDemandRatio?: number // Supply vs demand ratio for the keyword
+  trafficKeywordType?: string // Type/category of traffic keyword
+  conversionKeywordType?: string // Type/category of conversion keyword
+  // Time-based metrics
+  calculatedWeeklySearches?: number // Estimated weekly search volume
+  updatedTime?: string // Last update timestamp for the data
 }
 
 export interface OpportunityData {
@@ -65,6 +87,30 @@ export interface OpportunityData {
     competitorStrength: number // 1-10 score of how strong competitors are
   }
   opportunityType?: 'low_competition' | 'market_gap' | 'weak_competitors' | 'keyword_mining'
+  // Enhanced keyword mining fields
+  keywordCn?: string // Chinese translation
+  keywordJp?: string // Japanese translation
+  departments?: Array<{code: string, label: string}> // Product categories
+  month?: string // Data month (yyyyMM)
+  supplement?: string // Is supplementary keyword (Y/N)
+  purchases?: number // Monthly purchases
+  purchaseRate?: number // Purchase conversion rate
+  monopolyClickRate?: number // Top products click share
+  products?: number // Number of competing products
+  adProducts?: number // Number of advertised products
+  avgPrice?: number // Average product price
+  avgRatings?: number // Average rating count
+  avgRating?: number // Average rating score
+  bidMin?: number // Minimum PPC bid
+  bidMax?: number // Maximum PPC bid
+  bid?: number // Average PPC bid
+  cvsShareRate?: number // Conversion share rate
+  wordCount?: number // Number of words in keyword
+  titleDensity?: number // Title keyword density
+  spr?: number // SellerSprite product rank
+  relevancy?: number // Keyword relevancy score
+  amazonChoice?: boolean // Is Amazon Choice
+  searchRank?: number // Search result rank
 }
 
 export interface AIAnalysis {

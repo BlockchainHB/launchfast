@@ -55,6 +55,7 @@ export interface KeywordResearchResult {
   comparisonView: AsinComparisonData[]
   opportunities: OpportunityData[]
   gapAnalysis?: GapAnalysisResult
+  allKeywordsWithCompetition?: OpportunityData[] // Complete keyword universe with competition data
 }
 
 export class KeywordResearchService {
@@ -115,10 +116,20 @@ export class KeywordResearchService {
     
     progressCallback?.('opportunity_mining', 'Mining targeted opportunities...', 70)
     
-    // Get opportunity keywords with enhanced filtering
-    const opportunities = opts.includeOpportunities 
-      ? await this.findTargetedOpportunities(asinResults, opts)
-      : []
+    // Initialize the complete keyword universe for Overview analysis (declare outside scopes)
+    let allKeywordsWithCompetition: OpportunityData[] = []
+    
+    // Get opportunity keywords with enhanced filtering and complete keyword universe
+    let opportunities: OpportunityData[] = []
+    
+    if (opts.includeOpportunities) {
+      const opportunityResults = await this.findTargetedOpportunities(asinResults, opts)
+      opportunities = opportunityResults.opportunities
+      allKeywordsWithCompetition = opportunityResults.allKeywordsWithCompetition
+    } else {
+      // Still build the complete keyword universe for Overview analysis even if opportunities are disabled
+      allKeywordsWithCompetition = this.buildKeywordUniverseForOverview(asinResults, opts)
+    }
 
     progressCallback?.('gap_analysis', 'Performing gap analysis...', 85)
 
@@ -126,6 +137,102 @@ export class KeywordResearchService {
     const gapAnalysis = opts.includeGapAnalysis && asins.length >= 2
       ? this.performGapAnalysis(asinResults, opts)
       : undefined
+
+    progressCallback?.('keyword_enhancement', 'Enhancing opportunity and gap analysis keywords with detailed mining data...', 90)
+
+    // Phase 4: Enhance opportunity and gap analysis keywords with keyword mining
+    let enhancedOpportunities = opportunities
+    let enhancedGapAnalysis = gapAnalysis
+    
+    try {
+      // Collect all keywords that need enhancement and deduplicate
+      const allKeywordsForEnhancement: Array<{ 
+        keyword: any; 
+        source: 'opportunity' | 'gap'; 
+        originalIndex: number 
+      }> = []
+      
+      if (opportunities.length > 0) {
+        const topOpportunities = this.selectTopKeywordsForEnhancement(opportunities, 5)
+        topOpportunities.forEach((keyword, index) => {
+          allKeywordsForEnhancement.push({
+            keyword,
+            source: 'opportunity',
+            originalIndex: opportunities.findIndex(opp => opp.keyword === keyword.keyword)
+          })
+        })
+        Logger.dev.trace(`Selected ${topOpportunities.length} top opportunity keywords from ${opportunities.length} total for enhancement`)
+      }
+      
+      if (gapAnalysis && gapAnalysis.gaps.length > 0) {
+        const topGaps = this.selectTopKeywordsForEnhancement(gapAnalysis.gaps, 5)
+        topGaps.forEach((keyword, index) => {
+          // Only add if not already in the enhancement list (avoid duplicates)
+          const existingKeyword = allKeywordsForEnhancement.find(item => item.keyword.keyword === keyword.keyword)
+          if (!existingKeyword) {
+            allKeywordsForEnhancement.push({
+              keyword,
+              source: 'gap',
+              originalIndex: gapAnalysis.gaps.findIndex(gap => gap.keyword === keyword.keyword)
+            })
+          } else {
+            // Mark that this keyword is also needed for gaps
+            existingKeyword.source = 'both'
+          }
+        })
+        Logger.dev.trace(`Selected ${topGaps.length} top gap keywords from ${gapAnalysis.gaps.length} total for enhancement`)
+      }
+      
+      // Deduplicate and enhance keywords only once
+      const uniqueKeywordsToEnhance = allKeywordsForEnhancement.map(item => item.keyword)
+      const duplicatesAvoided = (opportunities.length > 0 ? Math.min(5, opportunities.length) : 0) + 
+                                (gapAnalysis?.gaps && gapAnalysis.gaps.length > 0 ? Math.min(5, gapAnalysis.gaps.length) : 0) - 
+                                uniqueKeywordsToEnhance.length
+      
+      if (uniqueKeywordsToEnhance.length > 0) {
+        Logger.dev.trace(`Enhancing ${uniqueKeywordsToEnhance.length} unique keywords (avoided ${duplicatesAvoided} duplicate API calls)`)
+        
+        const enhancedKeywords = await this.enhanceKeywordsWithMining(uniqueKeywordsToEnhance, 'combined')
+        
+        // Create a map for quick lookup of enhanced keywords
+        const enhancedMap = new Map<string, any>()
+        enhancedKeywords.forEach(keyword => enhancedMap.set(keyword.keyword, keyword))
+        
+        // Apply enhanced data back to opportunities
+        if (opportunities.length > 0) {
+          enhancedOpportunities = opportunities.map(opp => 
+            enhancedMap.get(opp.keyword) || opp
+          )
+          const enhancedCount = enhancedOpportunities.filter(opp => enhancedMap.has(opp.keyword)).length
+          Logger.dev.trace(`Applied enhancements to ${enhancedCount} opportunity keywords`)
+        }
+        
+        // Apply enhanced data back to gap analysis
+        if (gapAnalysis && gapAnalysis.gaps.length > 0) {
+          const enhancedGaps = gapAnalysis.gaps.map(gap => {
+            const enhanced = enhancedMap.get(gap.keyword)
+            // Only use enhanced version if it preserves gap-specific fields
+            if (enhanced && enhanced.gapScore !== undefined && enhanced.gapType !== undefined) {
+              return enhanced
+            }
+            return gap // Keep original gap data if enhancement doesn't preserve gap fields
+          })
+          enhancedGapAnalysis = {
+            ...gapAnalysis,
+            gaps: enhancedGaps
+          }
+          const enhancedCount = enhancedGaps.filter(gap => enhancedMap.has(gap.keyword) && enhancedMap.get(gap.keyword)?.gapScore !== undefined).length
+          Logger.dev.trace(`Applied enhancements to ${enhancedCount} gap analysis keywords`)
+        }
+      }
+      
+      progressCallback?.('keyword_enhancement', 'Keyword enhancement completed successfully', 95)
+      
+    } catch (enhancementError) {
+      Logger.error('Keyword enhancement failed, continuing with unenhanced data', enhancementError)
+      progressCallback?.('keyword_enhancement', 'Keyword enhancement failed, using basic data', 95)
+      // Continue with original data if enhancement fails
+    }
 
     // Calculate overview statistics
     const overview = this.calculateOverview(asins, asinResults, aggregatedKeywords, startTime)
@@ -137,8 +244,10 @@ export class KeywordResearchService {
       asinResults,
       aggregatedKeywords,
       comparisonView,
-      opportunities,
-      gapAnalysis
+      opportunities: enhancedOpportunities,
+      gapAnalysis: enhancedGapAnalysis,
+      // Include ALL keywords with competition data for Overview analysis
+      allKeywordsWithCompetition: allKeywordsWithCompetition
     }
   }
 
@@ -362,24 +471,147 @@ export class KeywordResearchService {
   }
 
   /**
-   * Find targeted opportunity keywords based on specific competitor criteria
+   * Build keyword universe for Overview analysis (used when opportunities are disabled)
    */
-  public async findTargetedOpportunities(
+  private buildKeywordUniverseForOverview(
     asinResults: AsinKeywordResult[],
     options: Required<KeywordResearchOptions>
-  ): Promise<OpportunityData[]> {
+  ): OpportunityData[] {
     const successfulResults = asinResults.filter(r => r.status === 'success')
     if (successfulResults.length === 0) return []
 
-    // Build keyword universe with competitor analysis
+    // Build keyword universe with enhanced competitor analysis (simplified version)
     const keywordUniverse = new Map<string, {
       keyword: string
       searchVolume: number
       avgCpc: number
       competitorRankings: Array<{ asin: string; position: number; traffic: number }>
+      // Enhanced fields from reverse ASIN data
+      avgSupplyDemandRatio: number
+      totalProducts: number
+      avgAdvertisingCompetition: number
+      bidRange: { min: number; max: number }
+      marketTrend: string
+      purchaseRate?: number
+      avgPrice?: number
     }>()
 
-    // Collect all keywords and their competitor positions
+    // Collect all keywords and their enhanced competitor positions
+    successfulResults.forEach(result => {
+      result.keywords.forEach(keyword => {
+        if (!keywordUniverse.has(keyword.keyword)) {
+          keywordUniverse.set(keyword.keyword, {
+            keyword: keyword.keyword,
+            searchVolume: keyword.searchVolume,
+            avgCpc: keyword.cpc,
+            competitorRankings: [],
+            // Enhanced fields from reverse ASIN data
+            avgSupplyDemandRatio: keyword.supplyDemandRatio || 0,
+            totalProducts: keyword.products || 0,
+            avgAdvertisingCompetition: keyword.products || 0,
+            bidRange: { 
+              min: keyword.bidMin || keyword.cpc, 
+              max: keyword.bidMax || keyword.cpc 
+            },
+            marketTrend: keyword.trafficKeywordType || 'unknown',
+            purchaseRate: keyword.purchaseRate,
+            avgPrice: keyword.avgPrice
+          })
+        }
+
+        const kwData = keywordUniverse.get(keyword.keyword)!
+        if (keyword.rankingPosition && keyword.rankingPosition > 0 && keyword.rankingPosition <= 100) {
+          kwData.competitorRankings.push({
+            asin: result.asin,
+            position: keyword.rankingPosition,
+            traffic: keyword.trafficPercentage || 0
+          })
+        }
+        
+        // Update averages with enhanced data if we have multiple data points
+        if (kwData.avgCpc !== keyword.cpc) {
+          kwData.avgCpc = (kwData.avgCpc + keyword.cpc) / 2
+        }
+        if (keyword.supplyDemandRatio && kwData.avgSupplyDemandRatio !== keyword.supplyDemandRatio) {
+          kwData.avgSupplyDemandRatio = (kwData.avgSupplyDemandRatio + keyword.supplyDemandRatio) / 2
+        }
+        const advertisingCompetition = keyword.products || 0
+        if (advertisingCompetition && kwData.avgAdvertisingCompetition !== advertisingCompetition) {
+          kwData.avgAdvertisingCompetition = (kwData.avgAdvertisingCompetition + advertisingCompetition) / 2
+        }
+      })
+    })
+
+    // Calculate competition metrics for ALL keywords
+    const allKeywordsWithCompetition: OpportunityData[] = []
+    
+    keywordUniverse.forEach(kwData => {
+      const competitorsInTop15 = kwData.competitorRankings.filter(c => c.position <= 15).length
+      const competitorsRanking = kwData.competitorRankings.filter(c => c.position <= 50).length
+      
+      const avgCompetitorRank = kwData.competitorRankings.length > 0
+        ? kwData.competitorRankings.reduce((sum, c) => sum + c.position, 0) / kwData.competitorRankings.length
+        : 0
+      
+      const competitorStrength = kwData.competitorRankings.length > 0
+        ? Math.max(1, Math.min(10, 11 - (avgCompetitorRank / 10)))
+        : 1
+      
+      allKeywordsWithCompetition.push({
+        keyword: kwData.keyword,
+        searchVolume: kwData.searchVolume,
+        competitionScore: competitorStrength,
+        supplyDemandRatio: kwData.avgSupplyDemandRatio,
+        avgCpc: Math.round(kwData.avgCpc * 100) / 100,
+        growthTrend: kwData.marketTrend === 'traffic' ? 'growing' : kwData.marketTrend === 'conversion' ? 'stable' : 'unknown',
+        competitorPerformance: {
+          avgCompetitorRank: Math.round(avgCompetitorRank),
+          competitorsRanking: competitorsRanking,
+          competitorsInTop15: competitorsInTop15,
+          competitorStrength: Math.round(competitorStrength * 100) / 100
+        },
+        opportunityType: competitorsInTop15 === 0 ? 'market_gap' : 
+                        competitorStrength <= 3 ? 'weak_competitors' : 'low_competition',
+        // Enhanced data from reverse ASIN
+        products: kwData.totalProducts,
+        adProducts: kwData.avgAdvertisingCompetition,
+        bidMin: kwData.bidRange.min,
+        bidMax: kwData.bidRange.max,
+        purchaseRate: kwData.purchaseRate,
+        avgPrice: kwData.avgPrice
+      })
+    })
+
+    return allKeywordsWithCompetition
+  }
+
+  /**
+   * Find targeted opportunity keywords based on specific competitor criteria
+   */
+  public async findTargetedOpportunities(
+    asinResults: AsinKeywordResult[],
+    options: Required<KeywordResearchOptions>
+  ): Promise<{ opportunities: OpportunityData[]; allKeywordsWithCompetition: OpportunityData[] }> {
+    const successfulResults = asinResults.filter(r => r.status === 'success')
+    if (successfulResults.length === 0) return { opportunities: [], allKeywordsWithCompetition: [] }
+
+    // Build keyword universe with enhanced competitor analysis
+    const keywordUniverse = new Map<string, {
+      keyword: string
+      searchVolume: number
+      avgCpc: number
+      competitorRankings: Array<{ asin: string; position: number; traffic: number }>
+      // Enhanced market intelligence from reverse ASIN
+      avgSupplyDemandRatio: number
+      totalProducts: number
+      avgAdvertisingCompetition: number
+      bidRange: { min: number; max: number }
+      marketTrend: string
+      purchaseRate?: number
+      avgPrice?: number
+    }>()
+
+    // Collect all keywords and their enhanced competitor positions
     successfulResults.forEach(result => {
       result.keywords.forEach(keyword => {
         if (keyword.searchVolume < options.opportunityFilters.minSearchVolume) return
@@ -389,70 +621,110 @@ export class KeywordResearchService {
             keyword: keyword.keyword,
             searchVolume: keyword.searchVolume,
             avgCpc: keyword.cpc,
-            competitorRankings: []
+            competitorRankings: [],
+            // Enhanced fields from reverse ASIN data
+            avgSupplyDemandRatio: keyword.supplyDemandRatio || 0,
+            totalProducts: keyword.products || 0,
+            avgAdvertisingCompetition: keyword.products || 0,
+            bidRange: { 
+              min: keyword.bidMin || keyword.cpc, 
+              max: keyword.bidMax || keyword.cpc 
+            },
+            marketTrend: keyword.trafficKeywordType || 'unknown',
+            purchaseRate: keyword.purchaseRate,
+            avgPrice: keyword.avgPrice
           })
         }
 
         const kwData = keywordUniverse.get(keyword.keyword)!
-        kwData.competitorRankings.push({
-          asin: result.asin,
-          position: keyword.rankingPosition || 999,
-          traffic: keyword.trafficPercentage || 0
-        })
+        // Only add to competitor rankings if we have valid ranking position data
+        if (keyword.rankingPosition && keyword.rankingPosition > 0 && keyword.rankingPosition <= 100) {
+          kwData.competitorRankings.push({
+            asin: result.asin,
+            position: keyword.rankingPosition,
+            traffic: keyword.trafficPercentage || 0
+          })
+        }
 
-        // Update average CPC
+        // Update averages with enhanced data
         if (kwData.avgCpc !== keyword.cpc) {
           kwData.avgCpc = (kwData.avgCpc + keyword.cpc) / 2
+        }
+        if (keyword.supplyDemandRatio && kwData.avgSupplyDemandRatio !== keyword.supplyDemandRatio) {
+          kwData.avgSupplyDemandRatio = (kwData.avgSupplyDemandRatio + keyword.supplyDemandRatio) / 2
+        }
+        const advertisingCompetition = keyword.products || 0
+        if (advertisingCompetition && kwData.avgAdvertisingCompetition !== advertisingCompetition) {
+          kwData.avgAdvertisingCompetition = (kwData.avgAdvertisingCompetition + advertisingCompetition) / 2
         }
       })
     })
 
-    // Filter opportunities based on your criteria
-    const opportunities: OpportunityData[] = []
-    const filters = options.opportunityFilters
-
+    // Calculate competition metrics for ALL keywords (no filtering)
+    const allKeywordsWithCompetition: OpportunityData[] = []
+    
     keywordUniverse.forEach(kwData => {
-      // Apply your specific filtering criteria
+      // Calculate competition metrics for ALL keywords from reverse ASIN
       const competitorsInTop15 = kwData.competitorRankings.filter(c => c.position <= 15).length
       const competitorsRanking = kwData.competitorRankings.filter(c => c.position <= 50).length
       
       // Calculate competitor strength (1-10 scale, lower is weaker competition)
       const avgCompetitorRank = kwData.competitorRankings.length > 0
         ? kwData.competitorRankings.reduce((sum, c) => sum + c.position, 0) / kwData.competitorRankings.length
-        : 999
+        : 0 // If no rankings, treat as no competition (best case)
       
-      const competitorStrength = Math.max(1, Math.min(10, 11 - (avgCompetitorRank / 10)))
+      const competitorStrength = kwData.competitorRankings.length > 0
+        ? Math.max(1, Math.min(10, 11 - (avgCompetitorRank / 10)))
+        : 1 // If no competitor rankings, lowest competition score (best opportunity)
+      
+      // Add ALL keywords to the competition analysis (no filtering)
+      allKeywordsWithCompetition.push({
+        keyword: kwData.keyword,
+        searchVolume: kwData.searchVolume,
+        competitionScore: competitorStrength,
+        supplyDemandRatio: kwData.avgSupplyDemandRatio,
+        avgCpc: Math.round(kwData.avgCpc * 100) / 100,
+        growthTrend: kwData.marketTrend === 'traffic' ? 'growing' : kwData.marketTrend === 'conversion' ? 'stable' : 'unknown',
+        competitorPerformance: {
+          avgCompetitorRank: Math.round(avgCompetitorRank),
+          competitorsRanking: competitorsRanking,
+          competitorsInTop15: competitorsInTop15,
+          competitorStrength: Math.round(competitorStrength * 100) / 100
+        },
+        opportunityType: competitorsInTop15 === 0 ? 'market_gap' : 
+                        competitorStrength <= 3 ? 'weak_competitors' : 'low_competition',
+        // Enhanced data from reverse ASIN
+        products: kwData.totalProducts,
+        adProducts: kwData.avgAdvertisingCompetition,
+        bidMin: kwData.bidRange.min,
+        bidMax: kwData.bidRange.max,
+        purchaseRate: kwData.purchaseRate,
+        avgPrice: kwData.avgPrice
+      })
+    })
 
-      // Your filtering criteria:
-      // - Min search volume: 500+
-      // - Max search volume: 10,000
-      // - Max competitors in top 15: 2
-      // - Min competitors ranking position: 15 (competitors must rank 15+ or not rank)
-      // - Max competitor strength: 5
+    // NOW apply opportunity filters to create a filtered subset
+    const opportunities: OpportunityData[] = []
+    const filters = options.opportunityFilters
+
+    allKeywordsWithCompetition.forEach(kwData => {
+      // Enhanced filtering criteria for opportunities only:
+      const hasLowAdvertisingCompetition = (kwData.adProducts || 0) <= 20 // Max 20 ads
+      const hasReasonableSupplyDemand = (kwData.supplyDemandRatio || 999) <= 15 // Lower ratio = better
+      const hasManageableCompetition = (kwData.products || 999) <= 100 // Max 100 competing products
+      
       if (
         kwData.searchVolume >= filters.minSearchVolume &&
         kwData.searchVolume <= filters.maxSearchVolume &&
-        competitorsInTop15 <= filters.maxCompetitorsInTop15 &&
-        competitorsRanking >= filters.minCompetitorsRanking &&
-        competitorsRanking <= filters.maxCompetitorsInTop15 + 1 && // Max 2 competitors total
-        competitorStrength <= filters.maxCompetitorStrength
+        (kwData.competitorPerformance?.competitorsInTop15 || 0) <= filters.maxCompetitorsInTop15 &&
+        (kwData.competitorPerformance?.competitorsRanking || 0) >= filters.minCompetitorsRanking &&
+        kwData.competitionScore <= filters.maxCompetitorStrength &&
+        // Enhanced filters using reverse ASIN data
+        hasLowAdvertisingCompetition &&
+        hasReasonableSupplyDemand &&
+        hasManageableCompetition
       ) {
-        opportunities.push({
-          keyword: kwData.keyword,
-          searchVolume: kwData.searchVolume,
-          competitionScore: competitorStrength,
-          supplyDemandRatio: competitorsRanking, // Repurpose this field
-          avgCpc: Math.round(kwData.avgCpc * 100) / 100,
-          growthTrend: 'stable',
-          competitorPerformance: {
-            avgCompetitorRank: Math.round(avgCompetitorRank),
-            competitorsRanking: competitorsRanking,
-            competitorsInTop15: competitorsInTop15,
-            competitorStrength: Math.round(competitorStrength * 100) / 100
-          },
-          opportunityType: competitorsInTop15 === 0 ? 'market_gap' : 
-                          competitorStrength <= 3 ? 'weak_competitors' : 'low_competition'
-        })
+        opportunities.push(kwData)
       }
     })
 
@@ -486,9 +758,14 @@ export class KeywordResearchService {
     }
 
     // Sort by search volume and limit results
-    return opportunities
+    const sortedOpportunities = opportunities
       .sort((a, b) => b.searchVolume - a.searchVolume)
       .slice(0, 50)
+    
+    return { 
+      opportunities: sortedOpportunities,
+      allKeywordsWithCompetition: allKeywordsWithCompetition
+    }
   }
 
   /**
@@ -681,9 +958,9 @@ export class KeywordResearchService {
     // SCENARIO 1: Market Gap - Nobody is ranking well for this keyword
     if ((!userPosition || userPosition > 20) && competitorsRankingWell === 0) {
       gapType = 'market_gap'
-      gapScore = Math.min(10, (kwData.searchVolume / 1000) * 2) // Higher score for higher volume
+      gapScore = Math.min(10, ((kwData.searchVolume || 0) / 1000) * 2) // Higher score for higher volume
       recommendation = `Market opportunity: No competitors ranking well. Consider optimizing for "${kwData.keyword}"`
-      potentialImpact = kwData.searchVolume >= options.focusVolumeThreshold ? 'high' : 'medium'
+      potentialImpact = (kwData.searchVolume || 0) >= options.focusVolumeThreshold ? 'high' : 'medium'
     }
     // SCENARIO 2: Competitor Weakness - User ranks better than most competitors
     else if (userPosition && userPosition <= 20 && competitorsRankingPoorly >= competitorData.length * 0.7) {
@@ -695,9 +972,9 @@ export class KeywordResearchService {
     // SCENARIO 3: Competitor Weakness - Most competitors rank poorly, user could improve
     else if ((!userPosition || userPosition > options.maxGapPosition) && competitorsRankingPoorly >= competitorData.length * 0.6) {
       gapType = 'competitor_weakness'
-      gapScore = 6 + Math.min(3, kwData.searchVolume / 2000) // Bonus for volume
+      gapScore = 6 + Math.min(3, (kwData.searchVolume || 0) / 2000) // Bonus for volume
       recommendation = `Competitor weakness: Most competitors rank poorly for "${kwData.keyword}". Opportunity to rank higher`
-      potentialImpact = kwData.searchVolume >= options.focusVolumeThreshold ? 'high' : 'medium'
+      potentialImpact = (kwData.searchVolume || 0) >= options.focusVolumeThreshold ? 'high' : 'medium'
     }
     else {
       // No significant gap identified
@@ -705,14 +982,20 @@ export class KeywordResearchService {
     }
 
     // Apply volume and CPC modifiers to score
-    if (kwData.searchVolume >= options.focusVolumeThreshold) {
+    if ((kwData.searchVolume || 0) >= options.focusVolumeThreshold) {
       gapScore += 2 // Bonus for high volume
     }
-    if (kwData.avgCpc < 1.0) {
+    if ((kwData.avgCpc || 0) < 1.0) {
       gapScore += 1 // Bonus for low competition (low CPC)
     }
 
-    gapScore = Math.min(10, Math.max(1, Math.round(gapScore)))
+    // Ensure gap score is always a valid number between 1 and 10
+    gapScore = Math.min(10, Math.max(1, Math.round(gapScore || 1)))
+    
+    // Additional safety check - if still not a valid number, default to 1
+    if (isNaN(gapScore) || !isFinite(gapScore)) {
+      gapScore = 1
+    }
 
     return {
       keyword: kwData.keyword,
@@ -752,6 +1035,182 @@ export class KeywordResearchService {
       avgSearchVolume,
       processingTime: Date.now() - startTime
     }
+  }
+
+  /**
+   * Select top keywords for enhancement based on ranking position and relevancy scoring
+   */
+  private selectTopKeywordsForEnhancement<T extends { 
+    keyword: string; 
+    searchVolume: number;
+    competitionScore?: number;
+    gapScore?: number;
+    avgCpc?: number;
+  }>(keywords: T[], limit: number): T[] {
+    return keywords
+      .map(keyword => ({
+        ...keyword,
+        // Calculate enhancement priority score
+        enhancementScore: this.calculateEnhancementScore(keyword)
+      }))
+      .sort((a, b) => b.enhancementScore - a.enhancementScore)
+      .slice(0, limit)
+      .map(({ enhancementScore, ...keyword }) => keyword as unknown as T) // Remove the temporary score
+  }
+
+  /**
+   * Calculate enhancement priority score for keyword selection
+   */
+  private calculateEnhancementScore(keyword: { 
+    searchVolume: number;
+    competitionScore?: number;
+    gapScore?: number;
+    avgCpc?: number;
+  }): number {
+    let score = 0
+    
+    // Search volume component (30% weight) - higher is better
+    const volumeScore = Math.min(keyword.searchVolume / 10000, 1) * 3
+    score += volumeScore
+    
+    // Competition/Gap score component (40% weight) - depends on context
+    if (keyword.gapScore) {
+      // For gap analysis: higher gap score is better
+      score += (keyword.gapScore / 10) * 4
+    } else if (keyword.competitionScore) {
+      // For opportunities: lower competition is better
+      score += (1 - (keyword.competitionScore / 10)) * 4
+    }
+    
+    // CPC component (20% weight) - moderate CPC is best (not too high, not too low)
+    if (keyword.avgCpc) {
+      const idealCpc = 1.5
+      const cpcDiff = Math.abs(keyword.avgCpc - idealCpc)
+      const cpcScore = Math.max(0, 1 - (cpcDiff / idealCpc)) * 2
+      score += cpcScore
+    }
+    
+    // Relevancy bonus (10% weight) - keywords with good fundamentals
+    if (keyword.searchVolume > 1000 && (keyword.competitionScore || 0) < 7) {
+      score += 1
+    }
+    
+    return Math.round(score * 100) / 100
+  }
+
+  /**
+   * Merge enhanced top keywords back with original unenhanced keywords
+   */
+  private mergeEnhancedWithOriginal<T extends { keyword: string }>(
+    originalKeywords: T[], 
+    enhancedKeywords: T[]
+  ): T[] {
+    const enhancedMap = new Map<string, T>()
+    enhancedKeywords.forEach(kw => enhancedMap.set(kw.keyword, kw))
+    
+    // Return original keywords but replace with enhanced versions where available
+    return originalKeywords.map(original => 
+      enhancedMap.get(original.keyword) || original
+    )
+  }
+
+  /**
+   * Enhance keywords with detailed mining data
+   */
+  private async enhanceKeywordsWithMining<T extends { keyword: string }>(
+    keywords: T[], 
+    type: 'opportunity' | 'gap' | 'combined'
+  ): Promise<T[]> {
+    if (keywords.length === 0) return keywords
+
+    Logger.dev.trace(`Enhancing ${keywords.length} ${type} keywords with mining data`)
+
+    const enhancedKeywords: T[] = []
+    const batchSize = 3 // Process in smaller batches to avoid rate limiting
+
+    for (let i = 0; i < keywords.length; i += batchSize) {
+      const batch = keywords.slice(i, i + batchSize)
+      
+      try {
+        // Process keywords sequentially instead of in parallel to avoid rate limiting
+        const batchResults: T[] = []
+        
+        for (let j = 0; j < batch.length; j++) {
+          const keyword = batch[j]
+          try {
+            // Add delay before each request (except first)
+            if (j > 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000)) // 1 second between each request
+            }
+            
+            const miningResults = await sellerSpriteClient.keywordMining(keyword.keyword, {
+              minSearch: 100,
+              maxSupplyDemandRatio: 20,
+              size: 1 // We only need the data for this specific keyword
+            })
+
+            // Find the exact match for this keyword
+            const exactMatch = miningResults.find(result => 
+              result.keyword.toLowerCase() === keyword.keyword.toLowerCase()
+            )
+
+            if (exactMatch) {
+              // Merge the enhanced mining data with the existing keyword data
+              // Use spread operator to preserve ALL original fields first, then add enhancements
+              const enhancedKeyword = {
+                ...keyword, // Preserve ALL original fields (including gapScore, gapType, etc.)
+                // Override with enhanced data from keyword mining (only add new fields)
+                keywordCn: exactMatch.keywordCn,
+                keywordJp: exactMatch.keywordJp,
+                departments: exactMatch.departments,
+                month: exactMatch.month,
+                supplement: exactMatch.supplement,
+                purchases: exactMatch.purchases,
+                purchaseRate: exactMatch.purchaseRate,
+                monopolyClickRate: exactMatch.monopolyClickRate,
+                products: exactMatch.products || keyword.products,
+                adProducts: exactMatch.adProducts || keyword.adProducts,
+                avgPrice: exactMatch.avgPrice,
+                avgRatings: exactMatch.avgRatings,
+                avgRating: exactMatch.avgRating,
+                bidMin: exactMatch.bidMin || keyword.bidMin,
+                bidMax: exactMatch.bidMax || keyword.bidMax,
+                bid: exactMatch.bid,
+                cvsShareRate: exactMatch.cvsShareRate,
+                wordCount: exactMatch.wordCount,
+                titleDensity: exactMatch.titleDensity,
+                spr: exactMatch.spr,
+                relevancy: exactMatch.relevancy,
+                amazonChoice: exactMatch.amazonChoice,
+                searchRank: exactMatch.searchRank
+              } as T
+              batchResults.push(enhancedKeyword)
+            } else {
+              batchResults.push(keyword) // Return original if no exact match found
+            }
+            
+          } catch (error) {
+            Logger.dev.trace(`Failed to enhance keyword ${keyword.keyword} with mining data:`, error)
+            batchResults.push(keyword) // Return original on error
+          }
+        }
+
+        enhancedKeywords.push(...batchResults)
+
+        // Small delay between batches to avoid rate limiting
+        if (i + batchSize < keywords.length) {
+          await new Promise(resolve => setTimeout(resolve, 2000)) // 2 seconds between batches
+        }
+
+      } catch (error) {
+        Logger.error(`Failed to enhance batch of ${type} keywords`, error)
+        // Add original keywords if batch fails
+        enhancedKeywords.push(...batch)
+      }
+    }
+
+    Logger.dev.trace(`Successfully enhanced ${enhancedKeywords.length}/${keywords.length} ${type} keywords`)
+    return enhancedKeywords
   }
 }
 

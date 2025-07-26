@@ -32,11 +32,12 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ data, className }: OverviewTabProps) {
-  const { overview, asinResults, aggregatedKeywords, opportunities, gapAnalysis } = data
+  const { overview, asinResults, aggregatedKeywords, opportunities, gapAnalysis, allKeywordsWithCompetition } = data
 
   // Safe data handling
   const safeAggregatedKeywords = aggregatedKeywords || []
   const safeOpportunities = opportunities || []
+  const safeAllKeywords = allKeywordsWithCompetition || safeOpportunities // Fallback to opportunities if not available
 
   // Core business metrics from actual data
   const totalKeywords = overview?.totalKeywords || 0
@@ -54,6 +55,62 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
   const avgRank = allRankings.length > 0 
     ? allRankings.reduce((sum, rank) => sum + rank, 0) / allRankings.length 
     : 0
+
+  // Enhanced competition intelligence calculations from ALL keywords, not just opportunities
+  // This gives a true overview of your ASIN portfolio's competitive landscape
+  const keywordsWithCompetition = safeAllKeywords.filter(o => o.competitionScore !== undefined && o.competitionScore > 0)
+  const avgCompetitionScore = keywordsWithCompetition.length > 0
+    ? keywordsWithCompetition.reduce((sum, o) => sum + (o.competitionScore || 0), 0) / keywordsWithCompetition.length
+    : 0
+
+  const keywordsWithProducts = safeAllKeywords.filter(o => o.products !== undefined)
+  const avgCompetingProducts = keywordsWithProducts.length > 0
+    ? keywordsWithProducts.reduce((sum, o) => sum + (o.products || 0), 0) / keywordsWithProducts.length
+    : 0
+
+  const keywordsWithAdProducts = safeAllKeywords.filter(o => o.adProducts !== undefined)
+  const avgAdvertisedProducts = keywordsWithAdProducts.length > 0
+    ? keywordsWithAdProducts.reduce((sum, o) => sum + (o.adProducts || 0), 0) / keywordsWithAdProducts.length
+    : 0
+
+  const keywordsWithBids = safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined)
+  const avgBidMin = keywordsWithBids.length > 0
+    ? keywordsWithBids.reduce((sum, o) => sum + (o.bidMin || 0), 0) / keywordsWithBids.length
+    : 0
+  const avgBidMax = keywordsWithBids.length > 0
+    ? keywordsWithBids.reduce((sum, o) => sum + (o.bidMax || 0), 0) / keywordsWithBids.length
+    : 0
+
+  // Debug logging to see what data we're getting
+  console.log('Competition Intelligence Debug:', {
+    totalKeywords: safeAllKeywords.length,
+    keywordsWithAdProducts: keywordsWithAdProducts.length,
+    avgAdvertisedProducts,
+    keywordsWithBids: keywordsWithBids.length,
+    avgBidMin,
+    avgBidMax,
+    sampleKeyword: safeAllKeywords[0],
+    sampleBidData: safeAllKeywords.slice(0, 3).map(k => ({ keyword: k.keyword, bidMin: k.bidMin, bidMax: k.bidMax })),
+    conditionPassed: avgAdvertisedProducts > 0 && avgBidMin > 0
+  })
+
+  const keywordsWithPurchaseRate = safeAllKeywords.filter(o => o.purchaseRate !== undefined)
+  const avgPurchaseRate = keywordsWithPurchaseRate.length > 0
+    ? keywordsWithPurchaseRate.reduce((sum, o) => sum + ((o.purchaseRate || 0) * 100), 0) / keywordsWithPurchaseRate.length
+    : 0
+
+  // Enhanced conversion intelligence calculations
+  const keywordsWithPurchases = safeAllKeywords.filter(o => o.purchases !== undefined && o.purchases > 0)
+  const totalMonthlyPurchases = keywordsWithPurchases.length > 0
+    ? keywordsWithPurchases.reduce((sum, o) => sum + (o.purchases || 0), 0)
+    : 0
+
+  const keywordsWithAvgPrice = safeAllKeywords.filter(o => o.avgPrice !== undefined && o.avgPrice > 0)
+  const avgProductPrice = keywordsWithAvgPrice.length > 0
+    ? keywordsWithAvgPrice.reduce((sum, o) => sum + (o.avgPrice || 0), 0) / keywordsWithAvgPrice.length
+    : 0
+
+  const opportunityPercentage = totalKeywords > 0 ? (safeOpportunities.length / totalKeywords) * 100 : 0
 
   // Top 5 highest search volume keywords
   const topVolumeKeywords = safeAggregatedKeywords
@@ -102,35 +159,118 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
             </div>
           </div>
           
-          {/* Business Insights */}
+          {/* Enhanced Business Insights */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2 flex items-center">
-                <TrendingUp className="h-4 w-4 mr-2 text-blue-600" />
-                Market Analysis
+              <h4 className="font-semibold text-sm mb-3 flex items-center">
+                <Shield className="h-4 w-4 mr-2 text-blue-600" />
+                Market Position
               </h4>
-              <p className="text-sm text-muted-foreground">
-                {avgSearchVolume > 10000 
-                  ? "High-demand market with strong search volume potential"
-                  : avgSearchVolume > 1000
-                  ? "Moderate market demand with growth opportunities"
-                  : "Niche market - consider long-tail keyword strategies"
-                }
-              </p>
+              <div className="space-y-2">
+                {avgCompetingProducts > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Competing Products</span>
+                      <span className="text-sm font-medium">{Math.round(avgCompetingProducts)} avg</span>
+                    </div>
+                    {avgCompetitionScore > 0 ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Competition Level</span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-medium">{avgCompetitionScore.toFixed(1)}/10</span>
+                            <Badge variant={avgCompetitionScore <= 3 ? "secondary" : avgCompetitionScore <= 6 ? "outline" : "destructive"} className="text-xs px-2 py-0">
+                              {avgCompetitionScore <= 3 ? "Low" : avgCompetitionScore <= 6 ? "Medium" : "High"}
+                            </Badge>
+                          </div>
+                        </div>
+                        {avgPurchaseRate > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Avg Conversion Rate</span>
+                            <span className="text-sm font-medium text-green-600">{avgPurchaseRate.toFixed(1)}%</span>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {avgCompetitionScore <= 3 
+                            ? `Good entry opportunities${avgPurchaseRate > 2 ? ' with strong conversion potential' : ''}`
+                            : avgCompetitionScore <= 6
+                            ? `Strategic positioning required${avgPurchaseRate > 2 ? ', but good conversion rates' : ''}`
+                            : `Strong differentiation needed${avgPurchaseRate > 2 ? ', though conversions are promising' : ''}`
+                          }
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Competition analysis pending - enhanced data being processed
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {avgSearchVolume > 10000 
+                      ? "High-demand market with strong potential"
+                      : avgSearchVolume > 1000
+                      ? "Moderate market with growth opportunities"
+                      : "Niche market - focus on long-tail strategies"
+                    }
+                  </p>
+                )}
+              </div>
             </div>
             <div className="p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2 flex items-center">
-                <DollarSign className="h-4 w-4 mr-2 text-orange-600" />
-                Revenue Potential
+              <h4 className="font-semibold text-sm mb-3 flex items-center">
+                <Trophy className="h-4 w-4 mr-2 text-orange-600" />
+                Competition Intelligence
               </h4>
-              <p className="text-sm text-muted-foreground">
-                {avgCPC > 2 
-                  ? "High-value keywords indicate strong commercial intent"
-                  : avgCPC > 0.5
-                  ? "Moderate CPC suggests balanced competition"
-                  : "Low CPC market - focus on volume-based strategies"
-                }
-              </p>
+              <div className="space-y-2">
+                {avgAdvertisedProducts > 0 && avgBidMin > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Advertised Products</span>
+                      <span className="text-sm font-medium">{Math.round(avgAdvertisedProducts)} avg</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Recommended Bids</span>
+                      <span className="text-sm font-medium">${avgBidMin.toFixed(2)} - ${avgBidMax.toFixed(2)}</span>
+                    </div>
+                    {opportunityPercentage > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Opportunity Rate</span>
+                        <span className="text-sm font-medium text-green-600">{opportunityPercentage.toFixed(0)}%</span>
+                      </div>
+                    )}
+                    {totalMonthlyPurchases > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Monthly Purchases</span>
+                        <span className="text-sm font-medium text-blue-600">{totalMonthlyPurchases.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {avgProductPrice > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Avg Product Price</span>
+                        <span className="text-sm font-medium">${avgProductPrice.toFixed(0)}</span>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {avgPurchaseRate > 3 
+                        ? `High-converting market (${avgPurchaseRate.toFixed(1)}% conversion)${totalMonthlyPurchases > 10000 ? ' with strong volume potential' : ''}`
+                        : avgPurchaseRate > 1
+                        ? `Moderate conversion rates (${avgPurchaseRate.toFixed(1)}%)${avgProductPrice > 50 ? ' but higher-value products' : ''}`
+                        : `Focus on top-funnel awareness${avgProductPrice > 30 ? ' for premium products' : ' and conversion optimization'}`
+                      }
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {avgCPC > 2 
+                      ? "High-value keywords with strong commercial intent"
+                      : avgCPC > 0.5
+                      ? "Moderate CPC suggests balanced competition"
+                      : "Low CPC market - focus on volume strategies"
+                    }
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

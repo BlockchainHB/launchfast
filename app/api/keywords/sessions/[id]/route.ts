@@ -5,12 +5,13 @@ import { Logger } from '@/lib/logger'
 // GET /api/keywords/sessions/[id] - Load specific session data
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
-    const sessionId = params.id
+    const resolvedParams = await params
+    const sessionId = resolvedParams.id
     
     if (!userId) {
       return NextResponse.json(
@@ -59,7 +60,8 @@ export async function PATCH(
   try {
     const body = await request.json()
     const { userId, name } = body
-    const sessionId = params.id
+    const resolvedParams = await params
+    const sessionId = resolvedParams.id
     
     if (!userId) {
       return NextResponse.json(
@@ -109,7 +111,8 @@ export async function DELETE(
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
-    const sessionId = params.id
+    const resolvedParams = await params
+    const sessionId = resolvedParams.id
     
     if (!userId) {
       return NextResponse.json(

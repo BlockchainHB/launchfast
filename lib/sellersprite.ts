@@ -221,7 +221,29 @@ export class SellerSpriteClient {
         rankingPosition: item.rankPosition?.position || null,
         trafficPercentage: item.purchaseRate * 100, // Convert to percentage
         cpc: item.bid,
-        competitionScore: 0 // Will be calculated based on other factors
+        competitionScore: 0, // Will be calculated based on other factors
+        // Enhanced reverse ASIN fields
+        products: item.products,
+        purchaseRate: item.purchaseRate,
+        // PPC/Advertising metrics
+        bidMax: item.bid,
+        bidMin: item.bidMin,
+        badges: item.badges ? (Array.isArray(item.badges) ? item.badges : [item.badges]) : undefined,
+        // Ranking data
+        rank: item.rank,
+        position: item.position,
+        page: item.page,
+        // Advertising competition
+        latest1DaysAds: item.Latest_1_days_Ads,
+        latest7DaysAds: item.Latest_7_days_Ads,
+        latest30DaysAds: item.Latest_30_days_Ads,
+        // Market analysis
+        supplyDemandRatio: item.supplyDemandRatio,
+        trafficKeywordType: item.trafficKeywordType,
+        conversionKeywordType: item.conversionKeywordType,
+        // Time-based metrics
+        calculatedWeeklySearches: item.calculatedWeeklySearches,
+        updatedTime: item.updatedTime || item.updated_time
       }))
 
       // No caching - fresh keyword data ensures accuracy
@@ -264,6 +286,12 @@ export class SellerSpriteClient {
 
       Logger.dev.trace(`Keyword mining response code: ${response.data.code}`)
       
+      // Handle API errors (rate limiting, etc.)
+      if (response.data.code !== 'OK' || !response.data.data) {
+        Logger.dev.trace(`Keyword mining API error: ${response.data.code}`)
+        return []
+      }
+      
       // SellerSprite API returns data in response.data.data.items format
       const items = response.data.data.items || []
       if (!Array.isArray(items)) {
@@ -276,8 +304,32 @@ export class SellerSpriteClient {
         searchVolume: item.searches,
         competitionScore: item.competitionScore || 0,
         supplyDemandRatio: item.supplyDemandRatio,
-        avgCpc: item.avgCpc,
-        growthTrend: item.growthTrend || 'stable'
+        avgCpc: item.avgCpc || item.bid,
+        growthTrend: item.growthTrend || 'stable',
+        // Enhanced keyword mining fields
+        keywordCn: item.keywordCn,
+        keywordJp: item.keywordJp,
+        departments: item.departments,
+        month: item.month,
+        supplement: item.supplement,
+        purchases: item.purchases,
+        purchaseRate: item.purchaseRate,
+        monopolyClickRate: item.monopolyClickRate,
+        products: item.products,
+        adProducts: item.adProducts,
+        avgPrice: item.avgPrice,
+        avgRatings: item.avgRatings,
+        avgRating: item.avgRating,
+        bidMin: item.bidMin,
+        bidMax: item.bidMax,
+        bid: item.bid,
+        cvsShareRate: item.cvsShareRate,
+        wordCount: item.wordCount,
+        titleDensity: item.titleDensity,
+        spr: item.spr,
+        relevancy: item.relevancy,
+        amazonChoice: item.amazonChoice,
+        searchRank: item.searchRank
       }))
 
       // No caching - fresh keyword mining for accurate results

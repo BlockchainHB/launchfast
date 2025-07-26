@@ -137,26 +137,53 @@ export class KeywordResearchDB {
   }
   
   /**
-   * Save all unique keywords from research results
+   * Create enhanced keyword record from keyword data
+   */
+  private static createEnhancedKeywordRecord(keyword: any, keywordText: string, searchVolume: number, cpc: number) {
+    return {
+      keyword_text: keywordText,
+      search_volume: searchVolume,
+      cpc: cpc,
+      // Enhanced fields from reverse ASIN and keyword mining
+      purchases: keyword.purchases,
+      purchase_rate: keyword.purchaseRate,
+      monopoly_click_rate: keyword.monopolyClickRate,
+      cvs_share_rate: keyword.cvsShareRate,
+      products_count: keyword.products,
+      ad_products_count: keyword.adProducts,
+      supply_demand_ratio: keyword.supplyDemandRatio,
+      avg_price: keyword.avgPrice,
+      avg_rating: keyword.avgRating || keyword.avgRatings,
+      bid_min: keyword.bidMin,
+      bid_max: keyword.bidMax,
+      title_density: keyword.titleDensity,
+      relevancy_score: keyword.relevancy,
+      word_count: keyword.wordCount,
+      spr_rank: keyword.spr,
+      search_rank: keyword.searchRank,
+      departments: keyword.departments,
+      amazon_choice: keyword.amazonChoice,
+      is_supplement: keyword.supplement === 'Y',
+      keyword_cn: keyword.keywordCn,
+      keyword_jp: keyword.keywordJp,
+      marketplace: 'US',
+      data_month: keyword.month
+    }
+  }
+
+  /**
+   * Save all unique keywords from research results with enhanced data
    */
   private static async saveAllKeywords(results: KeywordResearchResult): Promise<Map<string, string>> {
-    // Collect all unique keywords from different sources
-    const uniqueKeywords = new Map<string, {
-      keyword_text: string
-      search_volume: number
-      cpc: number
-    }>()
+    // Collect all unique keywords from different sources with enhanced data
+    const uniqueKeywords = new Map<string, any>()
     
     // From ASIN results
     results.asinResults.forEach(asinResult => {
       if (asinResult.status === 'success') {
         asinResult.keywords.forEach(kw => {
           if (!uniqueKeywords.has(kw.keyword)) {
-            uniqueKeywords.set(kw.keyword, {
-              keyword_text: kw.keyword,
-              search_volume: kw.searchVolume,
-              cpc: kw.cpc
-            })
+            uniqueKeywords.set(kw.keyword, this.createEnhancedKeywordRecord(kw, kw.keyword, kw.searchVolume, kw.cpc))
           }
         })
       }
@@ -165,37 +192,25 @@ export class KeywordResearchDB {
     // From aggregated keywords
     results.aggregatedKeywords.forEach(kw => {
       if (!uniqueKeywords.has(kw.keyword)) {
-        uniqueKeywords.set(kw.keyword, {
-          keyword_text: kw.keyword,
-          search_volume: kw.searchVolume,
-          cpc: kw.avgCpc
-        })
+        uniqueKeywords.set(kw.keyword, this.createEnhancedKeywordRecord(kw, kw.keyword, kw.searchVolume, kw.avgCpc))
       }
     })
     
     // From opportunities
     results.opportunities?.forEach(opp => {
       if (!uniqueKeywords.has(opp.keyword)) {
-        uniqueKeywords.set(opp.keyword, {
-          keyword_text: opp.keyword,
-          search_volume: opp.searchVolume,
-          cpc: opp.avgCpc
-        })
+        uniqueKeywords.set(opp.keyword, this.createEnhancedKeywordRecord(opp, opp.keyword, opp.searchVolume, opp.avgCpc))
       }
     })
     
     // From gap analysis
     results.gapAnalysis?.gaps.forEach(gap => {
       if (!uniqueKeywords.has(gap.keyword)) {
-        uniqueKeywords.set(gap.keyword, {
-          keyword_text: gap.keyword,
-          search_volume: gap.searchVolume,
-          cpc: gap.avgCpc
-        })
+        uniqueKeywords.set(gap.keyword, this.createEnhancedKeywordRecord(gap, gap.keyword, gap.searchVolume, gap.avgCpc))
       }
     })
     
-    // Batch insert keywords
+    // Batch insert keywords with all enhanced data
     return await BatchHelpers.insertKeywordsBatch(Array.from(uniqueKeywords.values()))
   }
   
@@ -213,6 +228,23 @@ export class KeywordResearchDB {
       keyword_id: string
       ranking_position: number | null
       traffic_percentage: number | null
+      // Enhanced reverse ASIN fields
+      products_count?: number
+      purchase_rate?: number
+      bid_max?: number
+      bid_min?: number
+      badges?: any
+      rank_overall?: number
+      position_absolute?: number
+      page_number?: number
+      latest_1_days_ads?: number
+      latest_7_days_ads?: number
+      latest_30_days_ads?: number
+      supply_demand_ratio?: number
+      traffic_keyword_type?: string
+      conversion_keyword_type?: string
+      calculated_weekly_searches?: number
+      updated_time?: string
     }> = []
     
     asinResults.forEach(asinResult => {
@@ -225,7 +257,24 @@ export class KeywordResearchDB {
               asin: asinResult.asin,
               keyword_id: keywordId,
               ranking_position: kw.rankingPosition || null,
-              traffic_percentage: kw.trafficPercentage || null
+              traffic_percentage: kw.trafficPercentage || null,
+              // Enhanced reverse ASIN fields
+              products_count: kw.products,
+              purchase_rate: kw.purchaseRate,
+              bid_max: kw.bidMax,
+              bid_min: kw.bidMin,
+              badges: kw.badges,
+              rank_overall: kw.rank,
+              position_absolute: kw.position,
+              page_number: kw.page,
+              latest_1_days_ads: kw.latest1DaysAds,
+              latest_7_days_ads: kw.latest7DaysAds,
+              latest_30_days_ads: kw.latest30DaysAds,
+              supply_demand_ratio: kw.supplyDemandRatio,
+              traffic_keyword_type: kw.trafficKeywordType,
+              conversion_keyword_type: kw.conversionKeywordType,
+              calculated_weekly_searches: kw.calculatedWeeklySearches,
+              updated_time: kw.updatedTime
             })
           }
         })
@@ -267,7 +316,26 @@ export class KeywordResearchDB {
         opportunity_type: mapOpportunityType(opp.opportunityType),
         competition_score: opp.competitionScore,
         supply_demand_ratio: opp.supplyDemandRatio,
-        competitor_performance: opp.competitorPerformance || {}
+        competitor_performance: opp.competitorPerformance || {},
+        // Enhanced fields from keyword mining
+        purchases: opp.purchases,
+        purchase_rate: opp.purchaseRate,
+        monopoly_click_rate: opp.monopolyClickRate,
+        cvs_share_rate: opp.cvsShareRate,
+        products_count: opp.products,
+        ad_products_count: opp.adProducts,
+        avg_price: opp.avgPrice,
+        avg_rating: opp.avgRating || opp.avgRatings,
+        bid_min: opp.bidMin,
+        bid_max: opp.bidMax,
+        title_density: opp.titleDensity,
+        relevancy_score: opp.relevancy,
+        word_count: opp.wordCount,
+        spr_rank: opp.spr,
+        search_rank: opp.searchRank,
+        departments: opp.departments,
+        amazon_choice: opp.amazonChoice,
+        is_supplement: opp.supplement === 'Y'
       }
     }).filter(Boolean)
     
@@ -294,6 +362,19 @@ export class KeywordResearchDB {
       const keywordId = keywordMap.get(gap.keyword)
       if (!keywordId) return null
       
+      // Debug logging to see what's causing the null gap_score
+      if (gap.gapScore === null || gap.gapScore === undefined || isNaN(gap.gapScore)) {
+        console.error('Invalid gap score detected:', {
+          keyword: gap.keyword,
+          gapScore: gap.gapScore,
+          gapType: gap.gapType,
+          searchVolume: gap.searchVolume,
+          gap: gap
+        })
+        // Don't save gaps with invalid scores
+        return null
+      }
+      
       // Map service gap types to database gap types
       const mapGapType = (serviceType: string) => {
         switch (serviceType) {
@@ -308,12 +389,12 @@ export class KeywordResearchDB {
         session_id: sessionId,
         keyword_id: keywordId,
         gap_type: mapGapType(gap.gapType),
-        gap_score: gap.gapScore,
-        user_ranking_position: gap.userRanking.position,
+        gap_score: Math.max(1, Math.min(10, Math.round(gap.gapScore || 1))), // Ensure valid score
+        user_ranking_position: gap.userRanking?.position || null,
         competitors_data: {
-          user_asin: gap.userRanking.asin,
-          competitor_rankings: gap.competitorRankings,
-          user_ranking: gap.userRanking
+          user_asin: gap.userRanking?.asin || '',
+          competitor_rankings: gap.competitorRankings || [],
+          user_ranking: gap.userRanking || { asin: '', position: null, trafficPercentage: 0 }
         },
         recommendation: gap.recommendation,
         potential_impact: gap.potentialImpact
