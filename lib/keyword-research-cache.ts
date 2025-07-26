@@ -112,7 +112,24 @@ export class KeywordResearchCache {
       
       if (cached) {
         Logger.cache.hit(`session_result:${sessionId}`)
-        return JSON.parse(cached as string)
+        try {
+          // Handle both string and already-parsed object cases
+          if (typeof cached === 'string') {
+            return JSON.parse(cached)
+          } else if (typeof cached === 'object' && cached !== null) {
+            Logger.dev.trace('Cache returned object instead of string, using directly')
+            return cached
+          } else {
+            Logger.dev.trace(`Unexpected cached data: ${JSON.stringify(cached).substring(0, 100)}`)
+            throw new Error(`Unexpected cached type: ${typeof cached}`)
+          }
+        } catch (parseError) {
+          Logger.error('Failed to parse cached session result', parseError)
+          Logger.dev.trace(`Cached data type: ${typeof cached}, first 100 chars: ${JSON.stringify(cached).substring(0, 100)}`)
+          // Clear the corrupted cache entry
+          await redis.del(key)
+          return null
+        }
       }
       
       Logger.cache.miss(`session_result:${sessionId}`)

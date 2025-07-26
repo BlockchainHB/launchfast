@@ -4,10 +4,11 @@ import { keywordResearchService, type KeywordResearchOptions } from '@/lib/keywo
 import { kwDB } from '@/lib/keyword-research-db'
 import { kwCache } from '@/lib/keyword-research-cache'
 import { Logger } from '@/lib/logger'
+import crypto from 'crypto'
 
 // Progress event matching existing pattern
 interface ProgressEvent {
-  phase: 'keyword_extraction' | 'keyword_aggregation' | 'opportunity_mining' | 'gap_analysis' | 'complete' | 'error'
+  phase: 'keyword_extraction' | 'keyword_aggregation' | 'opportunity_mining' | 'gap_analysis' | 'keyword_enhancement' | 'complete' | 'error'
   message: string
   progress: number
   data?: any
@@ -40,9 +41,17 @@ function createSSEResponse() {
 }
 
 // Helper to send SSE event (matching existing pattern)
-function sendEvent(controller: ReadableStreamDefaultController, event: ProgressEvent) {
-  const data = `data: ${JSON.stringify(event)}\n\n`
-  controller.enqueue(new TextEncoder().encode(data))
+function sendEvent(controller: ReadableStreamDefaultController, event: ProgressEvent, isClosed: boolean) {
+  if (isClosed) {
+    Logger.dev.trace('Skipping event - controller is closed')
+    return
+  }
+  try {
+    const data = `data: ${JSON.stringify(event)}\n\n`
+    controller.enqueue(new TextEncoder().encode(data))
+  } catch (error) {
+    Logger.dev.trace('Failed to send event - controller may be closed')
+  }
 }
 
 // GET /api/keywords/research/stream
@@ -59,6 +68,7 @@ export async function GET(request: NextRequest) {
   })
 
   let controller: ReadableStreamDefaultController<Uint8Array>
+  let isClosed = false
   
   const stream = new ReadableStream({
     start(controllerArg) {
@@ -66,6 +76,7 @@ export async function GET(request: NextRequest) {
     },
     cancel() {
       Logger.dev.trace('Keyword research SSE stream cancelled by client')
+      isClosed = true
     }
   })
 
@@ -88,8 +99,11 @@ export async function GET(request: NextRequest) {
           message: 'User ID is required for streaming research',
           progress: 0,
           timestamp: new Date().toISOString()
-        })
-        controller.close()
+        }, isClosed)
+        if (!isClosed) {
+          controller.close()
+          isClosed = true
+        }
         return
       }
 
@@ -102,8 +116,11 @@ export async function GET(request: NextRequest) {
           message: error instanceof Error ? error.message : 'Invalid ASINs',
           progress: 0,
           timestamp: new Date().toISOString()
-        })
-        controller.close()
+        }, isClosed)
+        if (!isClosed) {
+          controller.close()
+          isClosed = true
+        }
         return
       }
 
@@ -117,7 +134,7 @@ export async function GET(request: NextRequest) {
           progress,
           data,
           timestamp: new Date().toISOString()
-        })
+        }, isClosed)
       }
 
       // Use the service layer for all business logic
@@ -140,11 +157,54 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Perform research using service layer
-      const finalResult = await keywordResearchService.researchKeywords(asins, options, progressCallback)
+      // Create session ID early so we can save raw data immediately
+      const sessionId = crypto.randomUUID()
+      
+      // Create the session in the database early
+      try {
+        await kwDB.createSession(userId, sessionId, sessionName)
+        Logger.dev.trace(`Created session ${sessionId} early for streaming research`)
+      } catch (error) {
+        Logger.error('Failed to create session early', error)
+        sendEvent(controller, {
+          phase: 'error',
+          message: 'Failed to create research session',
+          progress: 0,
+          timestamp: new Date().toISOString()
+        }, isClosed)
+        if (!isClosed) {
+          controller.close()
+          isClosed = true
+        }
+        return
+      }
+      
+      // Create a custom progress callback that saves raw keywords
+      const enhancedProgressCallback = async (phase: string, message: string, progress: number, data?: any) => {
+        progressCallback(phase, message, progress, data)
+        
+        // If this is keyword extraction phase and we have keywords, save them immediately
+        if (phase === 'keyword_extraction' && data?.keywords && data?.asin) {
+          try {
+            await kwDB.saveRawKeywords(sessionId, data.asin, data.keywords)
+            Logger.dev.trace(`Saved raw keywords for ${data.asin} to session ${sessionId}`)
+          } catch (error) {
+            Logger.error('Failed to save raw keywords', error)
+            // Don't fail the whole process, continue
+          }
+        }
+      }
+
+      // Perform research using service layer with enhanced callback
+      const finalResult = await keywordResearchService.researchKeywords(asins, options, enhancedProgressCallback)
+      
+      // Check if controller was closed during research
+      if (isClosed) {
+        Logger.dev.trace('Controller was closed during research, skipping completion')
+        return
+      }
 
       // Save to database in background
-      let sessionId: string | undefined
       try {
         sendEvent(controller, {
           phase: 'complete',
@@ -152,9 +212,10 @@ export async function GET(request: NextRequest) {
           progress: 98,
           data: { saving: true },
           timestamp: new Date().toISOString()
-        })
+        }, isClosed)
 
-        sessionId = await kwDB.saveResearchSession(userId, asins, finalResult, options, sessionName)
+        // Save the full session (will update existing keywords)
+        await kwDB.saveResearchSession(userId, asins, finalResult, options, sessionName, sessionId)
         
         // Cache the results
         await kwCache.cacheSessionResult(userId, sessionId, finalResult)
@@ -163,6 +224,12 @@ export async function GET(request: NextRequest) {
       } catch (saveError) {
         Logger.error('Failed to save streaming research session', saveError)
         // Continue anyway - don't fail the stream for save errors
+      }
+      
+      // Check again before final completion
+      if (isClosed) {
+        Logger.dev.trace('Controller was closed during save, skipping final completion')
+        return
       }
 
       // Phase 5: Complete with session info
@@ -174,28 +241,43 @@ export async function GET(request: NextRequest) {
           sessionId
         },
         timestamp: new Date().toISOString()
-      })
+      }, isClosed)
 
       Logger.dev.trace(`Streaming keyword research completed in ${finalResult.overview.processingTime}ms${sessionId ? ` (saved as ${sessionId})` : ''}`)
-      
-      // Close the stream
-      controller.close()
 
     } catch (error) {
       Logger.error('Keyword research stream error', error)
       
-      sendEvent(controller, {
-        phase: 'error',
-        message: error instanceof Error ? error.message : 'Research failed',
-        progress: 0,
-        data: {
-          canRetry: true,
-          errorType: 'processing_error'
-        },
-        timestamp: new Date().toISOString()
-      })
+      try {
+        sendEvent(controller, {
+          phase: 'error',
+          message: error instanceof Error ? error.message : 'Research failed',
+          progress: 0,
+          data: {
+            canRetry: true,
+            errorType: 'processing_error'
+          },
+          timestamp: new Date().toISOString()
+        }, isClosed)
+      } catch (controllerError) {
+        Logger.dev.trace('Controller already closed, skipping error event')
+      }
     } finally {
-      controller.close()
+      // Safe close - only close if not already closed
+      if (!isClosed) {
+        try {
+          if (controller.desiredSize !== null) {
+            controller.close()
+            isClosed = true
+          } else {
+            Logger.dev.trace('Controller already closed (desiredSize is null)')
+            isClosed = true
+          }
+        } catch (closeError) {
+          Logger.dev.trace('Controller already closed in finally block:', closeError.message)
+          isClosed = true
+        }
+      }
     }
   })()
 

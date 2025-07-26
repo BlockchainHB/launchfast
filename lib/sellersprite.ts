@@ -219,9 +219,44 @@ export class SellerSpriteClient {
         keyword: item.keyword,
         searchVolume: item.searches,
         rankingPosition: item.rankPosition?.position || null,
-        trafficPercentage: item.purchaseRate * 100, // Convert to percentage
+        trafficPercentage: item.trafficPercentage,
         cpc: item.bid,
-        competitionScore: 0 // Will be calculated based on other factors
+        competitionScore: 0, // Will be calculated based on other factors
+        // Enhanced reverse ASIN fields
+        products: item.products,
+        purchases: item.purchases,
+        purchaseRate: item.purchaseRate,
+        // PPC/Advertising metrics
+        bidMax: item.bidMax || item.bid, // Use bidMax if available, fallback to bid
+        bidMin: item.bidMin,
+        // Use latest30daysAds for adProducts if available
+        adProducts: item.latest30daysAds,
+        badges: item.badges ? (Array.isArray(item.badges) ? item.badges : [item.badges]) : undefined,
+        // Ranking data
+        rank: item.searchesRank,
+        position: item.adPosition?.position,
+        page: item.adPosition?.page,
+        // Advertising competition
+        latest1DaysAds: item.latest1daysAds,
+        latest7DaysAds: item.latest7daysAds,
+        latest30DaysAds: item.latest30daysAds,
+        // Market analysis
+        supplyDemandRatio: item.supplyDemandRatio,
+        trafficKeywordType: item.trafficKeywordType,
+        conversionKeywordType: item.conversionKeywordType,
+        // Time-based metrics
+        calculatedWeeklySearches: item.calculatedWeeklySearches,
+        updatedTime: item.updatedTime || item.updated_time,
+        // Additional enhanced fields
+        monopolyClickRate: item.monopolyClickRate,
+        titleDensity: item.titleDensity,
+        spr: item.spr,
+        clicks: item.clicks,
+        impressions: item.impressions,
+        naturalRatio: item.naturalRatio,
+        adRatio: item.adRatio,
+        top3ClickingRate: item.top3ClickingRate,
+        top3ConversionRate: item.top3ConversionRate
       }))
 
       // No caching - fresh keyword data ensures accuracy
@@ -264,6 +299,12 @@ export class SellerSpriteClient {
 
       Logger.dev.trace(`Keyword mining response code: ${response.data.code}`)
       
+      // Handle API errors (rate limiting, etc.)
+      if (response.data.code !== 'OK' || !response.data.data) {
+        Logger.dev.trace(`Keyword mining API error: ${response.data.code}`)
+        return []
+      }
+      
       // SellerSprite API returns data in response.data.data.items format
       const items = response.data.data.items || []
       if (!Array.isArray(items)) {
@@ -276,8 +317,32 @@ export class SellerSpriteClient {
         searchVolume: item.searches,
         competitionScore: item.competitionScore || 0,
         supplyDemandRatio: item.supplyDemandRatio,
-        avgCpc: item.avgCpc,
-        growthTrend: item.growthTrend || 'stable'
+        avgCpc: item.avgCpc || item.bid,
+        growthTrend: item.growthTrend || 'stable',
+        // Enhanced keyword mining fields
+        keywordCn: item.keywordCn,
+        keywordJp: item.keywordJp,
+        departments: item.departments,
+        month: item.month,
+        supplement: item.supplement,
+        purchases: item.purchases,
+        purchaseRate: item.purchaseRate,
+        monopolyClickRate: item.monopolyClickRate,
+        products: item.products,
+        adProducts: item.adProducts,
+        avgPrice: item.avgPrice,
+        avgRatings: item.avgRatings,
+        avgRating: item.avgRating,
+        bidMin: item.bidMin,
+        bidMax: item.bidMax,
+        bid: item.bid,
+        cvsShareRate: item.cvsShareRate,
+        wordCount: item.wordCount,
+        titleDensity: item.titleDensity,
+        spr: item.spr,
+        relevancy: item.relevancy,
+        amazonChoice: item.amazonChoice,
+        searchRank: item.searchRank
       }))
 
       // No caching - fresh keyword mining for accurate results

@@ -6,12 +6,13 @@ import { Logger } from '@/lib/logger'
 // POST /api/keywords/sessions/[id]/decision - Get research decision (reload vs research)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
     const { userId, asins, options } = body
-    const sessionId = params.id
+    const resolvedParams = await params
+    const sessionId = resolvedParams.id
     
     if (!userId || !asins?.length) {
       return NextResponse.json(

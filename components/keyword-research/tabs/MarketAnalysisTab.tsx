@@ -31,6 +31,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -47,20 +53,29 @@ import {
   EyeOff,
   Download,
   Filter,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  BarChart3,
+  DollarSign,
+  Users
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AggregatedKeyword } from '@/lib/keyword-research'
+import type { AggregatedKeyword, OpportunityData } from '@/lib/keyword-research'
+import { KeywordCell } from '../KeywordCell'
+import { DataCell } from '../DataCell'
 
 interface MarketAnalysisTabProps {
-  data: AggregatedKeyword[]
-  showFilters?: boolean
+  data: OpportunityData[] | AggregatedKeyword[]
+  aggregatedData?: AggregatedKeyword[]
   className?: string
 }
 
 export function MarketAnalysisTab({ 
   data, 
-  showFilters = false, 
+  aggregatedData = [],
   className 
 }: MarketAnalysisTabProps) {
   const [sorting, setSorting] = useState<SortingState>([
@@ -71,32 +86,73 @@ export function MarketAnalysisTab({
   const [globalFilter, setGlobalFilter] = useState('')
   const [pageSize, setPageSize] = useState(25)
 
-  // Column definitions
-  const columns: ColumnDef<AggregatedKeyword>[] = useMemo(() => [
+  // Detect if we're dealing with enhanced data (OpportunityData) or basic data (AggregatedKeyword)
+  const isEnhancedData = (data.length > 0 && 'competitionScore' in data[0]) as boolean
+  
+  // Create lookup map for ranking ASINs from aggregated data
+  const rankingAsinsLookup = useMemo(() => {
+    const lookup = new Map<string, AggregatedKeyword['rankingAsins']>()
+    aggregatedData.forEach(item => {
+      lookup.set(item.keyword, item.rankingAsins)
+    })
+    return lookup
+  }, [aggregatedData])
+  
+  // Calculate total ASINs analyzed for dynamic coloring
+  const totalAsinsAnalyzed = useMemo(() => {
+    if (aggregatedData.length > 0) {
+      // Get unique ASINs from all ranking data
+      const uniqueAsins = new Set<string>()
+      aggregatedData.forEach(item => {
+        item.rankingAsins?.forEach(asin => uniqueAsins.add(asin.asin))
+      })
+      return uniqueAsins.size
+    }
+    return 5 // Default fallback
+  }, [aggregatedData])
+
+  // Calculate summary statistics
+  const summaryStats = useMemo(() => {
+    const filteredData = globalFilter
+      ? data.filter(item => 
+          item.keyword.toLowerCase().includes(globalFilter.toLowerCase())
+        )
+      : data
+
+    return {
+      totalKeywords: filteredData.length,
+      totalVolume: filteredData.reduce((sum, item) => sum + item.searchVolume, 0),
+      avgCPC: filteredData.length > 0
+        ? filteredData.reduce((sum, item) => sum + (item.avgCpc || 0), 0) / filteredData.length
+        : 0,
+      avgCompetition: filteredData.length > 0
+        ? filteredData.reduce((sum, item) => sum + (item.products || 0), 0) / filteredData.length
+        : 0
+    }
+  }, [data, globalFilter])
+  
+  // Column definitions - focused on key data
+  const columns: ColumnDef<any>[] = useMemo(() => [
     {
       accessorKey: 'keyword',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-medium text-xs text-left justify-start"
         >
           Keyword
           {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
+            <ArrowUp className="ml-1 h-3 w-3" />
           ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
+            <ArrowDown className="ml-1 h-3 w-3" />
           ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
           )}
         </Button>
       ),
-      cell: ({ row }) => (
-        <div className="font-medium max-w-48">
-          <div className="truncate">{row.getValue('keyword')}</div>
-        </div>
-      ),
-      size: 200,
+      cell: ({ row }) => <KeywordCell keyword={row.getValue('keyword')} className="text-sm" maxWidth="max-w-[300px]" />,
+      size: 300,
     },
     {
       accessorKey: 'searchVolume',
@@ -104,120 +160,205 @@ export function MarketAnalysisTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-medium text-xs w-full text-right justify-end"
         >
           Search Volume
           {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
+            <ArrowUp className="ml-1 h-3 w-3" />
           ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
+            <ArrowDown className="ml-1 h-3 w-3" />
           ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
           )}
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium">
+        <div className="text-sm tabular-nums text-right text-gray-900">
           {row.getValue<number>('searchVolume').toLocaleString()}
         </div>
       ),
       size: 120,
     },
     {
-      accessorKey: 'avgCpc',
+      accessorKey: isEnhancedData ? 'avgCpc' : 'avgCpc',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-medium text-xs w-full text-right justify-end"
         >
-          Avg CPC
+          CPC
           {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
+            <ArrowUp className="ml-1 h-3 w-3" />
           ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
+            <ArrowDown className="ml-1 h-3 w-3" />
           ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
+            <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
           )}
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium">
-          ${row.getValue<number>('avgCpc').toFixed(2)}
+        <div className="text-sm tabular-nums text-right">
+          <DataCell value={row.getValue('avgCpc')} format="currency" />
+        </div>
+      ),
+      size: 80,
+    },
+    {
+      accessorKey: 'products',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-medium text-xs w-full text-right justify-end"
+        >
+          Competition
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-1 h-3 w-3" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-1 h-3 w-3" />
+          ) : (
+            <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const products = row.getValue('products') as number | null
+        const competitionLevel = products ? (
+          products > 500 ? 'High' :
+          products > 200 ? 'Med' :
+          'Low'
+        ) : null
+
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-sm tabular-nums text-gray-900">
+              <DataCell value={products} format="number" />
+            </span>
+            {competitionLevel && (
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-[10px] font-medium px-1.5 py-0 h-4 border-0",
+                  competitionLevel === 'Low' ? "bg-green-100 text-green-700" :
+                  competitionLevel === 'Med' ? "bg-yellow-100 text-yellow-700" :
+                  "bg-red-100 text-red-700"
+                )}
+              >
+                {competitionLevel}
+              </Badge>
+            )}
+          </div>
+        )
+      },
+      size: 140,
+    },
+    {
+      accessorKey: 'purchaseRate',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-medium text-xs w-full text-right justify-end"
+        >
+          Conversion
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-1 h-3 w-3" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-1 h-3 w-3" />
+          ) : (
+            <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm tabular-nums text-right">
+          <DataCell value={row.getValue('purchaseRate')} format="percentage" decimals={1} />
         </div>
       ),
       size: 100,
     },
     {
       accessorKey: 'rankingAsins',
-      header: 'Ranking ASINs',
+      header: () => <div className="text-center text-xs font-medium">Ranking ASINs</div>,
       cell: ({ row }) => {
-        const asins = row.getValue<AggregatedKeyword['rankingAsins']>('rankingAsins')
-        return (
-          <div className="flex flex-wrap gap-1">
-            {asins.slice(0, 3).map((asin, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {asin.asin} {asin.position ? `#${asin.position}` : 'Not Ranked'}
+        // Try to get ranking ASINs from the row data first, then from lookup
+        let asins = row.getValue('rankingAsins') as AggregatedKeyword['rankingAsins'] | undefined
+        
+        // If no ranking ASINs in row data (enhanced data), lookup from aggregated data
+        if (!asins && isEnhancedData) {
+          const keyword = row.getValue('keyword') as string
+          asins = rankingAsinsLookup.get(keyword)
+        }
+        
+        if (!asins || !Array.isArray(asins) || asins.length === 0) {
+          return (
+            <div className="text-center">
+              <Badge variant="outline" className="text-[10px] font-medium text-gray-400 border-gray-200">
+                0 ASINs
               </Badge>
-            ))}
-            {asins.length > 3 && (
-              <Badge variant="secondary" className="text-xs">
-                +{asins.length - 3} more
-              </Badge>
-            )}
-          </div>
-        )
-      },
-      size: 250,
-    },
-    {
-      accessorKey: 'opportunityScore',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
-        >
-          Opportunity Score
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const score = row.getValue<number>('opportunityScore')
-        const getScoreColor = (score: number) => {
-          if (score >= 8) return 'bg-green-100 text-green-800'
-          if (score >= 6) return 'bg-yellow-100 text-yellow-800'
-          if (score >= 4) return 'bg-orange-100 text-orange-800'
-          return 'bg-red-100 text-red-800'
+            </div>
+          )
+        }
+        
+        // Calculate percentage and get color
+        const rankingPercentage = asins.length / totalAsinsAnalyzed
+        const getRankingColor = (percentage: number) => {
+          if (percentage === 0) return 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          if (percentage <= 0.2) return 'bg-green-50 text-green-700 hover:bg-green-100'
+          if (percentage <= 0.4) return 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
+          if (percentage <= 0.6) return 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+          return 'bg-red-50 text-red-700 hover:bg-red-100'
         }
         
         return (
-          <Badge className={cn('font-medium', getScoreColor(score))}>
-            {score.toFixed(1)}
-          </Badge>
+          <div className="text-center">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="secondary"
+                    className={cn(
+                      'text-[10px] font-medium cursor-help transition-colors px-2 py-0.5',
+                      getRankingColor(rankingPercentage)
+                    )}
+                  >
+                    {asins.length} ASIN{asins.length === 1 ? '' : 's'}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md p-3">
+                  <div className="space-y-2">
+                    <div className="font-medium text-xs">
+                      Ranking ASINs ({Math.round(rankingPercentage * 100)}% of analyzed)
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {asins.map((asin, index) => (
+                        <Badge key={index} variant="outline" className="text-[10px] font-mono">
+                          {asin.asin} {asin.position ? `#${asin.position}` : 'Not Ranked'}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         )
       },
       size: 120,
     },
-  ], [])
+  ], [isEnhancedData, rankingAsinsLookup, totalAsinsAnalyzed, aggregatedData])
 
   const table = useReactTable({
     data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
     globalFilterFn: 'includesString',
     state: {
       sorting,
@@ -225,134 +366,165 @@ export function MarketAnalysisTab({
       columnVisibility,
       globalFilter,
       pagination: {
-        pageIndex: 0,
         pageSize,
+        pageIndex: 0,
       },
     },
+    onGlobalFilterChange: setGlobalFilter,
+    pageCount: Math.ceil(data.length / pageSize),
   })
 
-  // Export functionality
+  // Export function
   const handleExport = () => {
     const csvContent = [
-      // Header row
-      columns.map(col => col.id || 'unknown').join(','),
-      // Data rows
-      ...table.getFilteredRowModel().rows.map(row =>
-        columns.map(col => {
-          const value = row.getValue(col.accessorKey as string)
-          if (col.accessorKey === 'rankingAsins') {
-            return `"${(value as AggregatedKeyword['rankingAsins'])
-              .map(asin => `${asin.asin}:${asin.position ? `#${asin.position}` : 'Not Ranked'}`)
-              .join('; ')}"`
-          }
-          return typeof value === 'string' ? `"${value}"` : value
-        }).join(',')
-      )
+      ['Keyword', 'Search Volume', 'CPC', 'Products', 'Purchase Rate', 'Ranking ASINs'].join(','),
+      ...table.getFilteredRowModel().rows.map(row => {
+        const asins = row.getValue('rankingAsins') as AggregatedKeyword['rankingAsins'] | undefined
+        return [
+          row.getValue('keyword'),
+          row.getValue('searchVolume'),
+          row.getValue('avgCpc') || 0,
+          row.getValue('products') || 0,
+          row.getValue('purchaseRate') || 0,
+          asins ? asins.length : 0
+        ].join(',')
+      })
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
+    const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `market-analysis-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = 'market-analysis.csv'
     a.click()
-    URL.revokeObjectURL(url)
+    window.URL.revokeObjectURL(url)
   }
 
   return (
     <div className={cn('space-y-4', className)}>
-      {/* Search and Filters */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+      {/* Header Section */}
+      <div className="flex flex-col gap-3">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-gray-50 rounded">
+                <Search className="h-4 w-4 text-gray-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-gray-600">Total Keywords</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{summaryStats.totalKeywords.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-blue-50 rounded">
+                <BarChart3 className="h-4 w-4 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-gray-600">Total Search Volume</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{summaryStats.totalVolume.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-green-50 rounded">
+                <DollarSign className="h-4 w-4 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-gray-600">Average CPC</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  <DataCell value={summaryStats.avgCPC} format="currency" />
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-purple-50 rounded">
+                <Users className="h-4 w-4 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-gray-600">Avg Competition</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{Math.round(summaryStats.avgCompetition).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search and Actions */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Search keywords..."
               value={globalFilter ?? ''}
-              onChange={(event) => setGlobalFilter(String(event.target.value))}
-              className="pl-8 w-64"
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="pl-9 pr-9 h-9 text-sm"
             />
             {globalFilter && (
               <Button
                 variant="ghost"
                 onClick={() => setGlobalFilter('')}
-                className="absolute right-1 top-1 h-6 w-6 p-0"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </Button>
             )}
           </div>
           
-          {showFilters && (
-            <div className="flex items-center space-x-2">
-              <Select
-                value={
-                  (table.getColumn('searchVolume')?.getFilterValue() as string) ?? ''
-                }
-                onValueChange={(value) =>
-                  table.getColumn('searchVolume')?.setFilterValue(value === 'all' ? '' : value)
-                }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Volume filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All volumes</SelectItem>
-                  <SelectItem value="1000">1K+ volume</SelectItem>
-                  <SelectItem value="5000">5K+ volume</SelectItem>
-                  <SelectItem value="10000">10K+ volume</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                <Eye className="mr-2 h-4 w-4" />
-                Columns
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  )
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9">
+                  <Eye className="mr-2 h-3.5 w-3.5" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize text-sm"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                      >
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    )
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button variant="outline" size="sm" onClick={handleExport} className="h-9">
+              <Download className="mr-2 h-3.5 w-3.5" />
+              Export
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-lg border border-gray-200 overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-gray-50/50 hover:bg-gray-50/50">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} style={{ width: header.getSize() }}>
+                    <TableHead 
+                      key={header.id} 
+                      style={{ width: header.getSize() }} 
+                      className="h-9 px-4 text-xs"
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -371,10 +543,10 @@ export function MarketAnalysisTab({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  className="hover:bg-muted/50"
+                  className="hover:bg-gray-50/50 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="px-4 py-2.5">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -387,11 +559,11 @@ export function MarketAnalysisTab({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-32 text-center"
                 >
                   <div className="flex flex-col items-center space-y-2">
-                    <Search className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
+                    <Search className="h-6 w-6 text-gray-400" />
+                    <p className="text-sm text-gray-500">
                       No keywords found
                     </p>
                   </div>
@@ -403,83 +575,80 @@ export function MarketAnalysisTab({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between space-x-2">
-        <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Rows per page</p>
-          <Select
-            value={`${pageSize}`}
-            onValueChange={(value) => {
-              setPageSize(Number(value))
-              table.setPageSize(Number(value))
-            }}
-          >
-            <SelectTrigger className="h-8 w-16">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {[10, 25, 50, 100].map((size) => (
-                <SelectItem key={size} value={`${size}`}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-medium text-gray-700">Rows per page</p>
+            <Select
+              value={`${pageSize}`}
+              onValueChange={(value) => {
+                setPageSize(Number(value))
+                table.setPageSize(Number(value))
+              }}
+            >
+              <SelectTrigger className="h-8 w-[65px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 25, 50, 100].map((size) => (
+                  <SelectItem key={size} value={`${size}`} className="text-xs">
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="text-xs text-gray-600">
+            Showing {table.getFilteredRowModel().rows.length} of {data.length} keywords
+          </div>
         </div>
         
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex w-24 items-center justify-center text-sm font-medium">
+        <div className="flex items-center gap-2">
+          <div className="text-xs font-medium text-gray-700">
             Page {table.getState().pagination.pageIndex + 1} of{' '}
             {table.getPageCount()}
           </div>
-          <div className="flex items-center space-x-2">
+          
+          <div className="flex items-center gap-1">
             <Button
               variant="outline"
+              size="sm"
               className="h-8 w-8 p-0"
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">Go to first page</span>
-              ⟪
+              <ChevronsLeft className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="outline"
+              size="sm"
               className="h-8 w-8 p-0"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">Go to previous page</span>
-              ⟨
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="outline"
+              size="sm"
               className="h-8 w-8 p-0"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">Go to next page</span>
-              ⟩
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="outline"
+              size="sm"
               className="h-8 w-8 p-0"
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">Go to last page</span>
-              ⟫
+              <ChevronsRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
-      </div>
-
-      {/* Summary */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <p>
-          Showing {table.getFilteredRowModel().rows.length} of {data.length} keywords
-        </p>
-        <p>
-          Total search volume: {data.reduce((sum, item) => sum + item.searchVolume, 0).toLocaleString()}
-        </p>
       </div>
     </div>
   )

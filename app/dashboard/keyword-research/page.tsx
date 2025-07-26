@@ -15,8 +15,10 @@ import {
   Search, 
   BarChart3, 
   Zap, 
-  Sliders, 
-  ChevronDown 
+  X,
+  Package,
+  ArrowRight,
+  Sparkles
 } from "lucide-react"
 
 export default function Page() {
@@ -24,7 +26,6 @@ export default function Page() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [isResearching, setIsResearching] = useState(false)
   const [progressInfo, setProgressInfo] = useState<{
     phase: string
@@ -263,59 +264,58 @@ export default function Page() {
   }
 
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" />
+    <SidebarProvider defaultOpen={true}>
+      <AppSidebar />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              {/* Page Header */}
-              <div className="px-4 lg:px-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Keyword Research</h1>
-                    <p className="text-muted-foreground">
-                      Analyze competitor keywords, find opportunities, and discover market gaps
-                    </p>
-                  </div>
-                </div>
+          <div className="flex-1 space-y-4">
+            <div className="container max-w-7xl mx-auto px-4 lg:px-6 py-8">
+              {/* Header Section */}
+              <div className="mb-8">
+                <h1 className="text-3xl font-semibold text-gray-900">Keyword Research</h1>
+                <p className="text-gray-500 mt-2">Analyze competitor keywords, find opportunities, and discover market gaps</p>
               </div>
 
-              {/* Research Input */}
-              <div className="px-4 lg:px-6">
-                <div className="bg-card text-card-foreground border rounded-lg p-4">
+              {/* Search Module */}
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-6">
+                <div className="p-6">
                   <div className="space-y-4">
-                    {/* Input with Button */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Product ASINs</label>
-                      <div className="flex gap-2">
+                    {/* Product ASINs Input */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-gray-400" />
+                        <label className="text-sm font-medium text-gray-900">Product ASINs</label>
+                        <span className="text-xs text-gray-500">(1-10 ASINs)</span>
+                      </div>
+                      <div className="flex gap-3">
                         <div className="relative flex-1">
                           <input
                             type="text"
                             value={asinInput}
                             onChange={(e) => setAsinInput(e.target.value)}
                             placeholder="B0XXXXXXXX, B0YYYYYYYY, B0ZZZZZZZZ"
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="flex h-11 w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm placeholder:text-gray-400 focus:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={isResearching}
                           />
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                            <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="flex items-center gap-2">
+                              {asinInput && !isResearching && (
+                                <button
+                                  onClick={() => setAsinInput('')}
+                                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
+                              <Package className="h-4 w-4 text-gray-400" />
+                            </div>
                           </div>
                         </div>
                         <button 
                           onClick={handleStartResearch}
                           disabled={isResearching || !asinInput.trim()}
-                          className="bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="bg-gray-900 text-white hover:bg-gray-800 h-11 px-6 inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                         >
                           {isResearching ? (
                             <>
@@ -327,19 +327,17 @@ export default function Page() {
                             </>
                           ) : (
                             <>
-                              <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                              </svg>
+                              <Sparkles className="mr-2 h-4 w-4" />
                               Start Research
                             </>
                           )}
                         </button>
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-gray-500">
                         Enter 1-10 Amazon ASINs separated by commas
                       </p>
                       {error && (
-                        <p className="text-xs text-destructive">
+                        <p className="text-xs text-red-600 mt-1">
                           {error}
                         </p>
                       )}
@@ -347,30 +345,31 @@ export default function Page() {
 
                     {/* Progress Display */}
                     {progressInfo && (
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50 rounded-lg">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                              <span className="text-sm font-medium text-blue-900">
+                              <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                              <span className="text-sm font-medium text-gray-900">
                                 {progressInfo.phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                               </span>
                             </div>
-                            <span className="text-sm font-medium text-blue-700">
+                            <span className="text-sm font-semibold text-gray-700">
                               {progressInfo.progress}%
                             </span>
                           </div>
-                          <div className="w-full bg-blue-200 rounded-full h-2">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                             <div 
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1.5 rounded-full transition-all duration-300"
                               style={{ width: `${progressInfo.progress}%` }}
                             ></div>
                           </div>
-                          <p className="text-sm text-blue-700">
+                          <p className="text-sm text-gray-600">
                             {progressInfo.message}
                           </p>
                           {progressInfo.data && progressInfo.data.currentAsin && (
-                            <p className="text-xs text-blue-600">
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <ArrowRight className="h-3 w-3" />
                               Processing ASIN {progressInfo.data.currentAsin} of {progressInfo.data.totalAsins}
                             </p>
                           )}
@@ -378,142 +377,37 @@ export default function Page() {
                       </div>
                     )}
 
-                    {/* Research Options Toggle */}
-                    <div className="relative">
-                      <button 
-                        onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center space-x-2 group"
-                      >
-                        <Sliders className="h-4 w-4" />
-                        <span>Research Options</span>
-                        <ChevronDown 
-                          className={`h-3 w-3 transition-transform duration-200 ${showAdvancedOptions ? 'rotate-180' : ''}`} 
-                        />
+                    {/* Active Options Display */}
                         {(researchOptions.includeOpportunities || researchOptions.includeGapAnalysis) && (
-                          <div className="flex space-x-1">
+                      <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
+                        <span>Active:</span>
+                        <div className="flex gap-1">
                             {researchOptions.includeOpportunities && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                              Opportunities
+                            </span>
                             )}
                             {researchOptions.includeGapAnalysis && (
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                            )}
-                          </div>
-                        )}
-                      </button>
-
-                      {/* Floating Options Panel */}
-                      {showAdvancedOptions && (
-                        <>
-                          {/* Backdrop */}
-                          <div 
-                            className="fixed inset-0 z-40" 
-                            onClick={() => setShowAdvancedOptions(false)}
-                          />
-                          
-                          {/* Options Panel */}
-                          <div className="absolute top-full left-0 mt-2 w-[420px] bg-white border border-gray-200 rounded-xl shadow-xl z-50 p-6">
-                            <div className="grid grid-cols-2 gap-8">
-                              {/* Left Column */}
-                              <div className="space-y-3">
-                                {/* Analysis Types */}
-                                <div className="space-y-3">
-                                  <div className="flex items-center space-x-2 text-sm font-semibold text-gray-900">
-                                    <Target className="h-4 w-4 text-blue-600" />
-                                    <span>Analysis Types</span>
-                                  </div>
-                                  <div className="space-y-3">
-                                    <label className="flex items-center space-x-3 cursor-pointer group">
-                                      <input 
-                                        type="checkbox" 
-                                        checked={researchOptions.includeOpportunities}
-                                        onChange={(e) => setResearchOptions(prev => ({
-                                          ...prev, 
-                                          includeOpportunities: e.target.checked
-                                        }))}
-                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                                      />
-                                      <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600">Opportunity Mining</span>
-                                        <span className="text-xs text-gray-500">Low-competition keywords</span>
-                                      </div>
-                                    </label>
-                                    <label className="flex items-center space-x-3 cursor-pointer group">
-                                      <input 
-                                        type="checkbox" 
-                                        checked={researchOptions.includeGapAnalysis}
-                                        onChange={(e) => setResearchOptions(prev => ({
-                                          ...prev, 
-                                          includeGapAnalysis: e.target.checked
-                                        }))}
-                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                                      />
-                                      <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600">Gap Analysis</span>
-                                        <span className="text-xs text-gray-500">Competitor blind spots</span>
-                                      </div>
-                                    </label>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Right Column */}
-                              <div className="space-y-3">
-                                {/* Data Settings */}
-                                <div className="space-y-3">
-                                  <div className="flex items-center space-x-2 text-sm font-semibold text-gray-900">
-                                    <Zap className="h-4 w-4 text-orange-500" />
-                                    <span>Data Settings</span>
-                                  </div>
-                                  <div className="space-y-3">
-                                    <div className="space-y-1">
-                                      <label className="text-xs font-medium text-gray-700">Keywords per product</label>
-                                      <input
-                                        type="number"
-                                        min="10"
-                                        max="100"
-                                        value={researchOptions.maxKeywordsPerAsin}
-                                        onChange={(e) => setResearchOptions(prev => ({
-                                          ...prev,
-                                          maxKeywordsPerAsin: parseInt(e.target.value) || 50
-                                        }))}
-                                        className="w-full h-9 px-3 text-sm rounded-lg border border-gray-300 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                        placeholder="50"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="text-xs font-medium text-gray-700">Minimum search volume</label>
-                                      <input
-                                        type="number"
-                                        value={researchOptions.minSearchVolume}
-                                        onChange={(e) => setResearchOptions(prev => ({
-                                          ...prev,
-                                          minSearchVolume: parseInt(e.target.value) || 0
-                                        }))}
-                                        className="w-full h-9 px-3 text-sm rounded-lg border border-gray-300 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                        placeholder="100"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
+                              Gap Analysis
+                            </span>
+                          )}
                             </div>
                           </div>
-                        </>
                       )}
-                    </div>
                   </div>
                 </div>
+
+
               </div>
 
-              {/* Keyword Research Results */}
-              <div className="px-4 lg:px-6">
+              {/* Keyword Research Results - Now without the Card wrapper */}
                 <KeywordResearchResultsTable
                   data={keywordResearchData}
                   loading={isResearching}
                   error={error}
                   onRefresh={handleRefresh}
                 />
-              </div>
             </div>
           </div>
         </div>
