@@ -310,48 +310,237 @@ export function OpportunitiesTab({
       size: 80,
     },
     {
+      accessorKey: 'supplyDemandRatio',
+      header: ({ column }) => (
+        <div className="text-right">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="hover:bg-transparent p-0 h-auto text-xs font-medium"
+          >
+            S/D Ratio
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-3 w-3" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+            )}
+          </Button>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const ratio = row.original.supplyDemandRatio
+        if (!ratio && ratio !== 0) return <div className="text-right text-gray-400 text-xs">-</div>
+        
+        return (
+          <div className="text-right">
+            <Badge 
+              variant="secondary"
+              className={cn(
+                "text-[10px] px-1.5 py-0 h-4 border-0",
+                ratio <= 30 ? "bg-green-100 text-green-700" :
+                ratio <= 60 ? "bg-blue-100 text-blue-700" :
+                ratio <= 80 ? "bg-amber-100 text-amber-700" :
+                "bg-red-100 text-red-700"
+              )}
+            >
+              {ratio.toFixed(0)}%
+            </Badge>
+          </div>
+        )
+      },
+      size: 80,
+    },
+    {
+      id: 'purchaseData',
+      header: () => (
+        <div className="text-center">
+          <span className="text-xs font-medium">Purchase Data</span>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const purchases = row.original.purchases
+        const purchaseRate = row.original.purchaseRate
+        
+        if (!purchases && !purchaseRate) {
+          return <div className="text-center text-gray-400 text-xs">-</div>
+        }
+        
+        return (
+          <div className="text-center flex flex-col gap-0.5">
+            {purchases && (
+              <span className="text-xs font-medium text-gray-700">
+                {purchases.toLocaleString()} sales
+              </span>
+            )}
+            {purchaseRate && (
+              <span className={cn(
+                "text-[10px]",
+                purchaseRate > 0.05 ? "text-green-600 font-medium" : 
+                purchaseRate > 0.03 ? "text-blue-600" : 
+                "text-gray-500"
+              )}>
+                {(purchaseRate * 100).toFixed(1)}% CR
+              </span>
+            )}
+          </div>
+        )
+      },
+      size: 100,
+    },
+    {
+      id: 'marketDominance',
+      header: () => (
+        <div className="text-center">
+          <span className="text-xs font-medium">Market Control</span>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const monopolyRate = row.original.monopolyClickRate
+        const cvsShareRate = row.original.cvsShareRate
+        
+        if (!monopolyRate && !cvsShareRate) {
+          return <div className="text-center text-gray-400 text-xs">-</div>
+        }
+        
+        const openMarketShare = monopolyRate ? (1 - monopolyRate) * 100 : null
+        
+        return (
+          <div className="text-center flex flex-col gap-0.5">
+            {openMarketShare !== null && (
+              <Badge 
+                variant="secondary"
+                className={cn(
+                  "text-[10px] px-1.5 py-0 h-4 border-0",
+                  openMarketShare > 70 ? "bg-green-100 text-green-700" :
+                  openMarketShare > 50 ? "bg-blue-100 text-blue-700" :
+                  "bg-amber-100 text-amber-700"
+                )}
+              >
+                {openMarketShare.toFixed(0)}% open
+              </Badge>
+            )}
+            {cvsShareRate && (
+              <span className="text-[10px] text-gray-500">
+                {(cvsShareRate * 100).toFixed(0)}% CVS
+              </span>
+            )}
+          </div>
+        )
+      },
+      size: 100,
+    },
+    {
+      id: 'productMetrics',
+      header: () => (
+        <div className="text-center">
+          <span className="text-xs font-medium">Competition</span>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const products = row.original.products
+        const adProducts = row.original.adProducts
+        const avgPrice = row.original.avgPrice
+        const avgRating = row.original.avgRating
+        
+        if (!products) {
+          return <div className="text-center text-gray-400 text-xs">-</div>
+        }
+        
+        const adRatio = products > 0 ? (adProducts || 0) / products : 0
+        
+        return (
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs font-medium">{Math.round(products)}</span>
+              <span className="text-[10px] text-gray-500">products</span>
+            </div>
+            {adRatio > 0 && (
+              <Badge 
+                variant="secondary"
+                className={cn(
+                  "text-[10px] px-1.5 py-0 h-4 border-0",
+                  adRatio > 0.5 ? "bg-red-100 text-red-700" :
+                  adRatio > 0.3 ? "bg-amber-100 text-amber-700" :
+                  "bg-green-100 text-green-700"
+                )}
+              >
+                {(adRatio * 100).toFixed(0)}% ads
+              </Badge>
+            )}
+            {avgPrice && (
+              <div className="text-[10px] text-gray-500">
+                ${avgPrice.toFixed(0)} avg
+              </div>
+            )}
+          </div>
+        )
+      },
+      size: 110,
+    },
+    {
       id: 'ppcStrategy',
       header: () => <div className="text-center text-xs font-medium">PPC Strategy</div>,
       cell: ({ row }) => {
         const volume = row.original.searchVolume
         const competition = row.original.competitionScore
-        const cpc = row.original.avgCpc || 0
+        const cpc = row.original.avgCpc || row.original.bid || 0
+        const bidMin = row.original.bidMin
+        const bidMax = row.original.bidMax
+        const purchaseRate = row.original.purchaseRate
+        const monopolyRate = row.original.monopolyClickRate
         
-        // Determine strategy based on metrics
+        // Enhanced strategy determination using keyword mining data
         let strategy = ''
         let badgeColor = ''
         let icon = null
+        let detail = ''
         
-        if (volume >= 5000 && competition <= 30 && cpc <= 2) {
-          strategy = 'Prime Target'
+        if (purchaseRate && purchaseRate > 0.05 && competition <= 30) {
+          strategy = 'High Convert'
           badgeColor = 'bg-emerald-100 text-emerald-700'
-          icon = <Target className="h-3 w-3" />
-        } else if (volume >= 2000 && competition <= 50) {
-          strategy = 'Good Bet'
+          icon = <Sparkles className="h-3 w-3" />
+          detail = `${(purchaseRate * 100).toFixed(1)}% CR`
+        } else if (monopolyRate && monopolyRate < 0.3 && volume >= 2000) {
+          strategy = 'Open Market'
           badgeColor = 'bg-blue-100 text-blue-700'
-          icon = <TrendingUp className="h-3 w-3" />
-        } else if (cpc >= 3 && competition <= 30) {
-          strategy = 'High Value'
+          icon = <Target className="h-3 w-3" />
+          detail = `${Math.round((1 - monopolyRate) * 100)}% open`
+        } else if (bidMin && bidMax && (bidMax - bidMin) > 1) {
+          strategy = 'Price Gap'
           badgeColor = 'bg-purple-100 text-purple-700'
           icon = <DollarSign className="h-3 w-3" />
-        } else {
-          strategy = 'Test First'
+          detail = `$${bidMin.toFixed(2)}-${bidMax.toFixed(2)}`
+        } else if (volume >= 5000 && competition <= 30) {
+          strategy = 'Prime Target'
+          badgeColor = 'bg-amber-100 text-amber-700'
+          icon = <TrendingUp className="h-3 w-3" />
+          detail = `${competition}% comp`
+        } else if (cpc > 0) {
+          strategy = 'Standard PPC'
           badgeColor = 'bg-gray-100 text-gray-700'
-          icon = <AlertCircle className="h-3 w-3" />
+          icon = <BarChart3 className="h-3 w-3" />
+          detail = `$${cpc.toFixed(2)} CPC`
+        } else {
+          return <div className="text-center text-gray-400 text-xs">-</div>
         }
         
         return (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-0.5">
             <Badge 
               variant="secondary" 
               className={cn(
-                "text-xs px-2 py-0.5 border-0 flex items-center gap-1",
+                "text-[10px] px-1.5 py-0 h-4 border-0 flex items-center gap-1",
                 badgeColor
               )}
             >
               {icon}
               {strategy}
             </Badge>
+            {detail && (
+              <span className="text-[10px] text-gray-500">{detail}</span>
+            )}
           </div>
         )
       },
@@ -366,29 +555,60 @@ export function OpportunitiesTab({
       ),
       cell: ({ row }) => {
         const volume = row.original.searchVolume
-        const cpc = row.original.avgCpc || 1
-        const purchaseRate = row.original.purchaseRate || 0.02
-        const avgPrice = row.original.avgPrice || 25
+        const cpc = row.original.avgCpc || row.original.bid || 0
+        const purchaseRate = row.original.purchaseRate
+        const avgPrice = row.original.avgPrice
+        const products = row.original.products || 0
+        const adProducts = row.original.adProducts || 0
         
-        // Simple ROI calculation
-        const monthlyClicks = volume * 0.05 // Assume 5% CTR
+        // If we don't have purchase rate or price from mining, return market metrics
+        if (!purchaseRate || !avgPrice) {
+          // Show competition metrics instead
+          const competitionRatio = products > 0 ? (adProducts / products) * 100 : 0
+          const supplyDemand = row.original.supplyDemandRatio || 0
+          
+          return (
+            <div className="text-right flex flex-col gap-0.5">
+              <div className="text-xs text-gray-500">
+                {products > 0 ? `${products} products` : '-'}
+              </div>
+              {competitionRatio > 0 && (
+                <div className="text-[10px] text-gray-400">
+                  {competitionRatio.toFixed(0)}% ads
+                </div>
+              )}
+            </div>
+          )
+        }
+        
+        // Enhanced ROI calculation with real data
+        const monthlySearches = volume
+        const estimatedCTR = 0.02 + (0.03 * (1 - (row.original.competitionScore / 100))) // 2-5% CTR based on competition
+        const monthlyClicks = monthlySearches * estimatedCTR
         const monthlyCost = monthlyClicks * cpc
         const monthlySales = monthlyClicks * purchaseRate
         const monthlyRevenue = monthlySales * avgPrice
-        const roi = monthlyRevenue > 0 ? ((monthlyRevenue - monthlyCost) / monthlyCost) * 100 : 0
+        const monthlyProfit = monthlyRevenue - monthlyCost
+        const roi = monthlyCost > 0 ? (monthlyProfit / monthlyCost) * 100 : 0
         
         return (
-          <div className="text-right">
+          <div className="text-right flex flex-col gap-0.5">
             <span className={cn(
               "text-sm tabular-nums font-medium",
-              roi > 100 ? "text-green-600" : roi > 0 ? "text-blue-600" : "text-gray-500"
+              roi > 200 ? "text-emerald-600" : 
+              roi > 100 ? "text-green-600" : 
+              roi > 50 ? "text-blue-600" : 
+              roi > 0 ? "text-gray-600" : "text-red-500"
             )}>
-              {roi > 0 ? `${Math.round(roi)}%` : '-'}
+              {roi > 0 ? `${Math.round(roi)}%` : 'Negative'}
+            </span>
+            <span className="text-[10px] text-gray-500">
+              ${monthlyProfit > 0 ? `+${monthlyProfit.toFixed(0)}` : monthlyProfit.toFixed(0)}/mo
             </span>
           </div>
         )
       },
-      size: 90,
+      size: 100,
     },
   ], [])
 
