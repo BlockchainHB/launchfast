@@ -10,7 +10,6 @@ import {
   Users,
   Package,
   Settings,
-  HelpCircle,
   MessageSquare,
   Plus,
   Sparkles,
@@ -110,12 +109,6 @@ const navData = {
       title: "Settings",
       url: "/dashboard/settings",
       icon: Settings,
-    },
-    {
-      title: "Help Center",
-      url: "/dashboard/help",
-      icon: HelpCircle,
-      external: true,
     },
     {
       title: "Contact Support",
