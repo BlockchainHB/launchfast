@@ -159,15 +159,15 @@ export function AppSidebar({
   }
 
   return (
-    <Sidebar collapsible="offcanvas" className="border-r border-gray-200" {...props}>
+    <Sidebar collapsible="offcanvas" className="border-r border-gray-200 min-w-[240px]" {...props}>
       <SidebarHeader className="border-b border-gray-100">
         <div className="flex items-center gap-2.5 px-2.5 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-sm flex-shrink-0">
             <Sparkles className="h-4 w-4" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-gray-900">Launch Fast</span>
-            <span className="text-[10px] text-gray-500">by LegacyX FBA</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-semibold text-gray-900 truncate">Launch Fast</span>
+            <span className="text-[10px] text-gray-500 truncate">by LegacyX FBA</span>
           </div>
         </div>
       </SidebarHeader>

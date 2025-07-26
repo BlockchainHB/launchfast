@@ -41,8 +41,8 @@ export function NavMain({
               onClick={() => setIsModalOpen(true)}
               className="w-full h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm transition-all duration-200 flex items-center gap-2.5 font-medium text-sm"
             >
-              <Plus className="h-4 w-4" />
-              Quick Research
+              <Plus className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">Quick Research</span>
             </Button>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -71,7 +71,7 @@ export function NavMain({
                       isActive ? "text-gray-900" : "text-gray-400 group-hover:text-gray-600"
                     )} />
                   )}
-                  <span className="flex-1 text-left">{item.title}</span>
+                  <span className="flex-1 text-left truncate">{item.title}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )

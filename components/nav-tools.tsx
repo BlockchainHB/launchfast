@@ -69,7 +69,7 @@ export function NavTools({
                       ? "text-gray-400"
                       : "text-gray-400 group-hover:text-gray-600"
                   )} />
-                  <span className="flex-1 text-left">{item.name}</span>
+                  <span className="flex-1 text-left truncate">{item.name}</span>
                   {item.badge && (
                     <Badge 
                       variant="secondary"

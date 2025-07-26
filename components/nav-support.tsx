@@ -55,7 +55,7 @@ export function NavSupport({
                     "h-4 w-4 transition-colors",
                     isActive ? "text-gray-900" : "text-gray-400 group-hover:text-gray-600"
                   )} />
-                  <span className="flex-1 text-left">{item.title}</span>
+                  <span className="flex-1 text-left truncate">{item.title}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )
