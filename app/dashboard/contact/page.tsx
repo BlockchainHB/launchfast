@@ -12,6 +12,7 @@ import {
 export default function ContactPage() {
   return (
     <SidebarProvider
+      className="bg-gray-50"
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",

@@ -12,7 +12,6 @@ import {
   Settings,
   MessageSquare,
   Plus,
-  Sparkles,
   FlaskConical,
   BookOpen,
   ShieldCheck,
@@ -155,8 +154,12 @@ export function AppSidebar({
     <Sidebar collapsible="offcanvas" className="border-r border-gray-200 min-w-[240px]" {...props}>
       <SidebarHeader className="border-b border-gray-100">
         <div className="flex items-center gap-2.5 px-2.5 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-sm flex-shrink-0">
-            <Sparkles className="h-4 w-4" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm flex-shrink-0">
+            <img 
+              src="/sidebar icon/favicon-32x32.png" 
+              alt="LaunchFast" 
+              className="h-6 w-6"
+            />
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-semibold text-gray-900 truncate">Launch Fast</span>

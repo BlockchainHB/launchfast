@@ -258,17 +258,17 @@ export function ProductComparisonTab({
       cell: ({ row }) => {
         return row.getCanExpand() ? (
           <div className="flex justify-center">
-            <Button
-              variant="ghost"
-              onClick={row.getToggleExpandedHandler()}
+          <Button
+            variant="ghost"
+            onClick={row.getToggleExpandedHandler()}
               className="p-0 h-6 w-6"
-            >
-              {row.getIsExpanded() ? (
+          >
+            {row.getIsExpanded() ? (
                 <ChevronDown className="h-3 w-3" />
-              ) : (
+            ) : (
                 <ChevronRight className="h-3 w-3" />
-              )}
-            </Button>
+            )}
+          </Button>
           </div>
         ) : null
       },
@@ -290,7 +290,7 @@ export function ProductComparisonTab({
                   "font-mono text-xs",
                   isUser && "font-semibold"
                 )}>
-                  {row.getValue('asin')}
+              {row.getValue('asin')}
                 </span>
                 {isUser && (
                   <Badge variant="default" className="h-4 px-1.5 text-[10px] bg-blue-100 text-blue-700 border-0">
@@ -300,15 +300,15 @@ export function ProductComparisonTab({
                 {isMarketLeader && !isUser && (
                   <Crown className="h-3 w-3 text-amber-500" />
                 )}
-              </div>
+            </div>
               <div className="flex items-center gap-1 mt-0.5">
-                {status === 'success' ? (
+              {status === 'success' ? (
                   <CheckCircle2 className="h-2.5 w-2.5 text-green-600" />
-                ) : status === 'failed' ? (
+              ) : status === 'failed' ? (
                   <XCircle className="h-2.5 w-2.5 text-red-600" />
-                ) : (
+              ) : (
                   <AlertTriangle className="h-2.5 w-2.5 text-yellow-600" />
-                )}
+              )}
                 <span className="text-[10px] text-gray-500">
                   {status === 'success' ? 'Active' : status === 'failed' ? 'Failed' : 'Limited'}
                 </span>
@@ -325,20 +325,20 @@ export function ProductComparisonTab({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
                 className="hover:bg-transparent p-0 h-auto font-medium text-xs w-full justify-center"
-              >
+        >
                 Score
-                {column.getIsSorted() === 'asc' ? (
+          {column.getIsSorted() === 'asc' ? (
                   <ArrowUp className="ml-1 h-3 w-3" />
-                ) : column.getIsSorted() === 'desc' ? (
+          ) : column.getIsSorted() === 'desc' ? (
                   <ArrowDown className="ml-1 h-3 w-3" />
-                ) : (
+          ) : (
                   <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
-                )}
-              </Button>
+          )}
+        </Button>
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs">Competitive strength (0-100)</p>
@@ -362,7 +362,7 @@ export function ProductComparisonTab({
             )}>
               {score}
             </Badge>
-          </div>
+        </div>
         )
       },
       size: 80,
@@ -474,7 +474,7 @@ export function ProductComparisonTab({
       cell: ({ row }) => {
         const rank = row.getValue('avgRanking') as number
         return (
-          <div className="text-center">
+        <div className="text-center">
             {rank > 0 ? (
               <Badge variant="outline" className={cn(
                 "text-xs px-2 py-0 border-0",
@@ -483,11 +483,11 @@ export function ProductComparisonTab({
                 "bg-gray-100 text-gray-700"
               )}>
                 #{rank}
-              </Badge>
+          </Badge>
             ) : (
               <span className="text-xs text-gray-400">-</span>
             )}
-          </div>
+        </div>
         )
       },
       size: 90,
@@ -830,7 +830,7 @@ export function ProductComparisonTab({
                                 </div>
                               </div>
                             </div>
-
+                            
                             {/* Top Keywords Grid */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                               {/* Top 5 Ranked Keywords */}
@@ -839,7 +839,7 @@ export function ProductComparisonTab({
                                   <h5 className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
                                     <Trophy className="h-3.5 w-3.5 text-amber-500" />
                                     Best Rankings
-                                  </h5>
+                                </h5>
                                 </div>
                                 <div className="divide-y divide-gray-100">
                                   {row.original.topKeywords
@@ -895,7 +895,7 @@ export function ProductComparisonTab({
                                   <h5 className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
                                     <BarChart3 className="h-3.5 w-3.5 text-blue-500" />
                                     Highest Search Volume
-                                  </h5>
+                                </h5>
                                 </div>
                                 <div className="divide-y divide-gray-100">
                                   {row.original.topKeywords
@@ -930,8 +930,8 @@ export function ProductComparisonTab({
                                       </div>
                                     ))}
                                 </div>
+                                </div>
                               </div>
-                            </div>
 
                             {/* Quick Stats */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
@@ -1002,8 +1002,8 @@ export function ProductComparisonTab({
                                         <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0 h-4 bg-emerald-100 text-emerald-700 border-0">
                                           Quick Wins
                                         </Badge>
-                                      </h5>
-                                    </div>
+                                </h5>
+                                      </div>
                                     <div className="divide-y divide-gray-100">
                                       {relevantOpportunities.map((opp, index) => {
                                         const keywordData = row.original.topKeywords.find(
@@ -1035,8 +1035,8 @@ export function ProductComparisonTab({
                                                       {opp.opportunityType === 'market_gap' && 'Gap'}
                                                       {opp.opportunityType === 'weak_competitors' && 'Weak Comp'}
                                                     </Badge>
-                                                  )}
-                                                </div>
+                                  )}
+                                </div>
                                                 <div className="flex items-center gap-3 mt-1.5">
                                                   <span className="text-[10px] text-gray-500">
                                                     <DataCell value={opp.searchVolume} format="number" suffix=" searches" />
@@ -1047,27 +1047,27 @@ export function ProductComparisonTab({
                                                   <span className="text-[10px] text-gray-500">
                                                     Current: {currentRank ? `#${currentRank}` : 'Not Ranking'}
                                                   </span>
-                                                </div>
-                                              </div>
+                              </div>
+                            </div>
                                               <div className="text-right">
                                                 <div className="flex items-center gap-1 text-emerald-600">
                                                   <Zap className="h-3 w-3" />
                                                   <span className="text-xs font-medium">
                                                     {opp.competitionScore ? `${100 - opp.competitionScore}%` : '-'}
                                                   </span>
-                                                </div>
+                                      </div>
                                                 <div className="text-[10px] text-gray-500 mt-0.5">opportunity</div>
-                                              </div>
-                                            </div>
-                                          </div>
+                                    </div>
+                                    </div>
+                                  </div>
                                         )
                                       })}
-                                    </div>
+                              </div>
                                     <div className="px-4 py-2 bg-gray-50/50 border-t border-gray-100">
                                       <p className="text-[10px] text-gray-500 text-center">
                                         View all opportunities in the Opportunities tab
                                       </p>
-                                    </div>
+                            </div>
                                   </div>
                                 </div>
                               )
@@ -1107,26 +1107,26 @@ export function ProductComparisonTab({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <p className="text-xs text-gray-600">Rows per page</p>
-            <Select
-              value={`${pageSize}`}
-              onValueChange={(value) => {
-                setPageSize(Number(value))
-                table.setPageSize(Number(value))
-              }}
-            >
-              <SelectTrigger className="h-8 w-16">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent side="top">
+          <Select
+            value={`${pageSize}`}
+            onValueChange={(value) => {
+              setPageSize(Number(value))
+              table.setPageSize(Number(value))
+            }}
+          >
+            <SelectTrigger className="h-8 w-16">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent side="top">
                 {[10, 25, 50].map((size) => (
-                  <SelectItem key={size} value={`${size}`}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
+                <SelectItem key={size} value={`${size}`}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
           <div className="flex items-center gap-1">
             <Button
               variant="outline"

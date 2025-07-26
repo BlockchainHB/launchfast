@@ -48,7 +48,7 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
   const avgSearchVolume = overview?.avgSearchVolume || 0
   
   // Average CPC across all keywords
-  const avgCPC = safeAggregatedKeywords.length > 0
+  const avgCPC = safeAggregatedKeywords.length > 0 
     ? safeAggregatedKeywords.reduce((sum, o) => sum + (o.avgCpc || 0), 0) / safeAggregatedKeywords.length
     : 0
 
@@ -56,7 +56,7 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
   const allRankings = asinResults?.flatMap(result => 
     result.keywords?.map(kw => kw.rank).filter(rank => rank && rank > 0) || []
   ) || []
-  const avgRank = allRankings.length > 0
+  const avgRank = allRankings.length > 0 
     ? Math.round(allRankings.reduce((sum, rank) => sum + rank, 0) / allRankings.length)
     : 0
 
@@ -175,8 +175,8 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
             <CardTitle className="flex items-center text-sm font-medium text-gray-700">
               <Activity className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
               Market Overview
-            </CardTitle>
-          </CardHeader>
+          </CardTitle>
+        </CardHeader>
           <CardContent className="pt-1 pb-4 px-4">
             <div className="space-y-3">
               {/* Primary Metric */}
@@ -227,7 +227,7 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                   <span>Med</span>
                   <span>Low (&lt;1K)</span>
                 </div>
-              </div>
+            </div>
 
               {/* Footer Metric */}
               <div className="pt-2 border-t border-gray-100">
@@ -236,8 +236,8 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                   <div className="flex items-center gap-2">
                     <Progress value={marketHealth.score} className="w-14 h-1" />
                     <span className="text-xs font-semibold text-gray-900">{marketHealth.score}%</span>
-                  </div>
-                </div>
+            </div>
+            </div>
               </div>
             </div>
           </CardContent>
@@ -270,12 +270,12 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">Your Coverage</span>
-                </div>
-              </div>
-
+            </div>
+          </div>
+          
               {/* Secondary Metrics */}
               <div className="bg-purple-50/40 rounded-md p-2 space-y-1.5">
-                <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-600">Market Concentration</span>
                   <Badge 
                     className={cn(
@@ -287,19 +287,19 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                   >
                     {avgMonopolyRate < 0.15 ? 'Low' : avgMonopolyRate < 0.25 ? 'Med' : 'High'}
                   </Badge>
-                </div>
+                    </div>
                 
-                <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-600">PPC Competition</span>
                   <div className="flex items-center gap-1.5">
                     <Progress value={ppcCompetitiveScore} className="w-12 h-1" />
                     <Badge className="text-[10px] font-medium px-1.5 py-0 h-4 bg-purple-100 text-purple-700 border-0">
                       {ppcCompetitiveness}
-                    </Badge>
-                  </div>
-                </div>
+                            </Badge>
+                          </div>
+                        </div>
 
-                <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-600">Listing Optimization</span>
                   <Badge 
                     className={cn(
@@ -361,10 +361,10 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                 <div className="bg-green-50/40 rounded-md p-2">
                   <div className="text-lg font-bold text-gray-900">
                     {avgPurchaseRate > 0 ? `${avgPurchaseRate.toFixed(1)}%` : 'N/A'}
-                  </div>
+                    </div>
                   <p className="text-[10px] text-gray-600">Avg Conversion</p>
-                </div>
-              </div>
+                    </div>
+                      </div>
 
               {/* PPC Bids */}
               <div className="space-y-1">
@@ -374,8 +374,8 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                     <DataCell value={avgBidMin} format="currency" /> - <DataCell value={avgBidMax} format="currency" />
                   </span>
                   <span className="text-[10px] text-gray-500">per click</span>
-                </div>
-              </div>
+                      </div>
+                      </div>
 
               {/* Footer Insight */}
               <div className="pt-2 border-t border-gray-100">
@@ -440,7 +440,7 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="space-y-2">
-              {topVolumeKeywords.length > 0 ? (
+            {topVolumeKeywords.length > 0 ? (
                 topVolumeKeywords.map((keyword, idx) => (
                   <div key={keyword.keyword} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50/70 transition-colors">
                     <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex-shrink-0">
@@ -471,7 +471,7 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                 <div className="text-center py-12">
                   <p className="text-sm text-gray-500">No keyword data available</p>
                 </div>
-              )}
+            )}
             </div>
           </CardContent>
         </Card>
@@ -491,7 +491,7 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="space-y-2">
-              {topOpportunityKeywords.length > 0 ? (
+            {topOpportunityKeywords.length > 0 ? (
                 topOpportunityKeywords.map((opportunity, idx) => (
                   <div key={opportunity.keyword} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50/70 transition-colors">
                     <div className="flex items-center justify-center w-7 h-7 rounded-full bg-green-100 text-green-700 font-bold text-xs flex-shrink-0">
@@ -521,7 +521,7 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                 <div className="text-center py-12">
                   <p className="text-sm text-gray-500">No opportunity keywords found</p>
                 </div>
-              )}
+            )}
             </div>
           </CardContent>
         </Card>

@@ -50,12 +50,12 @@ interface TabConfig {
   tooltip?: string
 }
 
-export function KeywordResearchResultsTable({ 
-  data, 
+export function KeywordResearchResultsTable({
+  data,
   loading = false,
   error = null,
   onRefresh,
-  className 
+  className
 }: KeywordResearchResultsTableProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('overview')
 
@@ -114,7 +114,7 @@ export function KeywordResearchResultsTable({
     ]
   }, [data])
 
-
+    
 
   // Loading state
   if (loading) {
@@ -123,20 +123,20 @@ export function KeywordResearchResultsTable({
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <div className="space-y-2">
+            <div className="space-y-2">
                 <div className="h-7 w-48 bg-gray-200 animate-pulse rounded" />
                 <div className="h-4 w-72 bg-gray-200 animate-pulse rounded" />
-              </div>
-              <div className="flex items-center space-x-2">
+            </div>
+            <div className="flex items-center space-x-2">
                 <RefreshCw className="h-4 w-4 animate-spin text-gray-400" />
                 <span className="text-sm text-gray-500">Processing research...</span>
               </div>
             </div>
             <div className="space-y-4">
-              <div className="flex space-x-1">
-                {Array.from({ length: 5 }).map((_, i) => (
+          <div className="flex space-x-1">
+            {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="h-10 w-32 bg-gray-200 animate-pulse rounded-lg" />
-                ))}
+            ))}
               </div>
               <div className="h-96 bg-gray-100 animate-pulse rounded-lg" />
             </div>
@@ -168,8 +168,8 @@ export function KeywordResearchResultsTable({
                     onClick={onRefresh}
                     className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
                   >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Try Again
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try Again
                   </button>
                 )}
               </div>
@@ -189,68 +189,68 @@ export function KeywordResearchResultsTable({
             {/* Tab previews */}
             <div className="flex space-x-1 mb-6 p-1 bg-gray-100/50 rounded-lg">
               <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <BarChart3 className="h-4 w-4" />
-                <span>Overview</span>
-              </div>
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <TrendingUp className="h-4 w-4" />
-                <span>All Keywords</span>
-              </div>
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <Users className="h-4 w-4" />
-                <span>Product Comparison</span>
-              </div>
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <Target className="h-4 w-4" />
-                <span>Opportunities</span>
-              </div>
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <Search className="h-4 w-4" />
-                <span>Gap Analysis</span>
-              </div>
+              <BarChart3 className="h-4 w-4" />
+              <span>Overview</span>
             </div>
-            
-            {/* Empty Content Area */}
+              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
+              <TrendingUp className="h-4 w-4" />
+              <span>All Keywords</span>
+            </div>
+              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
+              <Users className="h-4 w-4" />
+              <span>Product Comparison</span>
+            </div>
+              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
+              <Target className="h-4 w-4" />
+              <span>Opportunities</span>
+            </div>
+              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
+              <Search className="h-4 w-4" />
+              <span>Gap Analysis</span>
+            </div>
+          </div>
+          
+          {/* Empty Content Area */}
             <div className="flex items-center justify-center py-16 border-2 border-dashed border-gray-200 rounded-lg">
-              <div className="text-center space-y-4 max-w-sm">
-                <div className="flex justify-center">
-                  <div className="relative">
+            <div className="text-center space-y-4 max-w-sm">
+              <div className="flex justify-center">
+                <div className="relative">
                     <Search className="h-16 w-16 text-gray-400" />
-                    <div className="absolute -top-1 -right-1 h-6 w-6 bg-blue-100 rounded-full flex items-center justify-center">
-                      <BarChart3 className="h-3 w-3 text-blue-600" />
-                    </div>
+                  <div className="absolute -top-1 -right-1 h-6 w-6 bg-blue-100 rounded-full flex items-center justify-center">
+                    <BarChart3 className="h-3 w-3 text-blue-600" />
                   </div>
                 </div>
-                <div className="space-y-2">
+              </div>
+              <div className="space-y-2">
                   <h3 className="text-lg font-semibold text-gray-900">Ready for Keyword Research</h3>
                   <p className="text-sm text-gray-500 leading-relaxed">
-                    Enter Amazon ASINs above and start your research to see:
-                  </p>
-                </div>
+                  Enter Amazon ASINs above and start your research to see:
+                </p>
+              </div>
                 <div className="space-y-2 text-xs text-gray-500">
-                  <div className="flex items-center justify-center space-x-2">
-                    <BarChart3 className="h-3 w-3 text-blue-600" />
-                    <span>Research overview & metrics</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <TrendingUp className="h-3 w-3 text-green-600" />
-                    <span>Market analysis & keyword data</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <Users className="h-3 w-3 text-purple-600" />
-                    <span>Product performance comparison</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <Target className="h-3 w-3 text-orange-600" />
-                    <span>Keyword opportunities</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <Search className="h-3 w-3 text-red-600" />
-                    <span>Competitive gap analysis</span>
-                  </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <BarChart3 className="h-3 w-3 text-blue-600" />
+                  <span>Research overview & metrics</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                  <span>Market analysis & keyword data</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <Users className="h-3 w-3 text-purple-600" />
+                  <span>Product performance comparison</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <Target className="h-3 w-3 text-orange-600" />
+                  <span>Keyword opportunities</span>
+                </div>
+                <div className="flex items-center justify-center space-x-2">
+                  <Search className="h-3 w-3 text-red-600" />
+                  <span>Competitive gap analysis</span>
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -262,80 +262,80 @@ export function KeywordResearchResultsTable({
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <div className="space-y-1">
+          <div className="space-y-1">
               <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
-                <span>Keyword Research Results</span>
+              <span>Keyword Research Results</span>
                 <Badge variant="outline" className="ml-3 text-xs px-2 py-0.5">
-                  <Clock className="mr-1 h-3 w-3" />
-                  {Math.round((data.overview?.processingTime || 0) / 1000)}s
-                </Badge>
+                <Clock className="mr-1 h-3 w-3" />
+                {Math.round((data.overview?.processingTime || 0) / 1000)}s
+              </Badge>
               </h2>
               <p className="text-sm text-gray-500">
-                Analyzed {data.overview?.totalAsins || 0} products and found {(data.overview?.totalKeywords || 0).toLocaleString()} keywords
+              Analyzed {data.overview?.totalAsins || 0} products and found {(data.overview?.totalKeywords || 0).toLocaleString()} keywords
               </p>
-            </div>
+          </div>
           </div>
           
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="space-y-6">
             <TabsList className="bg-gray-100/50 p-1 inline-flex h-auto rounded-lg">
-              {tabConfigs.map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    disabled={tab.disabled}
+            {tabConfigs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  disabled={tab.disabled}
                     className="data-[state=active]:bg-white data-[state=active]:shadow-sm px-4 py-2 rounded-md transition-all"
-                    title={tab.tooltip}
-                  >
+                  title={tab.tooltip}
+                >
                     <Icon className="h-4 w-4 mr-2" />
                     <span className="text-sm">{tab.label}</span>
-                  </TabsTrigger>
-                )
-              })}
-            </TabsList>
+                </TabsTrigger>
+              )
+            })}
+          </TabsList>
 
             <TabsContent value="overview">
-              <OverviewTab data={data} />
-            </TabsContent>
+            <OverviewTab data={data} />
+          </TabsContent>
 
             <TabsContent value="market">
-              <MarketAnalysisTab 
+            <MarketAnalysisTab 
                 data={data.aggregatedKeywords || []} 
-                aggregatedData={data.aggregatedKeywords || []}
-              />
-            </TabsContent>
+              aggregatedData={data.aggregatedKeywords || []}
+            />
+          </TabsContent>
 
             <TabsContent value="comparison">
-              <ProductComparisonTab 
-                data={data.asinResults || []} 
+            <ProductComparisonTab 
+              data={data.asinResults || []} 
                 opportunities={data.opportunities || []}
-              />
-            </TabsContent>
+            />
+          </TabsContent>
 
             <TabsContent value="opportunities">
-              <OpportunitiesTab 
-                data={data.opportunities || []} 
-              />
-            </TabsContent>
+            <OpportunitiesTab 
+              data={data.opportunities || []} 
+            />
+          </TabsContent>
 
             <TabsContent value="gaps">
-              {data.gapAnalysis ? (
-                <GapAnalysisTab 
-                  data={data.gapAnalysis} 
-                />
-              ) : (
-                <div className="flex items-center justify-center py-12 text-center">
-                  <div className="space-y-2">
+            {data.gapAnalysis ? (
+              <GapAnalysisTab 
+                data={data.gapAnalysis} 
+              />
+            ) : (
+              <div className="flex items-center justify-center py-12 text-center">
+                <div className="space-y-2">
                     <Search className="h-12 w-12 text-gray-400 mx-auto" />
                     <p className="text-sm text-gray-500">
-                      Gap analysis requires 2 or more ASINs
-                    </p>
-                  </div>
+                    Gap analysis requires 2 or more ASINs
+                  </p>
                 </div>
-              )}
-            </TabsContent>
-          </Tabs>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
         </div>
       </div>
     </div>

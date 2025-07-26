@@ -274,7 +274,7 @@ export function MarketAnalysisTab({
       cell: ({ row }) => (
         <div className="text-sm tabular-nums text-right">
           <DataCell value={row.getValue('purchaseRate')} format="percentage" decimals={1} />
-        </div>
+          </div>
       ),
       size: 100,
     },
@@ -295,7 +295,7 @@ export function MarketAnalysisTab({
           return (
             <div className="text-center">
               <Badge variant="outline" className="text-[10px] font-medium text-gray-400 border-gray-200">
-                0 ASINs
+              0 ASINs
               </Badge>
             </div>
           )
@@ -323,8 +323,8 @@ export function MarketAnalysisTab({
                       getRankingColor(rankingPercentage)
                     )}
                   >
-                    {asins.length} ASIN{asins.length === 1 ? '' : 's'}
-                  </Badge>
+                      {asins.length} ASIN{asins.length === 1 ? '' : 's'}
+                    </Badge>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-md p-3">
                   <div className="space-y-2">
@@ -476,38 +476,38 @@ export function MarketAnalysisTab({
           </div>
           
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9">
                   <Eye className="mr-2 h-3.5 w-3.5" />
-                  Columns
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {table
-                  .getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
                         className="capitalize text-sm"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
-                      >
-                        {column.id}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  )
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
             <Button variant="outline" size="sm" onClick={handleExport} className="h-9">
               <Download className="mr-2 h-3.5 w-3.5" />
               Export
-            </Button>
+          </Button>
           </div>
         </div>
       </div>
@@ -579,26 +579,26 @@ export function MarketAnalysisTab({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <p className="text-xs font-medium text-gray-700">Rows per page</p>
-            <Select
-              value={`${pageSize}`}
-              onValueChange={(value) => {
-                setPageSize(Number(value))
-                table.setPageSize(Number(value))
-              }}
-            >
+          <Select
+            value={`${pageSize}`}
+            onValueChange={(value) => {
+              setPageSize(Number(value))
+              table.setPageSize(Number(value))
+            }}
+          >
               <SelectTrigger className="h-8 w-[65px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 25, 50, 100].map((size) => (
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent side="top">
+              {[10, 25, 50, 100].map((size) => (
                   <SelectItem key={size} value={`${size}`} className="text-xs">
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
           <div className="text-xs text-gray-600">
             Showing {table.getFilteredRowModel().rows.length} of {data.length} keywords
           </div>
