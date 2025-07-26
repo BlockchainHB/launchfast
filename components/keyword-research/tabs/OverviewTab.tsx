@@ -25,6 +25,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { KeywordResearchResult } from '@/lib/keyword-research'
+import { KeywordCell } from '../KeywordCell'
+import { DataCell } from '../DataCell'
 
 interface OverviewTabProps {
   data: KeywordResearchResult
@@ -32,12 +34,29 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ data, className }: OverviewTabProps) {
-  const { overview, asinResults, aggregatedKeywords, opportunities, gapAnalysis, allKeywordsWithCompetition } = data
+  const { overview, asinResults, aggregatedKeywords, opportunities, gapAnalysis } = data
 
   // Safe data handling
   const safeAggregatedKeywords = aggregatedKeywords || []
   const safeOpportunities = opportunities || []
-  const safeAllKeywords = allKeywordsWithCompetition || safeOpportunities // Fallback to opportunities if not available
+  const safeAllKeywords = safeAggregatedKeywords // Use aggregated keywords for all keywords view
+
+  // Helper function for formatting values in text
+  const formatInText = (value: number | null | undefined, format: 'percentage' | 'currency' | 'number', decimals = 1) => {
+    if (value === null || value === undefined || (format === 'currency' && value === 0)) {
+      return 'N/A'
+    }
+    switch (format) {
+      case 'percentage':
+        return `${value.toFixed(decimals)}%`
+      case 'currency':
+        return `$${value.toFixed(decimals)}`
+      case 'number':
+        return value.toLocaleString()
+      default:
+        return value.toString()
+    }
+  }
 
   // Core business metrics from actual data
   const totalKeywords = overview?.totalKeywords || 0
@@ -56,24 +75,41 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
     ? allRankings.reduce((sum, rank) => sum + rank, 0) / allRankings.length 
     : 0
 
-  // Enhanced competition intelligence calculations from ALL keywords, not just opportunities
-  // This gives a true overview of your ASIN portfolio's competitive landscape
-  const keywordsWithCompetition = safeAllKeywords.filter(o => o.competitionScore !== undefined && o.competitionScore > 0)
-  const avgCompetitionScore = keywordsWithCompetition.length > 0
-    ? keywordsWithCompetition.reduce((sum, o) => sum + (o.competitionScore || 0), 0) / keywordsWithCompetition.length
-    : 0
-
-  const keywordsWithProducts = safeAllKeywords.filter(o => o.products !== undefined)
+  // Enhanced competition intelligence calculations from ALL keywords
+  const keywordsWithProducts = safeAllKeywords.filter(o => o.products !== undefined && o.products > 0)
   const avgCompetingProducts = keywordsWithProducts.length > 0
     ? keywordsWithProducts.reduce((sum, o) => sum + (o.products || 0), 0) / keywordsWithProducts.length
     : 0
 
-  const keywordsWithAdProducts = safeAllKeywords.filter(o => o.adProducts !== undefined)
+  // Market concentration (monopoly click rate) - lower is better for entry
+  const keywordsWithMonopoly = safeAllKeywords.filter(o => o.monopolyClickRate !== undefined && o.monopolyClickRate > 0)
+  const avgMonopolyRate = keywordsWithMonopoly.length > 0
+    ? keywordsWithMonopoly.reduce((sum, o) => sum + (o.monopolyClickRate || 0), 0) / keywordsWithMonopoly.length
+    : 0
+
+  // Supply/Demand ratio - higher means more demand relative to supply
+  const keywordsWithSupplyDemand = safeAllKeywords.filter(o => o.supplyDemandRatio !== undefined && o.supplyDemandRatio > 0)
+  const avgSupplyDemandRatio = keywordsWithSupplyDemand.length > 0
+    ? keywordsWithSupplyDemand.reduce((sum, o) => sum + (o.supplyDemandRatio || 0), 0) / keywordsWithSupplyDemand.length
+    : 0
+
+  // Title density - how optimized are competitor listings
+  const keywordsWithTitleDensity = safeAllKeywords.filter(o => o.titleDensity !== undefined)
+  const avgTitleDensity = keywordsWithTitleDensity.length > 0
+    ? keywordsWithTitleDensity.reduce((sum, o) => sum + (o.titleDensity || 0), 0) / keywordsWithTitleDensity.length
+    : 0
+
+  // Your ASINs' market share (how many keywords you rank for)
+  const userAsinKeywords = safeAllKeywords.filter(o => o.rankingAsins && o.rankingAsins.some(r => r.position && r.position <= 50)).length
+  const marketSharePercentage = totalKeywords > 0 ? (userAsinKeywords / totalKeywords) * 100 : 0
+
+  // Competition Intelligence metrics
+  const keywordsWithAdProducts = safeAllKeywords.filter(o => o.adProducts !== undefined && o.adProducts > 0)
   const avgAdvertisedProducts = keywordsWithAdProducts.length > 0
     ? keywordsWithAdProducts.reduce((sum, o) => sum + (o.adProducts || 0), 0) / keywordsWithAdProducts.length
     : 0
 
-  const keywordsWithBids = safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined)
+  const keywordsWithBids = safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined && o.bidMin > 0)
   const avgBidMin = keywordsWithBids.length > 0
     ? keywordsWithBids.reduce((sum, o) => sum + (o.bidMin || 0), 0) / keywordsWithBids.length
     : 0
@@ -84,14 +120,18 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
   // Debug logging to see what data we're getting
   console.log('Competition Intelligence Debug:', {
     totalKeywords: safeAllKeywords.length,
-    keywordsWithAdProducts: keywordsWithAdProducts.length,
-    avgAdvertisedProducts,
-    keywordsWithBids: keywordsWithBids.length,
-    avgBidMin,
-    avgBidMax,
+    keywordsWithAdProducts: safeAllKeywords.filter(o => o.adProducts !== undefined).length,
+    avgAdvertisedProducts: safeAllKeywords.filter(o => o.adProducts !== undefined).reduce((sum, o) => sum + (o.adProducts || 0), 0) / safeAllKeywords.filter(o => o.adProducts !== undefined).length,
+    keywordsWithBids: safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined).length,
+    avgBidMin: safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined).reduce((sum, o) => sum + (o.bidMin || 0), 0) / safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined).length,
+    avgBidMax: safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined).reduce((sum, o) => sum + (o.bidMax || 0), 0) / safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined).length,
     sampleKeyword: safeAllKeywords[0],
     sampleBidData: safeAllKeywords.slice(0, 3).map(k => ({ keyword: k.keyword, bidMin: k.bidMin, bidMax: k.bidMax })),
-    conditionPassed: avgAdvertisedProducts > 0 && avgBidMin > 0
+    conditionPassed: safeAllKeywords.filter(o => o.adProducts !== undefined).length > 0 && safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined).length > 0,
+    avgAdvertisedProductsCheck: safeAllKeywords.filter(o => o.adProducts !== undefined).length > 0,
+    avgBidMinCheck: safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined).length > 0,
+    avgAdvertisedProductsType: typeof safeAllKeywords.filter(o => o.adProducts !== undefined).length,
+    avgBidMinType: typeof safeAllKeywords.filter(o => o.bidMin !== undefined && o.bidMax !== undefined).length
   })
 
   const keywordsWithPurchaseRate = safeAllKeywords.filter(o => o.purchaseRate !== undefined)
@@ -144,16 +184,20 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
               <div className="text-sm text-muted-foreground">Keywords Found</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{avgSearchVolume.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-600">
+                <DataCell value={avgSearchVolume} format="number" />
+              </div>
               <div className="text-sm text-muted-foreground">Avg Search Volume</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-orange-600">${avgCPC.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-orange-600">
+                <DataCell value={avgCPC} format="currency" />
+              </div>
               <div className="text-sm text-muted-foreground">Average CPC</div>
             </div>
             <div className="text-center p-4 border rounded-lg">
               <div className="text-2xl font-bold text-purple-600">
-                {avgRank > 0 ? Math.round(avgRank) : '--'}
+                <DataCell value={avgRank > 0 ? Math.round(avgRank) : null} format="number" />
               </div>
               <div className="text-sm text-muted-foreground">Average Rank</div>
             </div>
@@ -170,40 +214,83 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                 {avgCompetingProducts > 0 ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Competing Products</span>
-                      <span className="text-sm font-medium">{Math.round(avgCompetingProducts)} avg</span>
+                      <span className="text-xs text-muted-foreground">Avg Competing Products</span>
+                      <span className="text-sm font-medium">
+                  <DataCell value={avgCompetingProducts} format="number" />
+                </span>
                     </div>
-                    {avgCompetitionScore > 0 ? (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Competition Level</span>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium">{avgCompetitionScore.toFixed(1)}/10</span>
-                            <Badge variant={avgCompetitionScore <= 3 ? "secondary" : avgCompetitionScore <= 6 ? "outline" : "destructive"} className="text-xs px-2 py-0">
-                              {avgCompetitionScore <= 3 ? "Low" : avgCompetitionScore <= 6 ? "Medium" : "High"}
-                            </Badge>
-                          </div>
+                    {avgMonopolyRate > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Market Concentration</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium">
+                          <DataCell value={avgMonopolyRate} format="percentage" decimals={1} />
+                        </span>
+                          <Badge 
+                            variant={avgMonopolyRate < 0.15 ? "secondary" : avgMonopolyRate < 0.25 ? "outline" : "destructive"} 
+                            className="text-xs px-2 py-0"
+                          >
+                            {avgMonopolyRate < 0.15 ? "Open" : avgMonopolyRate < 0.25 ? "Moderate" : "Concentrated"}
+                          </Badge>
                         </div>
-                        {avgPurchaseRate > 0 && (
+                      </div>
+                    )}
+                    {avgSupplyDemandRatio > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Supply/Demand Ratio</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium">
+                          <DataCell value={avgSupplyDemandRatio} format="decimal" decimals={2} />
+                        </span>
+                          <Badge 
+                            variant={avgSupplyDemandRatio > 1.5 ? "secondary" : avgSupplyDemandRatio > 0.8 ? "outline" : "destructive"} 
+                            className="text-xs px-2 py-0"
+                          >
+                            {avgSupplyDemandRatio > 1.5 ? "High Demand" : avgSupplyDemandRatio > 0.8 ? "Balanced" : "Oversupplied"}
+                          </Badge>
+                        </div>
+                      </div>
+                    )}
+                    {marketSharePercentage > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Your Keyword Coverage</span>
+                        <span className="text-sm font-medium">
+                          <DataCell value={marketSharePercentage / 100} format="percentage" decimals={1} />
+                        </span>
+                      </div>
+                    )}
+                    {avgPurchaseRate > 0 && (
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-muted-foreground">Avg Conversion Rate</span>
-                            <span className="text-sm font-medium text-green-600">{avgPurchaseRate.toFixed(1)}%</span>
+                            <span className="text-sm font-medium text-green-600">
+                          <DataCell value={avgPurchaseRate / 100} format="percentage" decimals={1} />
+                        </span>
                           </div>
                         )}
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {avgCompetitionScore <= 3 
-                            ? `Good entry opportunities${avgPurchaseRate > 2 ? ' with strong conversion potential' : ''}`
-                            : avgCompetitionScore <= 6
-                            ? `Strategic positioning required${avgPurchaseRate > 2 ? ', but good conversion rates' : ''}`
-                            : `Strong differentiation needed${avgPurchaseRate > 2 ? ', though conversions are promising' : ''}`
-                          }
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Competition analysis pending - enhanced data being processed
-                      </p>
+                    {avgTitleDensity > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Listing Optimization</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium">
+                            <DataCell value={avgTitleDensity / 100} format="percentage" decimals={0} />
+                          </span>
+                          <Badge 
+                            variant={avgTitleDensity < 30 ? "secondary" : avgTitleDensity < 60 ? "outline" : "destructive"} 
+                            className="text-xs px-2 py-0"
+                          >
+                            {avgTitleDensity < 30 ? "Low" : avgTitleDensity < 60 ? "Moderate" : "High"}
+                          </Badge>
+                        </div>
+                      </div>
                     )}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {avgMonopolyRate < 0.15 
+                        ? `Open market with good entry opportunities${avgPurchaseRate > 2 ? ' and strong conversion potential' : ''}`
+                        : avgMonopolyRate < 0.25
+                        ? `Moderate competition${avgPurchaseRate > 2 ? ' with good conversion rates' : ''}`
+                        : `Concentrated market - strong differentiation needed${avgPurchaseRate > 2 ? ', though conversions are promising' : ''}`
+                      }
+                    </p>
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">
@@ -231,31 +318,39 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Recommended Bids</span>
-                      <span className="text-sm font-medium">${avgBidMin.toFixed(2)} - ${avgBidMax.toFixed(2)}</span>
+                                              <span className="text-sm font-medium">
+                          <DataCell value={avgBidMin} format="currency" /> - <DataCell value={avgBidMax} format="currency" />
+                        </span>
                     </div>
                     {opportunityPercentage > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Opportunity Rate</span>
-                        <span className="text-sm font-medium text-green-600">{opportunityPercentage.toFixed(0)}%</span>
+                        <span className="text-sm font-medium text-green-600">
+                          <DataCell value={opportunityPercentage / 100} format="percentage" decimals={0} />
+                        </span>
                       </div>
                     )}
                     {totalMonthlyPurchases > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Monthly Purchases</span>
-                        <span className="text-sm font-medium text-blue-600">{totalMonthlyPurchases.toLocaleString()}</span>
+                        <span className="text-sm font-medium text-blue-600">
+                          <DataCell value={totalMonthlyPurchases} format="number" />
+                        </span>
                       </div>
                     )}
                     {avgProductPrice > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Avg Product Price</span>
-                        <span className="text-sm font-medium">${avgProductPrice.toFixed(0)}</span>
+                        <span className="text-sm font-medium">
+                          <DataCell value={avgProductPrice} format="currency" decimals={0} />
+                        </span>
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground mt-2">
                       {avgPurchaseRate > 3 
-                        ? `High-converting market (${avgPurchaseRate.toFixed(1)}% conversion)${totalMonthlyPurchases > 10000 ? ' with strong volume potential' : ''}`
+                        ? `High-converting market (${formatInText(avgPurchaseRate, 'percentage')} conversion)${totalMonthlyPurchases > 10000 ? ' with strong volume potential' : ''}`
                         : avgPurchaseRate > 1
-                        ? `Moderate conversion rates (${avgPurchaseRate.toFixed(1)}%)${avgProductPrice > 50 ? ' but higher-value products' : ''}`
+                        ? `Moderate conversion rates (${formatInText(avgPurchaseRate, 'percentage')})${avgProductPrice > 50 ? ' but higher-value products' : ''}`
                         : `Focus on top-funnel awareness${avgProductPrice > 30 ? ' for premium products' : ' and conversion optimization'}`
                       }
                     </p>
@@ -297,16 +392,20 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                     <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-medium">
                       {index + 1}
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{keyword.keyword}</p>
+                    <div className="flex-1 min-w-0">
+                      <KeywordCell keyword={keyword.keyword} className="text-sm" maxWidth="max-w-full" />
                       <p className="text-xs text-muted-foreground">
                         {keyword.rankingAsins.length} products ranking
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-sm">{keyword.searchVolume.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">${keyword.avgCpc.toFixed(2)} CPC</p>
+                    <p className="font-bold text-sm">
+                      <DataCell value={keyword.searchVolume} format="number" />
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <DataCell value={keyword.avgCpc} format="currency" prefix="" suffix=" CPC" />
+                    </p>
                   </div>
                 </div>
               ))
@@ -337,16 +436,20 @@ export function OverviewTab({ data, className }: OverviewTabProps) {
                     <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-xs font-medium">
                       {index + 1}
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{opportunity.keyword}</p>
+                    <div className="flex-1 min-w-0">
+                      <KeywordCell keyword={opportunity.keyword} className="text-sm" maxWidth="max-w-full" />
                       <p className="text-xs text-muted-foreground">
                         {opportunity.opportunityType ? opportunity.opportunityType.replace('_', ' ') : 'Opportunity keyword'}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-sm">{opportunity.searchVolume?.toLocaleString() || '--'}</p>
-                    <p className="text-xs text-muted-foreground">${opportunity.avgCpc?.toFixed(2) || '--'} CPC</p>
+                    <p className="font-bold text-sm">
+                      <DataCell value={opportunity.searchVolume} format="number" />
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <DataCell value={opportunity.avgCpc} format="currency" prefix="" suffix=" CPC" />
+                    </p>
                   </div>
                 </div>
               ))

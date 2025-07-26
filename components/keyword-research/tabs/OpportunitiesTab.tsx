@@ -56,16 +56,16 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { OpportunityData } from '@/types'
+import { KeywordCell } from '../KeywordCell'
+import { DataCell } from '../DataCell'
 
 interface OpportunitiesTabProps {
   data: OpportunityData[]
-  showFilters?: boolean
   className?: string
 }
 
 export function OpportunitiesTab({ 
   data, 
-  showFilters = false, 
   className 
 }: OpportunitiesTabProps) {
   const [sorting, setSorting] = useState<SortingState>([
@@ -76,33 +76,37 @@ export function OpportunitiesTab({
   const [globalFilter, setGlobalFilter] = useState('')
   const [pageSize, setPageSize] = useState(25)
 
-  // Calculate summary stats
+  // Calculate summary stats for opportunities
   const summaryStats = useMemo(() => {
     const totalOpportunities = data.length
-    const highVolumeOpps = data.filter(opp => opp.searchVolume > 5000).length
-    const mediumVolumeOpps = data.filter(opp => opp.searchVolume >= 1000 && opp.searchVolume <= 5000).length
-    const lowCompetitionOpps = data.filter(opp => opp.competitionScore <= 3).length
+    const marketGaps = data.filter(opp => opp.opportunityType === 'market_gap').length
+    const weakCompetitors = data.filter(opp => opp.opportunityType === 'weak_competitors').length
+    const lowCompetition = data.filter(opp => opp.opportunityType === 'low_competition').length
+    
     const totalVolume = data.reduce((sum, opp) => sum + opp.searchVolume, 0)
     const avgCpc = data.length > 0 ? data.reduce((sum, opp) => sum + (opp.avgCpc || 0), 0) / data.length : 0
+    const avgPurchaseRate = data.length > 0 ? data.reduce((sum, opp) => sum + (opp.purchaseRate || 0), 0) / data.length : 0
     
-    const typeBreakdown = data.reduce((acc, opp) => {
-      const type = opp.opportunityType || 'unknown'
-      acc[type] = (acc[type] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
+    // High-value opportunities (good search volume + low competition + decent conversion)
+    const highValueOpps = data.filter(opp => 
+      opp.searchVolume >= 2000 && 
+      opp.competitionScore <= 3 && 
+      (opp.purchaseRate || 0) >= 0.01
+    ).length
 
     return {
       totalOpportunities,
-      highVolumeOpps,
-      mediumVolumeOpps,
-      lowCompetitionOpps,
+      marketGaps,
+      weakCompetitors, 
+      lowCompetition,
+      highValueOpps,
       totalVolume,
       avgCpc,
-      typeBreakdown
+      avgPurchaseRate
     }
   }, [data])
 
-  // Column definitions
+  // Column definitions - all enhanced opportunity data by importance
   const columns: ColumnDef<OpportunityData>[] = useMemo(() => [
     {
       accessorKey: 'keyword',
@@ -110,7 +114,7 @@ export function OpportunitiesTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold text-left justify-start"
         >
           Keyword
           {column.getIsSorted() === 'asc' ? (
@@ -122,11 +126,7 @@ export function OpportunitiesTab({
           )}
         </Button>
       ),
-      cell: ({ row }) => (
-        <div className="font-medium max-w-48">
-          <div className="truncate">{row.getValue('keyword')}</div>
-        </div>
-      ),
+      cell: ({ row }) => <KeywordCell keyword={row.getValue('keyword')} />,
       size: 200,
     },
     {
@@ -135,7 +135,7 @@ export function OpportunitiesTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
         >
           Search Volume
           {column.getIsSorted() === 'asc' ? (
@@ -150,13 +150,87 @@ export function OpportunitiesTab({
       cell: ({ row }) => {
         const volume = row.getValue<number>('searchVolume')
         return (
-          <div className="flex items-center space-x-2">
+          <div className="text-right">
             <span className="font-medium">{volume.toLocaleString()}</span>
-            {volume > 5000 && <Star className="h-3 w-3 text-yellow-500" />}
           </div>
         )
       },
       size: 120,
+    },
+    {
+      accessorKey: 'relevancy',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold text-center w-full"
+        >
+          Relevancy
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-center font-medium">
+          <DataCell value={row.original.relevancy} format="decimal" />
+        </div>
+      ),
+      size: 130,
+    },
+    {
+      accessorKey: 'purchaseRate',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
+        >
+          Purchase Rate
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DataCell value={row.getValue('purchaseRate')} format="percentage" decimals={1} />
+        </div>
+      ),
+      size: 110,
+    },
+    {
+      accessorKey: 'products',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
+        >
+          Products
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DataCell value={row.getValue('products')} format="number" />
+        </div>
+      ),
+      size: 100,
     },
     {
       accessorKey: 'competitionScore',
@@ -164,7 +238,7 @@ export function OpportunitiesTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold text-center w-full"
         >
           Competition
           {column.getIsSorted() === 'asc' ? (
@@ -178,6 +252,9 @@ export function OpportunitiesTab({
       ),
       cell: ({ row }) => {
         const score = row.getValue<number>('competitionScore')
+        // If competitionScore is not available, try to get it from competitorPerformance
+        const actualScore = score || row.original.competitorPerformance?.competitorStrength || 0
+        
         const getCompetitionColor = (score: number) => {
           if (score <= 3) return 'bg-green-100 text-green-800'
           if (score <= 6) return 'bg-yellow-100 text-yellow-800'
@@ -190,55 +267,24 @@ export function OpportunitiesTab({
         }
         
         return (
-          <Badge className={cn('font-medium', getCompetitionColor(score))}>
-            {getCompetitionText(score)} ({score ? score.toFixed(1) : '0.0'})
-          </Badge>
+          <div className="text-center">
+            <Badge className={cn('font-medium', actualScore ? getCompetitionColor(actualScore) : 'bg-gray-100 text-gray-800')}>
+              {actualScore ? getCompetitionText(actualScore) : 'N/A'} (<DataCell value={actualScore} format="decimal" decimals={1} className="inline" />)
+            </Badge>
+          </div>
         )
       },
-      size: 120,
+      size: 130,
     },
     {
-      accessorKey: 'opportunityType',
-      header: 'Opportunity Type',
-      cell: ({ row }) => {
-        const type = row.getValue<string>('opportunityType') || 'unknown'
-        const getTypeIcon = (type: string) => {
-          switch (type) {
-            case 'market_gap': return <Target className="h-3 w-3" />
-            case 'weak_competitors': return <Users className="h-3 w-3" />
-            case 'low_competition': return <TrendingUp className="h-3 w-3" />
-            case 'keyword_mining': return <Zap className="h-3 w-3" />
-            default: return <AlertCircle className="h-3 w-3" />
-          }
-        }
-        const getTypeColor = (type: string) => {
-          switch (type) {
-            case 'market_gap': return 'bg-blue-100 text-blue-800'
-            case 'weak_competitors': return 'bg-green-100 text-green-800'
-            case 'low_competition': return 'bg-orange-100 text-orange-800'
-            case 'keyword_mining': return 'bg-purple-100 text-purple-800'
-            default: return 'bg-gray-100 text-gray-800'
-          }
-        }
-        
-        return (
-          <Badge className={cn('font-medium flex items-center space-x-1', getTypeColor(type))}>
-            {getTypeIcon(type)}
-            <span className="capitalize">{type.replace('_', ' ')}</span>
-          </Badge>
-        )
-      },
-      size: 150,
-    },
-    {
-      accessorKey: 'opportunityType',
+      accessorKey: 'adProducts',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
         >
-          Opportunity Type
+          Ad Products
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
@@ -248,32 +294,137 @@ export function OpportunitiesTab({
           )}
         </Button>
       ),
-      cell: ({ row }) => {
-        const type = row.getValue<string>('opportunityType')
-        return (
-          <div className="font-medium">
-            {type ? type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A'}
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DataCell value={row.getValue('adProducts')} format="number" />
+        </div>
+      ),
+      size: 110,
+    },
+    {
+      accessorKey: 'supplyDemandRatio',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
+        >
+          Supply/Demand
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DataCell value={row.getValue('supplyDemandRatio')} format="decimal" decimals={1} />
+        </div>
+      ),
       size: 120,
     },
     {
-      id: 'competitorPerformance',
-      header: 'Competitor Analysis',
-      cell: ({ row }) => {
-        const performance = row.original.competitorPerformance
-        if (!performance) return <span className="text-muted-foreground">N/A</span>
-        
-        return (
-          <div className="text-xs space-y-1">
-            <div>Ranking: {performance.competitorsRanking}</div>
-            <div>Top 15: {performance.competitorsInTop15}</div>
-            <div>Strength: {performance.competitorStrength ? performance.competitorStrength.toFixed(1) : '0.0'}</div>
-          </div>
-        )
-      },
-      size: 130,
+      accessorKey: 'avgCpc',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
+        >
+          Avg CPC
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DataCell value={row.getValue('avgCpc')} format="currency" />
+        </div>
+      ),
+      size: 100,
+    },
+    {
+      accessorKey: 'bidMin',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
+        >
+          Min Bid
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DataCell value={row.original.bidMin} format="currency" />
+        </div>
+      ),
+      size: 100,
+    },
+    {
+      accessorKey: 'bidMax',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
+        >
+          Max Bid
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DataCell value={row.original.bidMax} format="currency" />
+        </div>
+      ),
+      size: 100,
+    },
+    {
+      accessorKey: 'monopolyClickRate',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
+        >
+          Monopoly
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="text-right">
+          <DataCell value={row.getValue('monopolyClickRate')} format="percentage" decimals={0} />
+        </div>
+      ),
+      size: 110,
     },
     {
       id: 'potential',
@@ -387,14 +538,14 @@ export function OpportunitiesTab({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Low Competition
+              High-Value Opps
             </CardTitle>
-            <Users className="h-4 w-4 text-orange-600" />
+            <Star className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.lowCompetitionOpps}</div>
+            <div className="text-2xl font-bold">{summaryStats.highValueOpps}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Score ≤ 3.0 (easier to rank)
+              High volume + low competition
             </p>
           </CardContent>
         </Card>
@@ -402,43 +553,19 @@ export function OpportunitiesTab({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg CPC
+              Avg Purchase Rate
             </CardTitle>
-            <Zap className="h-4 w-4 text-purple-600" />
+            <TrendingUp className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${summaryStats.avgCpc.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{(summaryStats.avgPurchaseRate * 100).toFixed(2)}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Average cost per click
+              Conversion potential
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Opportunity Type Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Opportunity Breakdown</CardTitle>
-          <CardDescription>
-            Distribution of opportunity types discovered
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(summaryStats.typeBreakdown).map(([type, count]) => (
-              <div key={type} className="flex items-center space-x-2 p-3 border rounded-lg">
-                <div className="w-3 h-3 rounded-full bg-blue-500" />
-                <div className="flex-1">
-                  <p className="font-medium text-sm capitalize">
-                    {type.replace('_', ' ')}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{count} opportunities</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Search and Filters */}
       <div className="flex items-center justify-between">
@@ -461,49 +588,6 @@ export function OpportunitiesTab({
               </Button>
             )}
           </div>
-          
-          {showFilters && (
-            <div className="flex items-center space-x-2">
-              <Select
-                value={
-                  (table.getColumn('opportunityType')?.getFilterValue() as string) ?? ''
-                }
-                onValueChange={(value) =>
-                  table.getColumn('opportunityType')?.setFilterValue(value === 'all' ? '' : value)
-                }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Type filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  <SelectItem value="market_gap">Market Gap</SelectItem>
-                  <SelectItem value="weak_competitors">Weak Competitors</SelectItem>
-                  <SelectItem value="low_competition">Low Competition</SelectItem>
-                  <SelectItem value="keyword_mining">Keyword Mining</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={
-                  (table.getColumn('searchVolume')?.getFilterValue() as string) ?? ''
-                }
-                onValueChange={(value) =>
-                  table.getColumn('searchVolume')?.setFilterValue(value === 'all' ? '' : value)
-                }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Volume filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All volumes</SelectItem>
-                  <SelectItem value="5000">5K+ volume</SelectItem>
-                  <SelectItem value="1000">1K+ volume</SelectItem>
-                  <SelectItem value="500">500+ volume</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center space-x-2">

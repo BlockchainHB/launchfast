@@ -138,7 +138,7 @@ export class KeywordResearchService {
       ? this.performGapAnalysis(asinResults, opts)
       : undefined
 
-    progressCallback?.('keyword_enhancement', 'Enhancing opportunity and gap analysis keywords with detailed mining data...', 90)
+    progressCallback?.('keyword_enhancement', 'Enhancing opportunity and gap analysis keywords with detailed mining data... (May Take Up To 2 Minutes)', 90)
 
     // Phase 4: Enhance opportunity and gap analysis keywords with keyword mining
     let enhancedOpportunities = opportunities
@@ -153,7 +153,7 @@ export class KeywordResearchService {
       }> = []
       
       if (opportunities.length > 0) {
-        const topOpportunities = this.selectTopKeywordsForEnhancement(opportunities, 5)
+        const topOpportunities = this.selectTopKeywordsForEnhancement(opportunities, 20)
         topOpportunities.forEach((keyword, index) => {
           allKeywordsForEnhancement.push({
             keyword,
@@ -200,9 +200,32 @@ export class KeywordResearchService {
         
         // Apply enhanced data back to opportunities
         if (opportunities.length > 0) {
-          enhancedOpportunities = opportunities.map(opp => 
-            enhancedMap.get(opp.keyword) || opp
-          )
+          enhancedOpportunities = opportunities.map(opp => {
+            const enhanced = enhancedMap.get(opp.keyword)
+            if (enhanced) {
+              // Merge enhanced mining data with existing opportunity data
+              return {
+                ...opp, // Start with opportunity data (includes products, purchaseRate, etc.)
+                // Add specific enhanced fields we want from mining
+                avgPrice: enhanced.avgPrice,
+                titleDensity: enhanced.titleDensity,
+                cvsShareRate: enhanced.cvsShareRate,
+                relevancy: enhanced.relevancy,
+                purchases: enhanced.purchases,
+                monopolyClickRate: enhanced.monopolyClickRate,
+                bidMin: enhanced.bidMin,
+                bidMax: enhanced.bidMax,
+                avgRating: enhanced.avgRating,
+                avgRatings: enhanced.avgRatings,
+                wordCount: enhanced.wordCount,
+                spr: enhanced.spr,
+                searchRank: enhanced.searchRank,
+                departments: enhanced.departments,
+                amazonChoice: enhanced.amazonChoice
+              }
+            }
+            return opp
+          })
           const enhancedCount = enhancedOpportunities.filter(opp => enhancedMap.has(opp.keyword)).length
           Logger.dev.trace(`Applied enhancements to ${enhancedCount} opportunity keywords`)
         }
@@ -298,6 +321,8 @@ export class KeywordResearchService {
           options.maxKeywordsPerAsin
         )
         
+
+        
         // Filter by minimum search volume
         const filteredKeywords = keywords.filter(
           keyword => keyword.searchVolume >= options.minSearchVolume
@@ -320,7 +345,8 @@ export class KeywordResearchService {
           currentAsin: i + 1,
           totalAsins: asins.length,
           asin,
-          keywordsFound: filteredKeywords.length
+          keywordsFound: filteredKeywords.length,
+          keywords: filteredKeywords // Pass the actual keywords for immediate saving
         })
         
       } catch (error) {
@@ -691,7 +717,7 @@ export class KeywordResearchService {
   ): Promise<{ opportunities: OpportunityData[]; allKeywordsWithCompetition: OpportunityData[] }> {
     const successfulResults = asinResults.filter(r => r.status === 'success')
     if (successfulResults.length === 0) return { opportunities: [], allKeywordsWithCompetition: [] }
-
+    
     // Build keyword universe with enhanced competitor analysis
     const keywordUniverse = new Map<string, {
       keyword: string
@@ -734,6 +760,7 @@ export class KeywordResearchService {
         }
 
         const kwData = keywordUniverse.get(keyword.keyword)!
+        
         // Only add to competitor rankings if we have valid ranking position data
         if (keyword.rankingPosition && keyword.rankingPosition > 0 && keyword.rankingPosition <= 100) {
           kwData.competitorRankings.push({
@@ -854,10 +881,49 @@ export class KeywordResearchService {
       Logger.error('Failed to get keyword mining opportunities', error)
     }
 
-    // Sort by search volume and limit results
-    const sortedOpportunities = opportunities
+    // Get opportunities for FIRST ASIN ONLY (user's product)
+    const userAsin = successfulResults[0].asin
+    const userKeywords = successfulResults[0].keywords
+    
+    // Build opportunities from user's keywords that meet opportunity criteria
+    const userOpportunities: OpportunityData[] = []
+    userKeywords.forEach(keyword => {
+      // Apply opportunity filters to user's keywords
+      if (keyword.searchVolume >= filters.minSearchVolume &&
+          keyword.searchVolume <= filters.maxSearchVolume) {
+        
+        // Find this keyword in allKeywordsWithCompetition for enhanced data
+        const enhancedData = allKeywordsWithCompetition.find(kw => kw.keyword === keyword.keyword)
+        
+        userOpportunities.push({
+          keyword: keyword.keyword,
+          searchVolume: keyword.searchVolume,
+          competitionScore: enhancedData?.competitionScore || 0,
+          supplyDemandRatio: enhancedData?.supplyDemandRatio || 0,
+          avgCpc: keyword.cpc,
+          competitorPerformance: enhancedData?.competitorPerformance,
+          opportunityType: enhancedData?.opportunityType || 'low_competition',
+          // Enhanced fields from keyword mining
+          purchases: enhancedData?.purchases,
+          purchaseRate: enhancedData?.purchaseRate,
+          avgPrice: enhancedData?.avgPrice,
+          products: enhancedData?.products,
+          adProducts: enhancedData?.adProducts,
+          avgRating: enhancedData?.avgRating,
+          avgRatings: enhancedData?.avgRatings,
+          bidMin: enhancedData?.bidMin,
+          bidMax: enhancedData?.bidMax,
+          monopolyClickRate: enhancedData?.monopolyClickRate,
+          relevancy: enhancedData?.relevancy,
+          titleDensity: enhancedData?.titleDensity
+        })
+      }
+    })
+    
+    // Sort by search volume and limit to top opportunities
+    const sortedOpportunities = userOpportunities
       .sort((a, b) => b.searchVolume - a.searchVolume)
-      .slice(0, 50)
+      .slice(0, 15)
     
     return { 
       opportunities: sortedOpportunities,
@@ -979,6 +1045,15 @@ export class KeywordResearchService {
         ranking: kwData.rankings.get(asin)
       }))
 
+      // Debug log for gap analysis
+      if (kwData.searchVolume > 5000) {
+        Logger.dev.trace(`Gap Analysis Debug - Keyword: ${kwData.keyword}`, {
+          userRanking: userRanking,
+          competitorRankings: competitorRankings,
+          totalRankings: kwData.rankings.size
+        })
+      }
+
       // Analyze different gap scenarios
       const gapOpportunity = this.analyzeKeywordGap(
         kwData,
@@ -1051,43 +1126,118 @@ export class KeywordResearchService {
     // Count competitors ranking well (top 20 positions)
     const competitorsRankingWell = competitorData.filter(c => c.position && c.position <= 20).length
     const competitorsRankingPoorly = competitorData.filter(c => !c.position || c.position > options.maxGapPosition).length
+    const totalCompetitors = competitorData.length
+    
+    // Dynamic thresholds based on number of competitors
+    const getThreshold = (base: number) => {
+      if (totalCompetitors <= 2) return Math.max(1, Math.floor(totalCompetitors * 0.5)) // 50% for small sets
+      if (totalCompetitors <= 5) return Math.max(2, Math.floor(totalCompetitors * base * 0.9)) // Slightly lower threshold
+      return Math.floor(totalCompetitors * base) // Use base threshold for larger sets
+    }
 
     // SCENARIO 1: Market Gap - Nobody is ranking well for this keyword
     if ((!userPosition || userPosition > 20) && competitorsRankingWell === 0) {
       gapType = 'market_gap'
-      gapScore = Math.min(10, ((kwData.searchVolume || 0) / 1000) * 2) // Higher score for higher volume
+      // More nuanced scoring based on volume brackets
+      const volume = kwData.searchVolume || 0
+      let baseScore = 0
+      
+      if (volume >= 50000) {
+        baseScore = 10
+      } else if (volume >= 20000) {
+        baseScore = 9
+      } else if (volume >= 10000) {
+        baseScore = 8
+      } else if (volume >= 5000) {
+        baseScore = 7
+      } else if (volume >= 2000) {
+        baseScore = 6
+      } else if (volume >= 1000) {
+        baseScore = 5
+      } else {
+        baseScore = Math.max(3, Math.min(4, volume / 250))
+      }
+      
+      // Adjust score based on number of competitors not ranking
+      // More competitors = stronger signal
+      if (totalCompetitors >= 5) {
+        gapScore = baseScore // Full score for many competitors
+      } else if (totalCompetitors >= 3) {
+        gapScore = Math.max(3, baseScore - 1) // Slight reduction
+      } else {
+        gapScore = Math.max(3, baseScore - 2) // Larger reduction for few competitors
+      }
+      
       recommendation = `Market opportunity: No competitors ranking well. Consider optimizing for "${kwData.keyword}"`
-      potentialImpact = (kwData.searchVolume || 0) >= options.focusVolumeThreshold ? 'high' : 'medium'
+      potentialImpact = volume >= options.focusVolumeThreshold ? 'high' : volume >= 2000 ? 'medium' : 'low'
     }
-    // SCENARIO 2: Competitor Weakness - User ranks better than most competitors
-    else if (userPosition && userPosition <= 20 && competitorsRankingPoorly >= competitorData.length * 0.7) {
+    // SCENARIO 2: User Advantage - User ranks better than most competitors
+    else if (userPosition && userPosition <= 20 && competitorsRankingPoorly >= getThreshold(0.7)) {
       gapType = 'user_advantage'
-      gapScore = 7 + (userTraffic / 10) // Bonus for higher traffic percentage
+      // Score based on your ranking position and traffic share
+      let baseAdvantageScore = 0
+      if (userPosition <= 3) {
+        baseAdvantageScore = 9 + (userTraffic > 5 ? 1 : 0)
+      } else if (userPosition <= 10) {
+        baseAdvantageScore = 7 + (userTraffic > 2 ? 1 : 0)
+      } else if (userPosition <= 15) {
+        baseAdvantageScore = 6
+      } else {
+        baseAdvantageScore = 5
+      }
+      
+      // Adjust based on how many competitors you're beating
+      // More competitors beaten = stronger advantage
+      const competitorsBeaten = competitorsRankingPoorly
+      if (competitorsBeaten >= 5) {
+        gapScore = baseAdvantageScore // Full score
+      } else if (competitorsBeaten >= 3) {
+        gapScore = Math.max(4, baseAdvantageScore - 1) // Slight reduction
+      } else {
+        gapScore = Math.max(3, baseAdvantageScore - 2) // Larger reduction
+      }
       recommendation = `Competitive advantage: You rank better than competitors. Double down on "${kwData.keyword}"`
-      potentialImpact = 'medium'
+      potentialImpact = userPosition <= 10 ? 'high' : 'medium'
     }
     // SCENARIO 3: Competitor Weakness - Most competitors rank poorly, user could improve
-    else if ((!userPosition || userPosition > options.maxGapPosition) && competitorsRankingPoorly >= competitorData.length * 0.6) {
+    else if ((!userPosition || userPosition > options.maxGapPosition) && competitorsRankingPoorly >= getThreshold(0.6)) {
       gapType = 'competitor_weakness'
-      gapScore = 6 + Math.min(3, (kwData.searchVolume || 0) / 2000) // Bonus for volume
+      // Score based on volume and competitor weakness level
+      const volume = kwData.searchVolume || 0
+      const weaknessRatio = competitorsRankingPoorly / competitorData.length
+      
+      let baseScore = 5
+      if (volume >= 10000) baseScore = 7
+      else if (volume >= 5000) baseScore = 6
+      
+      // Add bonus for higher competitor weakness
+      if (weaknessRatio >= 0.9) baseScore += 2
+      else if (weaknessRatio >= 0.8) baseScore += 1
+      
+      // Scale score based on number of weak competitors
+      // More weak competitors = stronger opportunity signal
+      const weakCompetitorBonus = Math.min(2, Math.floor(competitorsRankingPoorly / 3))
+      gapScore = Math.min(9, baseScore + weakCompetitorBonus)
       recommendation = `Competitor weakness: Most competitors rank poorly for "${kwData.keyword}". Opportunity to rank higher`
-      potentialImpact = (kwData.searchVolume || 0) >= options.focusVolumeThreshold ? 'high' : 'medium'
+      potentialImpact = volume >= options.focusVolumeThreshold ? 'high' : volume >= 2000 ? 'medium' : 'low'
     }
     else {
       // No significant gap identified
       return null
     }
 
-    // Apply volume and CPC modifiers to score
-    if ((kwData.searchVolume || 0) >= options.focusVolumeThreshold) {
-      gapScore += 2 // Bonus for high volume
-    }
-    if ((kwData.avgCpc || 0) < 1.0) {
-      gapScore += 1 // Bonus for low competition (low CPC)
+    // Apply CPC modifier - low CPC can indicate less commercial competition
+    if ((kwData.avgCpc || 0) < 0.5 && gapScore < 10) {
+      gapScore = Math.min(10, gapScore + 1) // Small bonus for very low competition
     }
 
     // Ensure gap score is always a valid number between 1 and 10
     gapScore = Math.min(10, Math.max(1, Math.round(gapScore || 1)))
+    
+    // Debug logging for gap scoring
+    if (gapType) {
+      Logger.dev.trace(`Gap Analysis: "${kwData.keyword}" - Type: ${gapType}, Score: ${gapScore}, Volume: ${kwData.searchVolume}, Competitors: ${totalCompetitors}, Ranking Well: ${competitorsRankingWell}, Ranking Poorly: ${competitorsRankingPoorly}`)
+    }
     
     // Additional safety check - if still not a valid number, default to 1
     if (isNaN(gapScore) || !isFinite(gapScore)) {
@@ -1246,10 +1396,10 @@ export class KeywordResearchService {
               size: 1 // We only need the data for this specific keyword
             })
 
-            // Find the exact match for this keyword
-            const exactMatch = miningResults.find(result => 
-              result.keyword.toLowerCase() === keyword.keyword.toLowerCase()
-            )
+
+            // Use first result since keyword mining API returns related/category keywords
+            // The API is designed to return the most relevant keyword in the category, not exact matches
+            const exactMatch = miningResults.length > 0 ? miningResults[0] : null
 
             if (exactMatch) {
               // Merge the enhanced mining data with the existing keyword data
@@ -1281,6 +1431,7 @@ export class KeywordResearchService {
                 amazonChoice: exactMatch.amazonChoice,
                 searchRank: exactMatch.searchRank
               } as T
+              
               batchResults.push(enhancedKeyword)
             } else {
               batchResults.push(keyword) // Return original if no exact match found

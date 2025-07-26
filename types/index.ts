@@ -50,11 +50,13 @@ export interface KeywordData {
   competitionScore?: number
   // Enhanced reverse ASIN fields
   products?: number // Number of products ranking for this keyword
+  purchases?: number // Monthly purchase volume
   purchaseRate?: number // Conversion rate (searches to purchases)
   // PPC/Advertising metrics
   bidMax?: number // Maximum PPC bid price
   bidMin?: number // Minimum PPC bid price
   badges?: string[] // Special badges/labels for the product
+  adProducts?: number // Number of advertised products
   // Ranking data
   rank?: number // Overall rank for the keyword
   position?: number // Absolute position in search results
@@ -70,6 +72,16 @@ export interface KeywordData {
   // Time-based metrics
   calculatedWeeklySearches?: number // Estimated weekly search volume
   updatedTime?: string // Last update timestamp for the data
+  // Additional enhanced fields
+  monopolyClickRate?: number // Top products click share
+  titleDensity?: number // Title keyword density
+  spr?: number // SellerSprite product rank
+  clicks?: number // Total clicks
+  impressions?: number // Total impressions
+  naturalRatio?: number // Natural vs paid traffic ratio
+  adRatio?: number // Advertising ratio
+  top3ClickingRate?: number // Click rate of top 3 products
+  top3ConversionRate?: number // Conversion rate of top 3 products
 }
 
 export interface OpportunityData {
@@ -322,6 +334,16 @@ export interface AggregatedKeyword {
     trafficPercentage: number
   }>
   opportunityScore: number
+  // Enhanced fields aggregated across ASINs
+  products?: number
+  purchases?: number
+  purchaseRate?: number
+  supplyDemandRatio?: number
+  monopolyClickRate?: number
+  adProducts?: number
+  bidMin?: number
+  bidMax?: number
+  titleDensity?: number
 }
 
 export interface KeywordResearchResult {

@@ -58,11 +58,12 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { KeywordCell } from '../KeywordCell'
+import { DataCell } from '../DataCell'
 import type { AsinKeywordResult } from '@/lib/keyword-research'
 
 interface ProductComparisonTabProps {
   data: AsinKeywordResult[]
-  showFilters?: boolean
   className?: string
 }
 
@@ -86,7 +87,6 @@ interface ComparisonData {
 
 export function ProductComparisonTab({ 
   data, 
-  showFilters = false, 
   className 
 }: ProductComparisonTabProps) {
   const [sorting, setSorting] = useState<SortingState>([
@@ -157,32 +157,34 @@ export function ProductComparisonTab({
       header: () => null,
       cell: ({ row }) => {
         return row.getCanExpand() ? (
-          <Button
-            variant="ghost"
-            onClick={row.getToggleExpandedHandler()}
-            className="p-0 h-auto w-6"
-          >
-            {row.getIsExpanded() ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              variant="ghost"
+              onClick={row.getToggleExpandedHandler()}
+              className="p-0 h-auto w-6"
+            >
+              {row.getIsExpanded() ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         ) : null
       },
       size: 40,
     },
     {
       accessorKey: 'asin',
-      header: 'ASIN',
+      header: () => <div className="text-left font-semibold">ASIN</div>,
       cell: ({ row }) => {
         const status = row.original.status
         return (
-          <div className="flex flex-col items-center space-y-1 py-1">
+          <div className="flex flex-col items-start space-y-1 py-1">
             <div className="font-mono font-semibold text-sm tracking-wide">
               {row.getValue('asin')}
             </div>
-            <div className="flex items-center justify-center">
+            <div className="flex items-center">
               {status === 'success' ? (
                 <div className="flex items-center space-x-1">
                   <CheckCircle className="h-3 w-3 text-green-600" />
@@ -211,7 +213,7 @@ export function ProductComparisonTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
         >
           Total Keywords
           {column.getIsSorted() === 'asc' ? (
@@ -224,8 +226,8 @@ export function ProductComparisonTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium text-center">
-          {row.getValue<number>('totalKeywords').toLocaleString()}
+        <div className="font-medium text-right">
+          <DataCell value={row.getValue('totalKeywords')} format="number" />
         </div>
       ),
       size: 120,
@@ -236,7 +238,7 @@ export function ProductComparisonTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold text-center w-full"
         >
           Strong Keywords
           {column.getIsSorted() === 'asc' ? (
@@ -263,7 +265,7 @@ export function ProductComparisonTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold text-center w-full"
         >
           Weak Keywords
           {column.getIsSorted() === 'asc' ? (
@@ -290,7 +292,7 @@ export function ProductComparisonTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
         >
           Avg Volume
           {column.getIsSorted() === 'asc' ? (
@@ -303,8 +305,8 @@ export function ProductComparisonTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium text-center">
-          {row.getValue<number>('avgSearchVolume').toLocaleString()}
+        <div className="font-medium text-right">
+          <DataCell value={row.getValue('avgSearchVolume')} format="number" />
         </div>
       ),
       size: 120,
@@ -387,28 +389,6 @@ export function ProductComparisonTab({
               </Button>
             )}
           </div>
-          
-          {showFilters && (
-            <div className="flex items-center space-x-2">
-              <Select
-                value={
-                  (table.getColumn('status')?.getFilterValue() as string) ?? ''
-                }
-                onValueChange={(value) =>
-                  table.getColumn('status')?.setFilterValue(value === 'all' ? '' : value)
-                }
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All status</SelectItem>
-                  <SelectItem value="success">Success</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center space-x-2">
@@ -494,8 +474,8 @@ export function ProductComparisonTab({
                             <div className="flex items-center justify-between mb-4">
                               <h4 className="font-semibold text-lg">Competitive Analysis: {row.original.asin}</h4>
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                <span>Avg Rank: #{Math.round(row.original.topKeywords.reduce((sum, kw) => sum + (kw.rankingPosition || 50), 0) / row.original.topKeywords.length)}</span>
-                                <span>Traffic Share: {row.original.topKeywords.reduce((sum, kw) => sum + (kw.trafficPercentage || 0), 0).toFixed(1)}%</span>
+                                <span>Avg Rank: #<DataCell value={Math.round(row.original.topKeywords.reduce((sum, kw) => sum + (kw.rankingPosition || 50), 0) / row.original.topKeywords.length)} format="number" /></span>
+                                <span>Traffic Share: <DataCell value={row.original.topKeywords.reduce((sum, kw) => sum + (kw.trafficPercentage || 0), 0) / 100} format="percentage" decimals={1} /></span>
                               </div>
                             </div>
                             
@@ -558,8 +538,10 @@ export function ProductComparisonTab({
                                     .slice(0, 6)
                                     .map((keyword, index) => (
                                       <div key={index} className="text-xs flex items-center justify-between">
-                                        <span className="font-medium truncate flex-1">{keyword.keyword}</span>
-                                        <span className="text-blue-600 ml-1">{Number(keyword.trafficPercentage).toFixed(2)}%</span>
+                                        <KeywordCell keyword={keyword.keyword} className="font-medium flex-1" maxWidth="max-w-full" />
+                                        <span className="text-blue-600 ml-1">
+                                          <DataCell value={keyword.trafficPercentage / 100} format="percentage" decimals={2} />
+                                        </span>
                                       </div>
                                     ))}
                                   {row.original.topKeywords.filter(kw => kw.trafficPercentage && kw.trafficPercentage > 1).length === 0 && (
@@ -575,15 +557,22 @@ export function ProductComparisonTab({
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {row.original.topKeywords.slice(0, 8).map((keyword, index) => (
                                   <div key={index} className="flex items-center justify-between p-2 border rounded text-sm">
-                                    <div className="flex-1">
-                                      <div className="font-medium truncate">{keyword.keyword}</div>
+                                    <div className="flex-1 min-w-0">
+                                      <KeywordCell keyword={keyword.keyword} className="font-medium" maxWidth="max-w-full" />
                                       <div className="text-xs text-muted-foreground">
                                         Rank #{keyword.rankingPosition || 'NR'}
-                                        {keyword.trafficPercentage && ` • ${Number(keyword.trafficPercentage).toFixed(2)}% traffic`}
+                                        {keyword.trafficPercentage && (
+                                          <span>
+                                            {' • '}
+                                            <DataCell value={keyword.trafficPercentage / 100} format="percentage" decimals={2} className="inline" suffix=" traffic" />
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                     <div className="text-right ml-2">
-                                      <div className="font-medium">{keyword.searchVolume.toLocaleString()}</div>
+                                      <div className="font-medium">
+                                        <DataCell value={keyword.searchVolume} format="number" />
+                                      </div>
                                       <div className="text-xs text-muted-foreground">volume</div>
                                     </div>
                                   </div>

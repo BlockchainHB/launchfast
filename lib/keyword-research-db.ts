@@ -14,7 +14,8 @@ import type {
   AggregatedKeyword,
   AsinComparisonData,
   OpportunityData,
-  GapAnalysisResult 
+  GapAnalysisResult,
+  KeywordData 
 } from '@/types'
 
 export interface SavedSession {
@@ -42,7 +43,8 @@ export class KeywordResearchDB {
     asins: string[],
     results: KeywordResearchResult,
     options: KeywordResearchOptions,
-    sessionName?: string
+    sessionName?: string,
+    existingSessionId?: string
   ): Promise<string> {
     try {
       Logger.dev.trace(`Saving research session for ${asins.length} ASINs`)
@@ -50,23 +52,46 @@ export class KeywordResearchDB {
       // Generate session name if not provided
       const name = sessionName || this.generateSessionName(asins)
       
-      // Create session record
-      const { data: session, error: sessionError } = await supabaseServer
-        .from(TABLES.SESSIONS)
-        .insert({
-          user_id: userId,
-          name,
-          settings: options
-        })
-        .select('id')
-        .single()
+      let sessionId: string
       
-      if (sessionError || !session) {
-        throw new Error(`Failed to create session: ${sessionError?.message}`)
+      if (existingSessionId) {
+        // Use existing session ID
+        sessionId = existingSessionId
+        
+        // Update or create session record
+        const { error: sessionError } = await supabaseServer
+          .from(TABLES.SESSIONS)
+          .upsert({
+            id: sessionId,
+            user_id: userId,
+            name,
+            settings: options
+          })
+        
+        if (sessionError) {
+          throw new Error(`Failed to upsert session: ${sessionError.message}`)
+        }
+        
+        Logger.dev.trace(`Using existing session ${sessionId}`)
+      } else {
+        // Create new session
+        const { data: session, error: sessionError } = await supabaseServer
+          .from(TABLES.SESSIONS)
+          .insert({
+            user_id: userId,
+            name,
+            settings: options
+          })
+          .select('id')
+          .single()
+        
+        if (sessionError || !session) {
+          throw new Error(`Failed to create session: ${sessionError?.message}`)
+        }
+        
+        sessionId = session.id
+        Logger.dev.trace(`Created session ${sessionId}`)
       }
-      
-      const sessionId = session.id
-      Logger.dev.trace(`Created session ${sessionId}`)
       
       // Save in transaction-like manner
       await this.saveSessionData(sessionId, asins, results)
@@ -149,18 +174,18 @@ export class KeywordResearchDB {
       purchase_rate: keyword.purchaseRate,
       monopoly_click_rate: keyword.monopolyClickRate,
       cvs_share_rate: keyword.cvsShareRate,
-      products_count: keyword.products,
-      ad_products_count: keyword.adProducts,
+      products_count: keyword.products !== undefined ? Math.round(keyword.products) : null,
+      ad_products_count: keyword.adProducts !== undefined ? Math.round(keyword.adProducts) : null,
       supply_demand_ratio: keyword.supplyDemandRatio,
       avg_price: keyword.avgPrice,
       avg_rating: keyword.avgRating || keyword.avgRatings,
-      bid_min: keyword.bidMin,
-      bid_max: keyword.bidMax,
+      bid_min: keyword.bidMin || null,
+      bid_max: keyword.bidMax || null,
       title_density: keyword.titleDensity,
       relevancy_score: keyword.relevancy,
-      word_count: keyword.wordCount,
-      spr_rank: keyword.spr,
-      search_rank: keyword.searchRank,
+      word_count: keyword.wordCount ? Math.round(keyword.wordCount) : null,
+      spr_rank: keyword.spr ? Math.round(keyword.spr) : null,
+      search_rank: keyword.searchRank ? Math.round(keyword.searchRank) : null,
       departments: keyword.departments,
       amazon_choice: keyword.amazonChoice,
       is_supplement: keyword.supplement === 'Y',
@@ -168,6 +193,82 @@ export class KeywordResearchDB {
       keyword_jp: keyword.keywordJp,
       marketplace: 'US',
       data_month: keyword.month
+    }
+  }
+
+  /**
+   * Create a session early for streaming keyword research
+   */
+  static async createSession(userId: string, sessionId: string, sessionName?: string): Promise<string> {
+    try {
+      const { data: session, error } = await supabaseServer
+        .from(TABLES.SESSIONS)
+        .insert({
+          id: sessionId,
+          user_id: userId,
+          name: sessionName || `Research Session ${new Date().toLocaleDateString()}`,
+          settings: {}
+        })
+        .select('id')
+        .single()
+      
+      if (error) {
+        Logger.error('Failed to create session', error)
+        throw error
+      }
+      
+      Logger.dev.trace(`Created session ${sessionId} for early keyword saving`)
+      return session.id
+    } catch (error) {
+      Logger.error('Error creating session', error)
+      throw error
+    }
+  }
+
+  /**
+   * Save raw keywords immediately after reverseASIN
+   * This preserves all enhanced fields before any processing
+   */
+  static async saveRawKeywords(sessionId: string, asin: string, keywords: KeywordData[]) {
+    try {
+      // Deduplicate keywords within this ASIN's results
+      // Keep the first occurrence of each keyword (which typically has the best data)
+      const uniqueKeywords = keywords.reduce((acc: Map<string, KeywordData>, kw: KeywordData) => {
+        const key = kw.keyword.toLowerCase().trim()
+        if (!acc.has(key)) {
+          acc.set(key, kw)
+        } else {
+          // Log duplicates for debugging
+          Logger.dev.trace(`Duplicate keyword "${kw.keyword}" found for ASIN ${asin}, keeping first occurrence`)
+        }
+        return acc
+      }, new Map<string, KeywordData>())
+
+      Logger.dev.trace(`Deduplication: ${keywords.length} keywords reduced to ${uniqueKeywords.size} unique keywords for ASIN ${asin}`)
+
+      const keywordRecords = Array.from(uniqueKeywords.values()).map(kw => ({
+        ...this.createEnhancedKeywordRecord(kw, kw.keyword, kw.searchVolume, kw.cpc),
+        session_id: sessionId,
+        asin,
+        source: 'reverseASIN' as const
+      }))
+
+      const { error } = await supabaseServer
+        .from('keyword_research_keywords')
+        .upsert(keywordRecords, {
+          onConflict: 'session_id,keyword_text,asin',
+          ignoreDuplicates: false
+        })
+
+      if (error) {
+        Logger.error('Failed to save raw keywords', error)
+        throw error
+      }
+
+      Logger.dev.trace(`Saved ${keywordRecords.length} unique raw keywords for ASIN ${asin} with enhanced fields`)
+    } catch (error) {
+      Logger.error('Error in saveRawKeywords', error)
+      throw error
     }
   }
 
@@ -310,6 +411,7 @@ export class KeywordResearchDB {
         }
       }
 
+      
       return {
         session_id: sessionId,
         keyword_id: keywordId,
@@ -322,17 +424,17 @@ export class KeywordResearchDB {
         purchase_rate: opp.purchaseRate,
         monopoly_click_rate: opp.monopolyClickRate,
         cvs_share_rate: opp.cvsShareRate,
-        products_count: opp.products,
-        ad_products_count: opp.adProducts,
+        products_count: opp.products !== undefined ? Math.round(opp.products) : null,
+        ad_products_count: opp.adProducts !== undefined ? Math.round(opp.adProducts) : null,
         avg_price: opp.avgPrice,
         avg_rating: opp.avgRating || opp.avgRatings,
-        bid_min: opp.bidMin,
-        bid_max: opp.bidMax,
+        bid_min: opp.bidMin || null,
+        bid_max: opp.bidMax || null,
         title_density: opp.titleDensity,
         relevancy_score: opp.relevancy,
-        word_count: opp.wordCount,
-        spr_rank: opp.spr,
-        search_rank: opp.searchRank,
+        word_count: opp.wordCount ? Math.round(opp.wordCount) : null,
+        spr_rank: opp.spr ? Math.round(opp.spr) : null,
+        search_rank: opp.searchRank ? Math.round(opp.searchRank) : null,
         departments: opp.departments,
         amazon_choice: opp.amazonChoice,
         is_supplement: opp.supplement === 'Y'
@@ -522,59 +624,35 @@ export class KeywordResearchDB {
           searchVolume: r.keyword_research_keywords.search_volume,
           rankingPosition: r.ranking_position,
           trafficPercentage: r.traffic_percentage,
-          cpc: r.keyword_research_keywords.cpc
+          cpc: r.keyword_research_keywords.cpc,
+          // Include all enhanced fields
+          products: r.keyword_research_keywords.products_count,
+          purchases: r.keyword_research_keywords.purchases,
+          purchaseRate: r.keyword_research_keywords.purchase_rate,
+          monopolyClickRate: r.keyword_research_keywords.monopoly_click_rate,
+          adProducts: r.keyword_research_keywords.ad_products_count,
+          supplyDemandRatio: r.keyword_research_keywords.supply_demand_ratio,
+          bidMin: r.keyword_research_keywords.bid_min,
+          bidMax: r.keyword_research_keywords.bid_max,
+          titleDensity: r.keyword_research_keywords.title_density,
+          relevancyScore: r.keyword_research_keywords.relevancy_score,
+          // Also include the ranking-specific enhanced fields
+          badges: r.badges,
+          rank: r.rank_overall,
+          position: r.position_absolute,
+          page: r.page_number,
+          latest1DaysAds: r.latest_1_days_ads,
+          latest7DaysAds: r.latest_7_days_ads,
+          latest30DaysAds: r.latest_30_days_ads,
+          calculatedWeeklySearches: r.calculated_weekly_searches,
+          updatedTime: r.updated_time
         })),
         status: 'success' as const
       }
     })
     
-    // Build aggregated keywords
-    const keywordMap = new Map<string, {
-      keyword: string
-      searchVolume: number
-      cpcValues: number[]
-      rankingAsins: Array<{
-        asin: string
-        position: number
-        trafficPercentage: number
-      }>
-    }>()
-    
-    data.rankings.forEach(r => {
-      const keyword = r.keyword_research_keywords.keyword_text
-      if (!keywordMap.has(keyword)) {
-        keywordMap.set(keyword, {
-          keyword,
-          searchVolume: r.keyword_research_keywords.search_volume,
-          cpcValues: [],
-          rankingAsins: []
-        })
-      }
-      
-      const kwData = keywordMap.get(keyword)!
-      kwData.cpcValues.push(r.keyword_research_keywords.cpc)
-      kwData.rankingAsins.push({
-        asin: r.asin,
-        position: r.ranking_position || 0,
-        trafficPercentage: r.traffic_percentage || 0
-      })
-    })
-    
-    // Calculate total ASINs for dynamic scoring
-    const totalAsinsAnalyzed = data.asins.length
-
-    const aggregatedKeywords: AggregatedKeyword[] = Array.from(keywordMap.values()).map(kwData => {
-      const avgCpc = kwData.cpcValues.reduce((sum, cpc) => sum + cpc, 0) / kwData.cpcValues.length
-      const opportunityScore = this.calculateOpportunityScore(kwData, avgCpc, totalAsinsAnalyzed)
-      
-      return {
-        keyword: kwData.keyword,
-        searchVolume: kwData.searchVolume,
-        avgCpc: Math.round(avgCpc * 100) / 100,
-        rankingAsins: kwData.rankingAsins,
-        opportunityScore
-      }
-    }).sort((a, b) => b.opportunityScore - a.opportunityScore)
+    // Build aggregated keywords using the new method that handles per-ASIN keyword storage
+    const aggregatedKeywords = this.buildAggregatedKeywordsView(data.rankings)
     
     // Build comparison view
     const comparisonView: AsinComparisonData[] = asinResults.map(result => {
@@ -603,16 +681,40 @@ export class KeywordResearchDB {
       }
     })
     
-    // Build opportunities
-    const opportunities: OpportunityData[] = data.opportunities.map(opp => ({
-      keyword: opp.keyword_research_keywords.keyword_text,
-      searchVolume: opp.keyword_research_keywords.search_volume,
-      competitionScore: opp.competition_score,
-      supplyDemandRatio: opp.supply_demand_ratio,
-      avgCpc: opp.keyword_research_keywords.cpc,
-      competitorPerformance: opp.competitor_performance,
-      opportunityType: opp.opportunity_type
-    }))
+    // Get the first ASIN (user's product)
+    const userAsin = data.asins.find(a => a.is_user_product)?.asin || data.asins[0]?.asin
+    
+    // Build opportunities with ALL enhanced fields - FIRST ASIN ONLY
+    const opportunities: OpportunityData[] = data.opportunities
+      .filter(opp => {
+        // Only include opportunities where the first ASIN has ranking data for this keyword
+        return data.rankings.some(ranking => 
+          ranking.asin === userAsin && 
+          ranking.keyword_research_keywords.keyword_text === opp.keyword_research_keywords.keyword_text
+        )
+      })
+      .map(opp => ({
+          keyword: opp.keyword_research_keywords.keyword_text,
+          searchVolume: opp.keyword_research_keywords.search_volume,
+          competitionScore: opp.competition_score,
+          supplyDemandRatio: opp.supply_demand_ratio,
+          avgCpc: opp.keyword_research_keywords.cpc,
+          competitorPerformance: opp.competitor_performance,
+          opportunityType: opp.opportunity_type,
+          // Enhanced fields from keyword mining
+          purchases: opp.purchases,
+          purchaseRate: opp.purchase_rate,
+          avgPrice: opp.avg_price,
+          products: opp.products_count,
+          adProducts: opp.ad_products_count,
+          avgRating: opp.avg_rating,
+          avgRatings: opp.avg_rating, // Use same field for now
+          bidMin: opp.bid_min,
+          bidMax: opp.bid_max,
+          monopolyClickRate: opp.monopoly_click_rate,
+          relevancy: opp.relevancy_score,
+          titleDensity: opp.title_density
+        }))
     
     // Build gap analysis
     let gapAnalysis: GapAnalysisResult | undefined
@@ -621,7 +723,7 @@ export class KeywordResearchDB {
       const competitorAsins = data.asins.filter(a => !a.is_user_product).map(a => a.asin)
       
       // Map database gap types back to service gap types
-      const mapDatabaseGapType = (dbType: string) => {
+      const mapDatabaseGapType = (dbType: string): 'market_gap' | 'competitor_weakness' | 'user_advantage' => {
         switch (dbType) {
           case 'keyword_gap': return 'market_gap'
           case 'competition_gap': return 'competitor_weakness'
@@ -670,6 +772,36 @@ export class KeywordResearchDB {
       ? Math.round(aggregatedKeywords.reduce((sum, kw) => sum + kw.searchVolume, 0) / aggregatedKeywords.length)
       : 0
     
+    // Build allKeywordsWithCompetition from aggregated keywords
+    const allKeywordsWithCompetition: OpportunityData[] = aggregatedKeywords.map(kw => {
+      // Find the first ranking entry for this keyword to get enhanced fields
+      const firstRanking = data.rankings.find(r => r.keyword_research_keywords.keyword_text === kw.keyword)
+      const kwData = firstRanking?.keyword_research_keywords
+      
+      return {
+        keyword: kw.keyword,
+        searchVolume: kw.searchVolume,
+        competitionScore: 0, // Default since we don't have this for all keywords
+        supplyDemandRatio: (kw as any).supplyDemandRatio || 0,
+        avgCpc: kw.avgCpc,
+        competitorPerformance: undefined,
+        opportunityType: undefined,
+        // Enhanced fields from keyword_research_keywords table or aggregated data
+        purchases: (kw as any).purchases || kwData?.purchases,
+        purchaseRate: (kw as any).purchaseRate || kwData?.purchase_rate,
+        avgPrice: kwData?.avg_price,
+        products: (kw as any).products || kwData?.products_count,
+        adProducts: kwData?.ad_products_count,
+        avgRating: kwData?.avg_rating,
+        avgRatings: kwData?.avg_rating,
+        bidMin: kwData?.bid_min,
+        bidMax: kwData?.bid_max,
+        monopolyClickRate: kwData?.monopoly_click_rate,
+        relevancy: kwData?.relevancy_score,
+        titleDensity: kwData?.title_density
+      }
+    })
+
     return {
       overview: {
         totalAsins: data.asins.length,
@@ -795,6 +927,58 @@ export class KeywordResearchDB {
     }
   }
   
+  /**
+   * Get aggregated keyword metrics across all ASINs in a session
+   * This provides a unified view of all keywords with combined metrics
+   */
+  static async getAggregatedSessionKeywords(sessionId: string) {
+    try {
+      const { data: keywords, error } = await supabaseServer
+        .from('keyword_research_keywords')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('search_volume', { ascending: false })
+
+      if (error) throw error
+
+      // Group by keyword and aggregate metrics
+      const aggregated = new Map<string, any>()
+      
+      keywords?.forEach(kw => {
+        const key = kw.keyword_text.toLowerCase().trim()
+        
+        if (!aggregated.has(key)) {
+          aggregated.set(key, {
+            ...kw,
+            asins: [kw.asin],
+            asin_count: 1,
+            max_search_volume: kw.search_volume || 0,
+            avg_cpc: kw.cpc || 0,
+            best_purchase_rate: kw.purchase_rate || 0,
+            min_products_count: kw.products_count || 0
+          })
+        } else {
+          const existing = aggregated.get(key)
+          existing.asins.push(kw.asin)
+          existing.asin_count++
+          existing.max_search_volume = Math.max(existing.max_search_volume, kw.search_volume || 0)
+          existing.avg_cpc = ((existing.avg_cpc * (existing.asin_count - 1)) + (kw.cpc || 0)) / existing.asin_count
+          existing.best_purchase_rate = Math.max(existing.best_purchase_rate, kw.purchase_rate || 0)
+          existing.min_products_count = Math.min(existing.min_products_count, kw.products_count || Number.MAX_VALUE)
+        }
+      })
+
+      return Array.from(aggregated.values()).sort((a, b) => {
+        // Sort by ASIN count (keywords appearing in multiple ASINs) then by search volume
+        if (a.asin_count !== b.asin_count) return b.asin_count - a.asin_count
+        return b.max_search_volume - a.max_search_volume
+      })
+    } catch (error) {
+      Logger.error('Error getting aggregated session keywords', error)
+      throw error
+    }
+  }
+  
   // Helper methods
   
   private static generateSessionName(asins: string[]): string {
@@ -914,6 +1098,118 @@ export class KeywordResearchDB {
     }
     
     return Math.round(Math.max(1, Math.min(10, adjustedScore)) * 100) / 100
+  }
+
+  /**
+   * Build proper aggregated view of keywords across all ASINs
+   * This handles the case where the same keyword exists multiple times (once per ASIN)
+   */
+  private static buildAggregatedKeywordsView(rankings: any[]): AggregatedKeyword[] {
+    const keywordAggregation = new Map<string, {
+      keyword: string
+      searchVolumes: number[]
+      cpcValues: number[]
+      rankingAsins: Array<{
+        asin: string
+        position: number
+        trafficPercentage: number
+      }>
+      // Track best values across all ASINs
+      bestProducts: number
+      bestPurchases: number
+      bestPurchaseRate: number
+      bestSupplyDemandRatio: number
+      bestAdProducts: number
+      bestBidMin: number
+      bestBidMax: number
+      bestMonopolyClickRate: number
+      bestTitleDensity: number
+    }>()
+
+    // Aggregate data across all rankings
+    rankings.forEach(r => {
+      const keywordText = r.keyword_research_keywords.keyword_text.toLowerCase().trim()
+      
+      if (!keywordAggregation.has(keywordText)) {
+        keywordAggregation.set(keywordText, {
+          keyword: r.keyword_research_keywords.keyword_text, // Preserve original case
+          searchVolumes: [],
+          cpcValues: [],
+          rankingAsins: [],
+          bestProducts: r.keyword_research_keywords.products_count || 0,
+          bestPurchases: r.keyword_research_keywords.purchases || 0,
+          bestPurchaseRate: r.keyword_research_keywords.purchase_rate || 0,
+          bestSupplyDemandRatio: r.keyword_research_keywords.supply_demand_ratio || 0,
+          bestAdProducts: r.keyword_research_keywords.ad_products_count || 0,
+          bestBidMin: r.keyword_research_keywords.bid_min || 0,
+          bestBidMax: r.keyword_research_keywords.bid_max || 0,
+          bestMonopolyClickRate: r.keyword_research_keywords.monopoly_click_rate || 0,
+          bestTitleDensity: r.keyword_research_keywords.title_density || 0
+        })
+      }
+      
+      const agg = keywordAggregation.get(keywordText)!
+      
+      // Add search volume and CPC
+      agg.searchVolumes.push(r.keyword_research_keywords.search_volume || 0)
+      agg.cpcValues.push(r.keyword_research_keywords.cpc || 0)
+      
+      // Add ranking info
+      agg.rankingAsins.push({
+        asin: r.asin,
+        position: r.ranking_position || 0,
+        trafficPercentage: r.traffic_percentage || 0
+      })
+      
+      // Track best metrics
+      agg.bestProducts = Math.max(agg.bestProducts, r.keyword_research_keywords.products_count || 0)
+      agg.bestPurchases = Math.max(agg.bestPurchases, r.keyword_research_keywords.purchases || 0)
+      agg.bestPurchaseRate = Math.max(agg.bestPurchaseRate, r.keyword_research_keywords.purchase_rate || 0)
+      agg.bestSupplyDemandRatio = Math.max(agg.bestSupplyDemandRatio, r.keyword_research_keywords.supply_demand_ratio || 0)
+      agg.bestAdProducts = Math.max(agg.bestAdProducts, r.keyword_research_keywords.ad_products_count || 0)
+      agg.bestBidMin = Math.max(agg.bestBidMin, r.keyword_research_keywords.bid_min || 0)
+      agg.bestBidMax = Math.max(agg.bestBidMax, r.keyword_research_keywords.bid_max || 0)
+      agg.bestMonopolyClickRate = Math.max(agg.bestMonopolyClickRate, r.keyword_research_keywords.monopoly_click_rate || 0)
+      agg.bestTitleDensity = Math.max(agg.bestTitleDensity, r.keyword_research_keywords.title_density || 0)
+    })
+
+    // Convert to final format
+    return Array.from(keywordAggregation.values()).map(agg => {
+      // Use the highest search volume reported (they should be the same, but just in case)
+      const searchVolume = Math.max(...agg.searchVolumes)
+      const avgCpc = agg.cpcValues.reduce((sum, cpc) => sum + cpc, 0) / agg.cpcValues.length
+      
+      return {
+        keyword: agg.keyword,
+        searchVolume,
+        avgCpc: Math.round(avgCpc * 100) / 100,
+        rankingAsins: agg.rankingAsins,
+        opportunityScore: this.calculateOpportunityScore({
+          searchVolume,
+          rankingAsins: agg.rankingAsins
+        }, avgCpc, agg.rankingAsins.length),
+        // Include best enhanced metrics for display
+        products: agg.bestProducts,
+        purchases: agg.bestPurchases,
+        purchaseRate: agg.bestPurchaseRate,
+        supplyDemandRatio: agg.bestSupplyDemandRatio,
+        adProducts: agg.bestAdProducts,
+        bidMin: agg.bestBidMin,
+        bidMax: agg.bestBidMax,
+        monopolyClickRate: agg.bestMonopolyClickRate,
+        titleDensity: agg.bestTitleDensity
+      } as AggregatedKeyword & {
+        products?: number
+        purchases?: number
+        purchaseRate?: number
+        supplyDemandRatio?: number
+        adProducts?: number
+        bidMin?: number
+        bidMax?: number
+        monopolyClickRate?: number
+        titleDensity?: number
+      }
+    }).sort((a, b) => b.opportunityScore - a.opportunityScore)
   }
 }
 

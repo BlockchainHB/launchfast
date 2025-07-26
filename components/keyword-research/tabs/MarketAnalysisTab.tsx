@@ -57,18 +57,18 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AggregatedKeyword, OpportunityData } from '@/lib/keyword-research'
+import { KeywordCell } from '../KeywordCell'
+import { DataCell } from '../DataCell'
 
 interface MarketAnalysisTabProps {
   data: OpportunityData[] | AggregatedKeyword[]
   aggregatedData?: AggregatedKeyword[]
-  showFilters?: boolean
   className?: string
 }
 
 export function MarketAnalysisTab({ 
   data, 
   aggregatedData = [],
-  showFilters = false, 
   className 
 }: MarketAnalysisTabProps) {
   const [sorting, setSorting] = useState<SortingState>([
@@ -112,7 +112,7 @@ export function MarketAnalysisTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold text-left justify-start"
         >
           Keyword
           {column.getIsSorted() === 'asc' ? (
@@ -124,11 +124,7 @@ export function MarketAnalysisTab({
           )}
         </Button>
       ),
-      cell: ({ row }) => (
-        <div className="font-medium text-center px-2">
-          <div className="break-words">{row.getValue('keyword')}</div>
-        </div>
-      ),
+      cell: ({ row }) => <KeywordCell keyword={row.getValue('keyword')} maxWidth="max-w-[250px]" />,
       size: 250,
     },
     {
@@ -137,7 +133,7 @@ export function MarketAnalysisTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
         >
           Search Volume
           {column.getIsSorted() === 'asc' ? (
@@ -150,7 +146,7 @@ export function MarketAnalysisTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium text-center">
+        <div className="font-medium text-right">
           {row.getValue<number>('searchVolume').toLocaleString()}
         </div>
       ),
@@ -162,7 +158,7 @@ export function MarketAnalysisTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
         >
           CPC
           {column.getIsSorted() === 'asc' ? (
@@ -175,8 +171,8 @@ export function MarketAnalysisTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium text-center">
-          ${row.getValue<number>('avgCpc')?.toFixed(2) || '0.00'}
+        <div className="font-medium text-right">
+          <DataCell value={row.getValue('avgCpc')} format="currency" />
         </div>
       ),
       size: 80,
@@ -187,7 +183,7 @@ export function MarketAnalysisTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
         >
           Products
           {column.getIsSorted() === 'asc' ? (
@@ -199,14 +195,11 @@ export function MarketAnalysisTab({
           )}
         </Button>
       ),
-      cell: ({ row }) => {
-        const products = row.getValue<number>('products')
-        return (
-          <div className="font-medium text-center">
-            {products?.toLocaleString() || '--'}
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <div className="font-medium text-right">
+          <DataCell value={row.getValue('products')} format="number" />
+        </div>
+      ),
       size: 100,
     },
     {
@@ -215,7 +208,7 @@ export function MarketAnalysisTab({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold"
+          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
         >
           Purchase Rate
           {column.getIsSorted() === 'asc' ? (
@@ -227,19 +220,16 @@ export function MarketAnalysisTab({
           )}
         </Button>
       ),
-      cell: ({ row }) => {
-        const rate = row.getValue<number>('purchaseRate')
-        return (
-          <div className="font-medium text-center">
-            {rate ? `${(rate * 100).toFixed(1)}%` : '--'}
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <div className="font-medium text-right">
+          <DataCell value={row.getValue('purchaseRate')} format="percentage" decimals={1} />
+        </div>
+      ),
       size: 110,
     },
     {
       accessorKey: 'rankingAsins',
-      header: 'Ranking ASINs',
+      header: () => <div className="text-center font-semibold">Ranking ASINs</div>,
       cell: ({ row }) => {
         // Try to get ranking ASINs from the row data first, then from lookup
         let asins = row.getValue('rankingAsins') as AggregatedKeyword['rankingAsins'] | undefined
@@ -382,29 +372,6 @@ export function MarketAnalysisTab({
               </Button>
             )}
           </div>
-          
-          {showFilters && (
-            <div className="flex items-center space-x-2">
-              <Select
-                value={
-                  (table.getColumn('searchVolume')?.getFilterValue() as string) ?? ''
-                }
-                onValueChange={(value) =>
-                  table.getColumn('searchVolume')?.setFilterValue(value === 'all' ? '' : value)
-                }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Volume filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All volumes</SelectItem>
-                  <SelectItem value="1000">1K+ volume</SelectItem>
-                  <SelectItem value="5000">5K+ volume</SelectItem>
-                  <SelectItem value="10000">10K+ volume</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center space-x-2">
