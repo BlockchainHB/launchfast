@@ -52,7 +52,10 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  X
+  X,
+  Trophy,
+  Target,
+  TrendingUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AsinKeywordResult } from '@/lib/keyword-research'
@@ -175,33 +178,32 @@ export function ProductComparisonTab({
       cell: ({ row }) => {
         const status = row.original.status
         return (
-          <div className="flex items-center space-x-2">
-            <div className="font-mono font-medium">
+          <div className="flex flex-col items-center space-y-1 py-1">
+            <div className="font-mono font-semibold text-sm tracking-wide">
               {row.getValue('asin')}
             </div>
-            {status === 'success' ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            ) : status === 'failed' ? (
-              <XCircle className="h-4 w-4 text-red-600" />
-            ) : (
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            )}
+            <div className="flex items-center justify-center">
+              {status === 'success' ? (
+                <div className="flex items-center space-x-1">
+                  <CheckCircle className="h-3 w-3 text-green-600" />
+                  <span className="text-xs text-green-600 font-medium">Success</span>
+                </div>
+              ) : status === 'failed' ? (
+                <div className="flex items-center space-x-1">
+                  <XCircle className="h-3 w-3 text-red-600" />
+                  <span className="text-xs text-red-600 font-medium">Failed</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-1">
+                  <AlertTriangle className="h-3 w-3 text-yellow-600" />
+                  <span className="text-xs text-yellow-600 font-medium">Warning</span>
+                </div>
+              )}
+            </div>
           </div>
         )
       },
-      size: 120,
-    },
-    {
-      accessorKey: 'productTitle',
-      header: 'Product Title',
-      cell: ({ row }) => (
-        <div className="max-w-64">
-          <div className="truncate text-sm">
-            {row.getValue('productTitle') || 'No title available'}
-          </div>
-        </div>
-      ),
-      size: 250,
+      size: 160,
     },
     {
       accessorKey: 'totalKeywords',
@@ -222,7 +224,7 @@ export function ProductComparisonTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium">
+        <div className="font-medium text-center">
           {row.getValue<number>('totalKeywords').toLocaleString()}
         </div>
       ),
@@ -247,9 +249,11 @@ export function ProductComparisonTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <Badge variant="default" className="bg-green-100 text-green-800">
-          {row.getValue<number>('strongKeywords')} (Top 15)
-        </Badge>
+        <div className="text-center">
+          <Badge variant="default" className="bg-green-100 text-green-800">
+            {row.getValue<number>('strongKeywords')} (Top 15)
+          </Badge>
+        </div>
       ),
       size: 130,
     },
@@ -272,9 +276,11 @@ export function ProductComparisonTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <Badge variant="outline" className="bg-orange-100 text-orange-800">
-          {row.getValue<number>('weakKeywords')} (16+)
-        </Badge>
+        <div className="text-center">
+          <Badge variant="outline" className="bg-orange-100 text-orange-800">
+            {row.getValue<number>('weakKeywords')} (16+)
+          </Badge>
+        </div>
       ),
       size: 130,
     },
@@ -297,39 +303,11 @@ export function ProductComparisonTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium">
+        <div className="font-medium text-center">
           {row.getValue<number>('avgSearchVolume').toLocaleString()}
         </div>
       ),
       size: 120,
-    },
-    {
-      accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }) => {
-        const status = row.getValue<string>('status')
-        const error = row.original.error
-        
-        return (
-          <div>
-            <Badge 
-              variant={status === 'success' ? 'default' : 'destructive'}
-              className={cn(
-                status === 'success' && 'bg-green-100 text-green-800',
-                status === 'failed' && 'bg-red-100 text-red-800'
-              )}
-            >
-              {status}
-            </Badge>
-            {error && (
-              <div className="text-xs text-muted-foreground mt-1 max-w-32 truncate">
-                {error}
-              </div>
-            )}
-          </div>
-        )
-      },
-      size: 100,
     },
   ], [])
 
@@ -478,7 +456,7 @@ export function ProductComparisonTab({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} style={{ width: header.getSize() }}>
+                    <TableHead key={header.id} style={{ width: header.getSize() }} className="text-center">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -513,25 +491,104 @@ export function ProductComparisonTab({
                       <TableCell colSpan={columns.length} className="p-0">
                         <Card className="m-4">
                           <CardContent className="p-4">
-                            <h4 className="font-semibold mb-3">Top Keywords for {row.original.asin}</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {row.original.topKeywords.map((keyword, index) => (
-                                <div key={index} className="flex items-center justify-between p-2 border rounded">
-                                  <div>
-                                    <div className="font-medium text-sm">{keyword.keyword}</div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {keyword.rankingPosition ? `Rank #${keyword.rankingPosition}` : 'Not Ranked'}
-                                      {keyword.trafficPercentage && ` • ${keyword.trafficPercentage}% traffic`}
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="font-medium text-sm">
-                                      {keyword.searchVolume.toLocaleString()}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">volume</div>
-                                  </div>
+                            <div className="flex items-center justify-between mb-4">
+                              <h4 className="font-semibold text-lg">Competitive Analysis: {row.original.asin}</h4>
+                              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                <span>Avg Rank: #{Math.round(row.original.topKeywords.reduce((sum, kw) => sum + (kw.rankingPosition || 50), 0) / row.original.topKeywords.length)}</span>
+                                <span>Traffic Share: {row.original.topKeywords.reduce((sum, kw) => sum + (kw.trafficPercentage || 0), 0).toFixed(1)}%</span>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+                              {/* Dominant Keywords */}
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                                <h5 className="font-medium text-green-800 mb-1 flex items-center text-sm">
+                                  <Trophy className="h-3 w-3 mr-1" />
+                                  Dominant (Top 5)
+                                </h5>
+                                <div className="space-y-0.5">
+                                  {row.original.topKeywords
+                                    .filter(kw => kw.rankingPosition && kw.rankingPosition <= 5)
+                                    .slice(0, 6)
+                                    .map((keyword, index) => (
+                                      <div key={index} className="text-xs flex items-center justify-between">
+                                        <span className="font-medium truncate flex-1">{keyword.keyword}</span>
+                                        <span className="text-green-600 ml-1">#{keyword.rankingPosition}</span>
+                                      </div>
+                                    ))}
+                                  {row.original.topKeywords.filter(kw => kw.rankingPosition && kw.rankingPosition <= 5).length === 0 && (
+                                    <div className="text-xs text-muted-foreground">No top 5 rankings</div>
+                                  )}
                                 </div>
-                              ))}
+                              </div>
+
+                              {/* Opportunity Keywords */}
+                              <div className="bg-orange-50 border border-orange-200 rounded-lg p-2">
+                                <h5 className="font-medium text-orange-800 mb-1 flex items-center text-sm">
+                                  <Target className="h-3 w-3 mr-1" />
+                                  Opportunities (16+)
+                                </h5>
+                                <div className="space-y-0.5">
+                                  {row.original.topKeywords
+                                    .filter(kw => kw.rankingPosition && kw.rankingPosition > 15)
+                                    .sort((a, b) => b.searchVolume - a.searchVolume)
+                                    .slice(0, 6)
+                                    .map((keyword, index) => (
+                                      <div key={index} className="text-xs flex items-center justify-between">
+                                        <span className="font-medium truncate flex-1">{keyword.keyword}</span>
+                                        <span className="text-orange-600 ml-1">#{keyword.rankingPosition}</span>
+                                      </div>
+                                    ))}
+                                  {row.original.topKeywords.filter(kw => kw.rankingPosition && kw.rankingPosition > 15).length === 0 && (
+                                    <div className="text-xs text-muted-foreground">All keywords well-ranked</div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* High Traffic Keywords */}
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                                <h5 className="font-medium text-blue-800 mb-1 flex items-center text-sm">
+                                  <TrendingUp className="h-3 w-3 mr-1" />
+                                  High Traffic
+                                </h5>
+                                <div className="space-y-0.5">
+                                  {row.original.topKeywords
+                                    .filter(kw => kw.trafficPercentage && kw.trafficPercentage > 1)
+                                    .sort((a, b) => (b.trafficPercentage || 0) - (a.trafficPercentage || 0))
+                                    .slice(0, 6)
+                                    .map((keyword, index) => (
+                                      <div key={index} className="text-xs flex items-center justify-between">
+                                        <span className="font-medium truncate flex-1">{keyword.keyword}</span>
+                                        <span className="text-blue-600 ml-1">{Number(keyword.trafficPercentage).toFixed(2)}%</span>
+                                      </div>
+                                    ))}
+                                  {row.original.topKeywords.filter(kw => kw.trafficPercentage && kw.trafficPercentage > 1).length === 0 && (
+                                    <div className="text-xs text-muted-foreground">Low traffic keywords</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Top Keywords Table */}
+                            <div>
+                              <h5 className="font-medium mb-2">Top 8 Keywords by Volume</h5>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {row.original.topKeywords.slice(0, 8).map((keyword, index) => (
+                                  <div key={index} className="flex items-center justify-between p-2 border rounded text-sm">
+                                    <div className="flex-1">
+                                      <div className="font-medium truncate">{keyword.keyword}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        Rank #{keyword.rankingPosition || 'NR'}
+                                        {keyword.trafficPercentage && ` • ${Number(keyword.trafficPercentage).toFixed(2)}% traffic`}
+                                      </div>
+                                    </div>
+                                    <div className="text-right ml-2">
+                                      <div className="font-medium">{keyword.searchVolume.toLocaleString()}</div>
+                                      <div className="text-xs text-muted-foreground">volume</div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </CardContent>
                         </Card>

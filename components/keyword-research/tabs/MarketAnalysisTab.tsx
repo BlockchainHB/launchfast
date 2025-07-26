@@ -31,6 +31,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -50,16 +56,18 @@ import {
   X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AggregatedKeyword } from '@/lib/keyword-research'
+import type { AggregatedKeyword, OpportunityData } from '@/lib/keyword-research'
 
 interface MarketAnalysisTabProps {
-  data: AggregatedKeyword[]
+  data: OpportunityData[] | AggregatedKeyword[]
+  aggregatedData?: AggregatedKeyword[]
   showFilters?: boolean
   className?: string
 }
 
 export function MarketAnalysisTab({ 
   data, 
+  aggregatedData = [],
   showFilters = false, 
   className 
 }: MarketAnalysisTabProps) {
@@ -71,8 +79,33 @@ export function MarketAnalysisTab({
   const [globalFilter, setGlobalFilter] = useState('')
   const [pageSize, setPageSize] = useState(25)
 
-  // Column definitions
-  const columns: ColumnDef<AggregatedKeyword>[] = useMemo(() => [
+  // Detect if we're dealing with enhanced data (OpportunityData) or basic data (AggregatedKeyword)
+  const isEnhancedData = (data.length > 0 && 'competitionScore' in data[0]) as boolean
+  
+  // Create lookup map for ranking ASINs from aggregated data
+  const rankingAsinsLookup = useMemo(() => {
+    const lookup = new Map<string, AggregatedKeyword['rankingAsins']>()
+    aggregatedData.forEach(item => {
+      lookup.set(item.keyword, item.rankingAsins)
+    })
+    return lookup
+  }, [aggregatedData])
+  
+  // Calculate total ASINs analyzed for dynamic coloring
+  const totalAsinsAnalyzed = useMemo(() => {
+    if (aggregatedData.length > 0) {
+      // Get unique ASINs from all ranking data
+      const uniqueAsins = new Set<string>()
+      aggregatedData.forEach(item => {
+        item.rankingAsins?.forEach(asin => uniqueAsins.add(asin.asin))
+      })
+      return uniqueAsins.size
+    }
+    return 5 // Default fallback
+  }, [aggregatedData])
+  
+  // Column definitions - focused on key data
+  const columns: ColumnDef<any>[] = useMemo(() => [
     {
       accessorKey: 'keyword',
       header: ({ column }) => (
@@ -92,11 +125,11 @@ export function MarketAnalysisTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium max-w-48">
-          <div className="truncate">{row.getValue('keyword')}</div>
+        <div className="font-medium text-center px-2">
+          <div className="break-words">{row.getValue('keyword')}</div>
         </div>
       ),
-      size: 200,
+      size: 250,
     },
     {
       accessorKey: 'searchVolume',
@@ -117,21 +150,21 @@ export function MarketAnalysisTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium">
+        <div className="font-medium text-center">
           {row.getValue<number>('searchVolume').toLocaleString()}
         </div>
       ),
       size: 120,
     },
     {
-      accessorKey: 'avgCpc',
+      accessorKey: isEnhancedData ? 'avgCpc' : 'avgCpc',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           className="hover:bg-transparent p-0 h-auto font-semibold"
         >
-          Avg CPC
+          CPC
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
@@ -142,43 +175,21 @@ export function MarketAnalysisTab({
         </Button>
       ),
       cell: ({ row }) => (
-        <div className="font-medium">
-          ${row.getValue<number>('avgCpc').toFixed(2)}
+        <div className="font-medium text-center">
+          ${row.getValue<number>('avgCpc')?.toFixed(2) || '0.00'}
         </div>
       ),
-      size: 100,
+      size: 80,
     },
     {
-      accessorKey: 'rankingAsins',
-      header: 'Ranking ASINs',
-      cell: ({ row }) => {
-        const asins = row.getValue<AggregatedKeyword['rankingAsins']>('rankingAsins')
-        return (
-          <div className="flex flex-wrap gap-1">
-            {asins.slice(0, 3).map((asin, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {asin.asin} {asin.position ? `#${asin.position}` : 'Not Ranked'}
-              </Badge>
-            ))}
-            {asins.length > 3 && (
-              <Badge variant="secondary" className="text-xs">
-                +{asins.length - 3} more
-              </Badge>
-            )}
-          </div>
-        )
-      },
-      size: 250,
-    },
-    {
-      accessorKey: 'opportunityScore',
+      accessorKey: 'products',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
           className="hover:bg-transparent p-0 h-auto font-semibold"
         >
-          Opportunity Score
+          Products
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-2 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
@@ -189,23 +200,108 @@ export function MarketAnalysisTab({
         </Button>
       ),
       cell: ({ row }) => {
-        const score = row.getValue<number>('opportunityScore')
-        const getScoreColor = (score: number) => {
-          if (score >= 8) return 'bg-green-100 text-green-800'
-          if (score >= 6) return 'bg-yellow-100 text-yellow-800'
-          if (score >= 4) return 'bg-orange-100 text-orange-800'
-          return 'bg-red-100 text-red-800'
+        const products = row.getValue<number>('products')
+        return (
+          <div className="font-medium text-center">
+            {products?.toLocaleString() || '--'}
+          </div>
+        )
+      },
+      size: 100,
+    },
+    {
+      accessorKey: 'purchaseRate',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="hover:bg-transparent p-0 h-auto font-semibold"
+        >
+          Purchase Rate
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const rate = row.getValue<number>('purchaseRate')
+        return (
+          <div className="font-medium text-center">
+            {rate ? `${(rate * 100).toFixed(1)}%` : '--'}
+          </div>
+        )
+      },
+      size: 110,
+    },
+    {
+      accessorKey: 'rankingAsins',
+      header: 'Ranking ASINs',
+      cell: ({ row }) => {
+        // Try to get ranking ASINs from the row data first, then from lookup
+        let asins = row.getValue('rankingAsins') as AggregatedKeyword['rankingAsins'] | undefined
+        
+        // If no ranking ASINs in row data (enhanced data), lookup from aggregated data
+        if (!asins && isEnhancedData) {
+          const keyword = row.getValue('keyword') as string
+          asins = rankingAsinsLookup.get(keyword)
+        }
+        
+        if (!asins || !Array.isArray(asins) || asins.length === 0) {
+          return (
+            <div className="text-xs text-muted-foreground text-center">
+              0 ASINs
+            </div>
+          )
+        }
+        
+        // Calculate percentage and get color
+        const rankingPercentage = asins.length / totalAsinsAnalyzed
+        const getRankingColor = (percentage: number) => {
+          if (percentage === 0) return 'bg-green-100 text-green-800 border-green-200'
+          if (percentage <= 0.2) return 'bg-green-100 text-green-800 border-green-200'
+          if (percentage <= 0.4) return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+          if (percentage <= 0.6) return 'bg-orange-100 text-orange-800 border-orange-200'
+          if (percentage <= 0.8) return 'bg-red-100 text-red-800 border-red-200'
+          return 'bg-red-200 text-red-900 border-red-300'
         }
         
         return (
-          <Badge className={cn('font-medium', getScoreColor(score))}>
-            {score.toFixed(1)}
-          </Badge>
+          <div className="text-center">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center justify-center cursor-help">
+                    <Badge className={cn('text-xs font-medium border', getRankingColor(rankingPercentage))}>
+                      {asins.length} ASIN{asins.length === 1 ? '' : 's'}
+                    </Badge>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  <div className="space-y-1">
+                    <div className="font-medium text-xs mb-2">
+                      Ranking ASINs ({Math.round(rankingPercentage * 100)}% of analyzed):
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {asins.map((asin, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {asin.asin} {asin.position ? `#${asin.position}` : 'Not Ranked'}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         )
       },
       size: 120,
     },
-  ], [])
+  ], [isEnhancedData, rankingAsinsLookup, totalAsinsAnalyzed, aggregatedData])
 
   const table = useReactTable({
     data,
@@ -241,7 +337,11 @@ export function MarketAnalysisTab({
         columns.map(col => {
           const value = row.getValue(col.accessorKey as string)
           if (col.accessorKey === 'rankingAsins') {
-            return `"${(value as AggregatedKeyword['rankingAsins'])
+            const asins = value as AggregatedKeyword['rankingAsins'] | undefined
+            if (!asins || !Array.isArray(asins)) {
+              return '"No ranking data"'
+            }
+            return `"${asins
               .map(asin => `${asin.asin}:${asin.position ? `#${asin.position}` : 'Not Ranked'}`)
               .join('; ')}"`
           }
@@ -254,7 +354,7 @@ export function MarketAnalysisTab({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `market-analysis-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `all-keywords-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -352,7 +452,7 @@ export function MarketAnalysisTab({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} style={{ width: header.getSize() }}>
+                    <TableHead key={header.id} style={{ width: header.getSize() }} className="text-center">
                       {header.isPlaceholder
                         ? null
                         : flexRender(

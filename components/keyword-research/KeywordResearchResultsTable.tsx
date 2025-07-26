@@ -68,7 +68,7 @@ export function KeywordResearchResultsTable({
     if (!data) {
       return [
         { value: 'overview', label: 'Overview', icon: BarChart3, description: 'Research summary', disabled: true },
-        { value: 'market', label: 'Market Analysis', icon: TrendingUp, description: 'Aggregated keywords', disabled: true },
+        { value: 'market', label: 'All Keywords', icon: TrendingUp, description: 'All discovered keywords', disabled: true },
         { value: 'comparison', label: 'Product Comparison', icon: Users, description: 'ASIN performance', disabled: true },
         { value: 'opportunities', label: 'Opportunities', icon: Target, description: 'Keyword opportunities', disabled: true },
         { value: 'gaps', label: 'Gap Analysis', icon: Search, description: 'Market gaps', disabled: true }
@@ -87,10 +87,10 @@ export function KeywordResearchResultsTable({
       },
       {
         value: 'market',
-        label: 'Market Analysis',
+        label: 'All Keywords',
         icon: TrendingUp,
-        description: 'Aggregated keywords',
-        badge: data.aggregatedKeywords?.length || 0
+        description: 'All discovered keywords',
+        badge: data.allKeywordsWithCompetition?.length || data.aggregatedKeywords?.length || 0
       },
       {
         value: 'comparison',
@@ -201,7 +201,7 @@ export function KeywordResearchResultsTable({
             </div>
             <div className="px-3 py-1.5 text-sm font-medium text-muted-foreground flex items-center space-x-2">
               <TrendingUp className="h-4 w-4" />
-              <span>Market Analysis</span>
+              <span>All Keywords</span>
             </div>
             <div className="px-3 py-1.5 text-sm font-medium text-muted-foreground flex items-center space-x-2">
               <Users className="h-4 w-4" />
@@ -337,7 +337,8 @@ export function KeywordResearchResultsTable({
 
           <TabsContent value="market" className="space-y-4">
             <MarketAnalysisTab 
-              data={data.aggregatedKeywords || []} 
+              data={data.allKeywordsWithCompetition || data.aggregatedKeywords || []} 
+              aggregatedData={data.aggregatedKeywords || []}
               showFilters={showFilters}
             />
           </TabsContent>

@@ -560,9 +560,12 @@ export class KeywordResearchDB {
       })
     })
     
+    // Calculate total ASINs for dynamic scoring
+    const totalAsinsAnalyzed = data.asins.length
+
     const aggregatedKeywords: AggregatedKeyword[] = Array.from(keywordMap.values()).map(kwData => {
       const avgCpc = kwData.cpcValues.reduce((sum, cpc) => sum + cpc, 0) / kwData.cpcValues.length
-      const opportunityScore = this.calculateOpportunityScore(kwData, avgCpc)
+      const opportunityScore = this.calculateOpportunityScore(kwData, avgCpc, totalAsinsAnalyzed)
       
       return {
         keyword: kwData.keyword,
@@ -804,13 +807,113 @@ export class KeywordResearchDB {
   
   private static calculateOpportunityScore(
     keywordData: { searchVolume: number; rankingAsins: any[] },
-    avgCpc: number
+    avgCpc: number,
+    totalAsinsAnalyzed: number = 5
   ): number {
-    const searchVolumeScore = Math.min(keywordData.searchVolume / 10000, 10)
-    const competitionScore = Math.max(0, 10 - keywordData.rankingAsins.length)
-    const cpcScore = avgCpc > 0.5 && avgCpc < 3.0 ? 5 : Math.max(0, 5 - Math.abs(avgCpc - 1.5))
+    // 1. Search Volume Sweet Spot (30% weight) - Tighter, more realistic bands
+    let volumeScore = 0
+    if (keywordData.searchVolume >= 5000 && keywordData.searchVolume <= 10000) {
+      volumeScore = 10 // True sweet spot: 5K-10K searches
+    } else if (keywordData.searchVolume >= 2000 && keywordData.searchVolume < 5000) {
+      volumeScore = 8 // Good opportunity: 2K-5K searches
+    } else if (keywordData.searchVolume >= 1000 && keywordData.searchVolume < 2000) {
+      volumeScore = 6 // Moderate: 1K-2K searches
+    } else if (keywordData.searchVolume >= 10000 && keywordData.searchVolume <= 25000) {
+      volumeScore = 7 // Competitive but viable: 10K-25K
+    } else if (keywordData.searchVolume >= 500 && keywordData.searchVolume < 1000) {
+      volumeScore = 4 // Low volume: 500-1K searches
+    } else if (keywordData.searchVolume > 25000) {
+      volumeScore = 3 // High competition territory
+    } else {
+      volumeScore = 2 // Too low volume
+    }
     
-    return Math.round((searchVolumeScore + competitionScore + cpcScore) / 3 * 100) / 100
+    // 2. Dynamic Competition Level (50% weight) - Based on search volume AND ASINs analyzed
+    const totalCompetitors = keywordData.rankingAsins.length
+    let competitionScore = 0
+    
+    // Calculate expected competition based on search volume
+    let expectedCompetitors = 0
+    if (keywordData.searchVolume >= 10000) {
+      expectedCompetitors = Math.min(50, Math.floor(keywordData.searchVolume / 200)) // High volume = more competition
+    } else if (keywordData.searchVolume >= 5000) {
+      expectedCompetitors = Math.min(30, Math.floor(keywordData.searchVolume / 300))
+    } else if (keywordData.searchVolume >= 1000) {
+      expectedCompetitors = Math.min(20, Math.floor(keywordData.searchVolume / 400))
+    } else {
+      expectedCompetitors = Math.min(10, Math.floor(keywordData.searchVolume / 500))
+    }
+    
+    // Adjust expected competition based on ASINs analyzed (more ASINs = better data)
+    const analysisConfidenceFactor = Math.min(1.2, totalAsinsAnalyzed / 5) // Cap at 20% bonus
+    const adjustedExpected = Math.floor(expectedCompetitors * analysisConfidenceFactor)
+    
+    // Score based on actual vs expected competition - much harsher scoring
+    if (totalCompetitors === 0) {
+      competitionScore = 10 // No competition found - extremely rare!
+    } else if (totalCompetitors <= adjustedExpected * 0.2) {
+      competitionScore = 8 // Much less competition than expected - very rare
+    } else if (totalCompetitors <= adjustedExpected * 0.4) {
+      competitionScore = 6 // Moderately less competition
+    } else if (totalCompetitors <= adjustedExpected * 0.6) {
+      competitionScore = 5 // Slightly less competition
+    } else if (totalCompetitors <= adjustedExpected * 0.8) {
+      competitionScore = 4 // Close to expected - most keywords
+    } else if (totalCompetitors <= adjustedExpected) {
+      competitionScore = 3 // Expected competition level
+    } else if (totalCompetitors <= adjustedExpected * 1.2) {
+      competitionScore = 2 // More competitive than expected
+    } else {
+      competitionScore = 1 // Highly saturated market
+    }
+    
+    // 3. CPC Commercial Intent (20% weight) - Core range $0.50-$2.00, outliers $2.00-$10.00 scored 2-10
+    let cpcScore = 0
+    if (avgCpc >= 1.20 && avgCpc <= 1.80) {
+      cpcScore = 10 // Sweet spot: $1.20-$1.80 - strong commercial intent
+    } else if (avgCpc >= 0.90 && avgCpc < 1.20) {
+      cpcScore = 9 // Very good: $0.90-$1.20 - good commercial intent
+    } else if (avgCpc >= 1.80 && avgCpc <= 2.00) {
+      cpcScore = 8 // Good but competitive: $1.80-$2.00
+    } else if (avgCpc >= 0.70 && avgCpc < 0.90) {
+      cpcScore = 7 // Decent: $0.70-$0.90 - moderate commercial intent
+    } else if (avgCpc >= 0.50 && avgCpc < 0.70) {
+      cpcScore = 6 // Lower commercial intent: $0.50-$0.70
+    } else if (avgCpc > 2.00 && avgCpc <= 10.00) {
+      // Outliers: Scale linearly from 10 down to 2 for $2.00-$10.00 range
+      const outlierScore = Math.max(2, Math.min(10, 12 - (avgCpc * 1.25)))
+      cpcScore = Math.round(outlierScore)
+    } else if (avgCpc >= 0.30 && avgCpc < 0.50) {
+      cpcScore = 4 // Low commercial intent: $0.30-$0.50
+    } else if (avgCpc > 10.00) {
+      cpcScore = 2 // Extreme outliers: >$10.00
+    } else {
+      cpcScore = 2 // Very low/no commercial intent: <$0.30
+    }
+    
+    // Calculate weighted score (0-10 scale) with much more aggressive distribution
+    const rawScore = (
+      (volumeScore * 0.25) +
+      (competitionScore * 0.60) + // Increased weight on competition
+      (cpcScore * 0.15)
+    )
+    
+    // Apply much more aggressive curve to push most scores into 3-6 range
+    let adjustedScore = rawScore
+    if (rawScore >= 8.0) {
+      adjustedScore = rawScore * 0.65 + 2.8 // Heavily compress top scores
+    } else if (rawScore >= 6.5) {
+      adjustedScore = rawScore * 0.75 + 2.0 // Compress high scores
+    } else if (rawScore >= 5.0) {
+      adjustedScore = rawScore * 0.85 + 0.975 // Slightly compress mid scores
+    }
+    
+    // Further compress if still too high - most keywords should be 3-6
+    if (adjustedScore > 7.0) {
+      adjustedScore = 7.0 + (adjustedScore - 7.0) * 0.5 // Cap high scores
+    }
+    
+    return Math.round(Math.max(1, Math.min(10, adjustedScore)) * 100) / 100
   }
 }
 
