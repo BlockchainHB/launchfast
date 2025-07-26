@@ -119,12 +119,12 @@ export class KeywordResearchSession {
     try {
       Logger.dev.trace(`Loading cached results for session ${sessionId}`)
       
-      const cached = await kwCache.getCachedSessionResult(userId, sessionId)
+      // const cached = await kwCache.getCachedSessionResult(userId, sessionId)
       
-      if (cached) {
-        Logger.dev.trace(`Successfully loaded cached results: ${cached.overview.totalKeywords} keywords`)
-        return cached
-      }
+      // if (cached) {
+      //   Logger.dev.trace(`Successfully loaded cached results: ${cached.overview.totalKeywords} keywords`)
+      //   return cached
+      // }
       
       // If full cache miss, try to load from database and rebuild cache
       Logger.dev.trace('Cache miss - attempting database reconstruction')

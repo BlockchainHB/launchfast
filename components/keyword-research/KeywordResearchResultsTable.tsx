@@ -309,6 +309,7 @@ export function KeywordResearchResultsTable({
             <TabsContent value="comparison">
               <ProductComparisonTab 
                 data={data.asinResults || []} 
+                opportunities={data.opportunities || []}
               />
             </TabsContent>
 

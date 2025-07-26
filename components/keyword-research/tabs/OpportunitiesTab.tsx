@@ -24,7 +24,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -48,11 +47,18 @@ import {
   Download,
   Target,
   TrendingUp,
-  Users,
+  Sparkles,
   Zap,
   X,
   Star,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  BarChart3,
+  Users,
+  DollarSign
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { OpportunityData } from '@/types'
@@ -78,20 +84,30 @@ export function OpportunitiesTab({
 
   // Calculate summary stats for opportunities
   const summaryStats = useMemo(() => {
-    const totalOpportunities = data.length
-    const marketGaps = data.filter(opp => opp.opportunityType === 'market_gap').length
-    const weakCompetitors = data.filter(opp => opp.opportunityType === 'weak_competitors').length
-    const lowCompetition = data.filter(opp => opp.opportunityType === 'low_competition').length
+    const filteredData = globalFilter
+      ? data.filter(item =>
+          item.keyword.toLowerCase().includes(globalFilter.toLowerCase())
+        )
+      : data
+
+    const totalOpportunities = filteredData.length
+    const marketGaps = filteredData.filter(opp => opp.opportunityType === 'market_gap').length
+    const weakCompetitors = filteredData.filter(opp => opp.opportunityType === 'weak_competitors').length
+    const lowCompetition = filteredData.filter(opp => opp.opportunityType === 'low_competition').length
     
-    const totalVolume = data.reduce((sum, opp) => sum + opp.searchVolume, 0)
-    const avgCpc = data.length > 0 ? data.reduce((sum, opp) => sum + (opp.avgCpc || 0), 0) / data.length : 0
-    const avgPurchaseRate = data.length > 0 ? data.reduce((sum, opp) => sum + (opp.purchaseRate || 0), 0) / data.length : 0
+    const totalVolume = filteredData.reduce((sum, opp) => sum + opp.searchVolume, 0)
+    const avgCpc = filteredData.length > 0 
+      ? filteredData.reduce((sum, opp) => sum + (opp.avgCpc || 0), 0) / filteredData.length 
+      : 0
+    const avgSupplyDemand = filteredData.length > 0
+      ? filteredData.reduce((sum, opp) => sum + (opp.supplyDemandRatio || 0), 0) / filteredData.length
+      : 0
     
-    // High-value opportunities (good search volume + low competition + decent conversion)
-    const highValueOpps = data.filter(opp => 
+    // High-value opportunities (good search volume + low competition + decent CPC)
+    const highValueOpps = filteredData.filter(opp => 
       opp.searchVolume >= 2000 && 
-      opp.competitionScore <= 3 && 
-      (opp.purchaseRate || 0) >= 0.01
+      opp.competitionScore <= 30 && 
+      (opp.avgCpc || 0) >= 0.5
     ).length
 
     return {
@@ -102,348 +118,277 @@ export function OpportunitiesTab({
       highValueOpps,
       totalVolume,
       avgCpc,
-      avgPurchaseRate
+      avgSupplyDemand
     }
-  }, [data])
+  }, [data, globalFilter])
 
   // Column definitions - all enhanced opportunity data by importance
   const columns: ColumnDef<OpportunityData>[] = useMemo(() => [
     {
       accessorKey: 'keyword',
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold text-left justify-start"
-        >
-          Keyword
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="hover:bg-transparent p-0 h-auto text-xs font-medium"
+          >
+            Keyword
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-3 w-3" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+            )}
+          </Button>
+        </div>
       ),
-      cell: ({ row }) => <KeywordCell keyword={row.getValue('keyword')} />,
-      size: 200,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <KeywordCell keyword={row.getValue('keyword')} className="text-sm font-medium" />
+          {row.original.opportunityType && (
+            <Badge 
+              variant="secondary" 
+              className={cn(
+                "text-[10px] px-1.5 py-0 h-4 border-0",
+                row.original.opportunityType === 'low_competition' && "bg-blue-100 text-blue-700",
+                row.original.opportunityType === 'market_gap' && "bg-purple-100 text-purple-700",
+                row.original.opportunityType === 'weak_competitors' && "bg-amber-100 text-amber-700"
+              )}
+            >
+              {row.original.opportunityType === 'low_competition' && 'Low Comp'}
+              {row.original.opportunityType === 'market_gap' && 'Gap'}
+              {row.original.opportunityType === 'weak_competitors' && 'Weak Comp'}
+            </Badge>
+          )}
+        </div>
+      ),
+      size: 300,
     },
     {
       accessorKey: 'searchVolume',
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Search Volume
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
+        <div className="text-right">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="hover:bg-transparent p-0 h-auto text-xs font-medium"
+          >
+            Volume
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-3 w-3" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+            )}
+          </Button>
+        </div>
       ),
       cell: ({ row }) => {
         const volume = row.getValue<number>('searchVolume')
         return (
           <div className="text-right">
-            <span className="font-medium">{volume.toLocaleString()}</span>
+            <span className="text-sm tabular-nums font-medium">
+              <DataCell value={volume} format="number" />
+            </span>
+            {volume >= 10000 && (
+              <Sparkles className="inline-block ml-1 h-3 w-3 text-amber-500" />
+            )}
           </div>
         )
       },
-      size: 120,
-    },
-    {
-      accessorKey: 'relevancy',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold text-center w-full"
-        >
-          Relevancy
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="text-center font-medium">
-          <DataCell value={row.original.relevancy} format="decimal" />
-        </div>
-      ),
-      size: 130,
-    },
-    {
-      accessorKey: 'purchaseRate',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Purchase Rate
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="text-right">
-          <DataCell value={row.getValue('purchaseRate')} format="percentage" decimals={1} />
-        </div>
-      ),
       size: 110,
     },
     {
-      accessorKey: 'products',
+      accessorKey: 'competitionScore', 
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Products
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="text-right">
-          <DataCell value={row.getValue('products')} format="number" />
+        <div className="text-center">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="hover:bg-transparent p-0 h-auto text-xs font-medium"
+          >
+            Competition
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-3 w-3" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+            )}
+          </Button>
         </div>
-      ),
-      size: 100,
-    },
-    {
-      accessorKey: 'competitionScore',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold text-center w-full"
-        >
-          Competition
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
       ),
       cell: ({ row }) => {
         const score = row.getValue<number>('competitionScore')
-        // If competitionScore is not available, try to get it from competitorPerformance
-        const actualScore = score || row.original.competitorPerformance?.competitorStrength || 0
-        
-        const getCompetitionColor = (score: number) => {
-          if (score <= 3) return 'bg-green-100 text-green-800'
-          if (score <= 6) return 'bg-yellow-100 text-yellow-800'
-          return 'bg-red-100 text-red-800'
+        const getBadgeVariant = (score: number) => {
+          if (score <= 20) return 'bg-green-100 text-green-700'
+          if (score <= 50) return 'bg-blue-100 text-blue-700'
+          if (score <= 70) return 'bg-amber-100 text-amber-700'
+          return 'bg-red-100 text-red-700'
         }
-        const getCompetitionText = (score: number) => {
-          if (score <= 3) return 'Low'
-          if (score <= 6) return 'Medium'
-          return 'High'
+        const getLabel = (score: number) => {
+          if (score <= 20) return 'Low'
+          if (score <= 50) return 'Med'
+          if (score <= 70) return 'High'
+          return 'V.High'
         }
-        
         return (
           <div className="text-center">
-            <Badge className={cn('font-medium', actualScore ? getCompetitionColor(actualScore) : 'bg-gray-100 text-gray-800')}>
-              {actualScore ? getCompetitionText(actualScore) : 'N/A'} (<DataCell value={actualScore} format="decimal" decimals={1} className="inline" />)
+            <Badge 
+              variant="secondary" 
+              className={cn(
+                "text-xs px-2 py-0.5 border-0",
+                getBadgeVariant(score)
+              )}
+            >
+              {getLabel(score)}
             </Badge>
           </div>
         )
       },
-      size: 130,
-    },
-    {
-      accessorKey: 'adProducts',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Ad Products
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="text-right">
-          <DataCell value={row.getValue('adProducts')} format="number" />
-        </div>
-      ),
       size: 110,
     },
     {
-      accessorKey: 'supplyDemandRatio',
+      accessorKey: 'purchases',
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Supply/Demand
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
+        <div className="text-right">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="hover:bg-transparent p-0 h-auto text-xs font-medium"
+          >
+            Monthly Sales
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-3 w-3" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+            )}
+          </Button>
+        </div>
       ),
       cell: ({ row }) => (
         <div className="text-right">
-          <DataCell value={row.getValue('supplyDemandRatio')} format="decimal" decimals={1} />
+          <span className="text-sm tabular-nums">
+            <DataCell value={row.original.purchases} format="number" />
+          </span>
         </div>
       ),
-      size: 120,
+      size: 110,
     },
     {
       accessorKey: 'avgCpc',
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Avg CPC
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
+        <div className="text-right">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="hover:bg-transparent p-0 h-auto text-xs font-medium"
+          >
+            CPC
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-3 w-3" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+            )}
+          </Button>
+        </div>
       ),
       cell: ({ row }) => (
         <div className="text-right">
-          <DataCell value={row.getValue('avgCpc')} format="currency" />
+          <span className="text-sm tabular-nums">
+            <DataCell value={row.getValue('avgCpc')} format="currency" />
+          </span>
         </div>
       ),
-      size: 100,
+      size: 80,
     },
     {
-      accessorKey: 'bidMin',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Min Bid
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="text-right">
-          <DataCell value={row.original.bidMin} format="currency" />
-        </div>
-      ),
-      size: 100,
-    },
-    {
-      accessorKey: 'bidMax',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Max Bid
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="text-right">
-          <DataCell value={row.original.bidMax} format="currency" />
-        </div>
-      ),
-      size: 100,
-    },
-    {
-      accessorKey: 'monopolyClickRate',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="hover:bg-transparent p-0 h-auto font-semibold w-full text-right justify-end"
-        >
-          Monopoly
-          {column.getIsSorted() === 'asc' ? (
-            <ArrowUp className="ml-2 h-4 w-4" />
-          ) : column.getIsSorted() === 'desc' ? (
-            <ArrowDown className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      ),
-      cell: ({ row }) => (
-        <div className="text-right">
-          <DataCell value={row.getValue('monopolyClickRate')} format="percentage" decimals={0} />
-        </div>
-      ),
-      size: 110,
-    },
-    {
-      id: 'potential',
-      header: 'Potential Value',
+      id: 'ppcStrategy',
+      header: () => <div className="text-center text-xs font-medium">PPC Strategy</div>,
       cell: ({ row }) => {
         const volume = row.original.searchVolume
-        const cpc = row.original.avgCpc
         const competition = row.original.competitionScore
+        const cpc = row.original.avgCpc || 0
         
-        // Simple potential calculation: volume * cpc * (10 - competition) / 10
-        const potential = Math.round((volume * cpc * (10 - competition)) / 10)
+        // Determine strategy based on metrics
+        let strategy = ''
+        let badgeColor = ''
+        let icon = null
+        
+        if (volume >= 5000 && competition <= 30 && cpc <= 2) {
+          strategy = 'Prime Target'
+          badgeColor = 'bg-emerald-100 text-emerald-700'
+          icon = <Target className="h-3 w-3" />
+        } else if (volume >= 2000 && competition <= 50) {
+          strategy = 'Good Bet'
+          badgeColor = 'bg-blue-100 text-blue-700'
+          icon = <TrendingUp className="h-3 w-3" />
+        } else if (cpc >= 3 && competition <= 30) {
+          strategy = 'High Value'
+          badgeColor = 'bg-purple-100 text-purple-700'
+          icon = <DollarSign className="h-3 w-3" />
+        } else {
+          strategy = 'Test First'
+          badgeColor = 'bg-gray-100 text-gray-700'
+          icon = <AlertCircle className="h-3 w-3" />
+        }
         
         return (
-          <div className="font-medium text-green-600">
-            ${potential.toLocaleString()}
+          <div className="flex justify-center">
+            <Badge 
+              variant="secondary" 
+              className={cn(
+                "text-xs px-2 py-0.5 border-0 flex items-center gap-1",
+                badgeColor
+              )}
+            >
+              {icon}
+              {strategy}
+            </Badge>
           </div>
         )
       },
       size: 120,
+    },
+    {
+      id: 'estimatedROI',
+      header: ({ column }) => (
+        <div className="text-right">
+          <span className="text-xs font-medium">Est. ROI</span>
+        </div>
+      ),
+      cell: ({ row }) => {
+        const volume = row.original.searchVolume
+        const cpc = row.original.avgCpc || 1
+        const purchaseRate = row.original.purchaseRate || 0.02
+        const avgPrice = row.original.avgPrice || 25
+        
+        // Simple ROI calculation
+        const monthlyClicks = volume * 0.05 // Assume 5% CTR
+        const monthlyCost = monthlyClicks * cpc
+        const monthlySales = monthlyClicks * purchaseRate
+        const monthlyRevenue = monthlySales * avgPrice
+        const roi = monthlyRevenue > 0 ? ((monthlyRevenue - monthlyCost) / monthlyCost) * 100 : 0
+        
+        return (
+          <div className="text-right">
+            <span className={cn(
+              "text-sm tabular-nums font-medium",
+              roi > 100 ? "text-green-600" : roi > 0 ? "text-blue-600" : "text-gray-500"
+            )}>
+              {roi > 0 ? `${Math.round(roi)}%` : '-'}
+            </span>
+          </div>
+        )
+      },
+      size: 90,
     },
   ], [])
 
@@ -474,129 +419,136 @@ export function OpportunitiesTab({
   // Export functionality
   const handleExport = () => {
     const csvContent = [
-      'Keyword,Search Volume,Competition Score,Opportunity Type,Avg CPC,Supply Demand Ratio,Growth Trend,Competitors Ranking,Competitors In Top 15,Competitor Strength',
-      ...table.getFilteredRowModel().rows.map(row => {
-        const original = row.original
-        return [
-          `"${original.keyword}"`,
-          original.searchVolume,
-          original.competitionScore,
-          original.opportunityType || '',
-          original.avgCpc,
-          original.supplyDemandRatio || '',
-          original.growthTrend || '',
-          original.competitorPerformance?.competitorsRanking || '',
-          original.competitorPerformance?.competitorsInTop15 || '',
-          original.competitorPerformance?.competitorStrength || ''
-        ].join(',')
-      })
+      'Keyword,Type,Search Volume,Competition Score,Monthly Sales,CPC,Supply/Demand,Purchase Rate,Avg Price',
+      ...data.map(item => [
+        item.keyword,
+        item.opportunityType || '',
+        item.searchVolume,
+        item.competitionScore,
+        item.purchases || 0,
+        item.avgCpc || 0,
+        item.supplyDemandRatio || 0,
+        item.purchaseRate || 0,
+        item.avgPrice || 0
+      ].join(','))
     ].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `keyword-opportunities-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `opportunities-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   return (
-    <div className={cn('space-y-6', className)}>
+    <div className={cn('space-y-4', className)}>
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Opportunities
-            </CardTitle>
-            <Target className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.totalOpportunities}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {summaryStats.highVolumeOpps} high-volume (5K+)
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+          <div className="flex items-start gap-3">
+            <div className="p-1.5 bg-emerald-50 rounded">
+              <Target className="h-4 w-4 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-600">Total Opportunities</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{summaryStats.totalOpportunities}</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                {summaryStats.highValueOpps} high-value
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Volume
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.totalVolume.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Combined search volume
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+          <div className="flex items-start gap-3">
+            <div className="p-1.5 bg-blue-50 rounded">
+              <BarChart3 className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-600">Total Volume</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{summaryStats.totalVolume.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                combined searches
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              High-Value Opps
-            </CardTitle>
-            <Star className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.highValueOpps}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              High volume + low competition
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+          <div className="flex items-start gap-3">
+            <div className="p-1.5 bg-green-50 rounded">
+              <DollarSign className="h-4 w-4 text-green-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-600">Avg CPC</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                <DataCell value={summaryStats.avgCpc} format="currency" />
+              </p>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                per click
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg Purchase Rate
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{(summaryStats.avgPurchaseRate * 100).toFixed(2)}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Conversion potential
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+          <div className="flex items-start gap-3">
+            <div className="p-1.5 bg-purple-50 rounded">
+              <Sparkles className="h-4 w-4 text-purple-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-600">Opportunity Mix</p>
+              <div className="flex items-center gap-1 mt-1">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-purple-100 text-purple-700 border-0">
+                  {summaryStats.marketGaps}
+                </Badge>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 border-0">
+                  {summaryStats.lowCompetition}
+                </Badge>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 border-0">
+                  {summaryStats.weakCompetitors}
+                </Badge>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                gap / low / weak
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-
-      {/* Search and Filters */}
+      {/* Search and Controls */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
             <Input
               placeholder="Search opportunities..."
               value={globalFilter ?? ''}
               onChange={(event) => setGlobalFilter(String(event.target.value))}
-              className="pl-8 w-64"
+              className="pl-9 pr-9 h-9 text-sm w-64"
             />
             {globalFilter && (
               <Button
                 variant="ghost"
                 onClick={() => setGlobalFilter('')}
-                className="absolute right-1 top-1 h-6 w-6 p-0"
+                className="absolute right-1 top-1 h-7 w-7 p-0 hover:bg-transparent"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5 text-gray-400" />
               </Button>
             )}
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                <Eye className="mr-2 h-4 w-4" />
+              <Button variant="outline" size="sm" className="h-9">
+                <Eye className="mr-2 h-3.5 w-3.5" />
                 Columns
-                <ChevronDown className="ml-2 h-4 w-4" />
+                <ChevronDown className="ml-2 h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -607,7 +559,7 @@ export function OpportunitiesTab({
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
-                      className="capitalize"
+                      className="text-sm"
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) =>
                         column.toggleVisibility(!!value)
@@ -620,22 +572,26 @@ export function OpportunitiesTab({
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
+          <Button variant="outline" size="sm" onClick={handleExport} className="h-9">
+            <Download className="mr-2 h-3.5 w-3.5" />
+            Export
           </Button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-lg border border-gray-200 overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-gray-50/50 hover:bg-gray-50/50">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} style={{ width: header.getSize() }}>
+                    <TableHead 
+                      key={header.id} 
+                      style={{ width: header.getSize() }}
+                      className="h-9 px-3 py-2"
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -653,11 +609,10 @@ export function OpportunitiesTab({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
-                  className="hover:bg-muted/50"
+                  className="hover:bg-gray-50/50 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-2.5 px-3">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -670,11 +625,11 @@ export function OpportunitiesTab({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-32 text-center"
                 >
-                  <div className="flex flex-col items-center space-y-2">
-                    <Target className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2">
+                    <Target className="h-8 w-8 text-gray-300" />
+                    <p className="text-sm text-gray-500">
                       No opportunities found
                     </p>
                   </div>
@@ -686,9 +641,9 @@ export function OpportunitiesTab({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between space-x-2">
-        <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">Rows per page</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-gray-600">Rows per page</p>
           <Select
             value={`${pageSize}`}
             onValueChange={(value) => {
@@ -696,12 +651,12 @@ export function OpportunitiesTab({
               table.setPageSize(Number(value))
             }}
           >
-            <SelectTrigger className="h-8 w-16">
+            <SelectTrigger className="h-7 w-14 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 25, 50, 100].map((size) => (
-                <SelectItem key={size} value={`${size}`}>
+                <SelectItem key={size} value={`${size}`} className="text-xs">
                   {size}
                 </SelectItem>
               ))}
@@ -709,56 +664,49 @@ export function OpportunitiesTab({
           </Select>
         </div>
         
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex w-24 items-center justify-center text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of{' '}
-            {table.getPageCount()}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-1 px-2">
+            <span className="text-xs text-gray-600">
+              Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+            </span>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              ⟪
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              ⟨
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              ⟩
-            </Button>
-            <Button
-              variant="outline"
-              className="h-8 w-8 p-0"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              ⟫
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
         </div>
-      </div>
-
-      {/* Summary */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <p>
-          Showing {table.getFilteredRowModel().rows.length} of {data.length} opportunities
-        </p>
-        <p>
-          Filtered volume: {table.getFilteredRowModel().rows.reduce((sum, row) => sum + row.original.searchVolume, 0).toLocaleString()}
-        </p>
       </div>
     </div>
   )

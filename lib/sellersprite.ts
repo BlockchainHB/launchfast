@@ -219,31 +219,44 @@ export class SellerSpriteClient {
         keyword: item.keyword,
         searchVolume: item.searches,
         rankingPosition: item.rankPosition?.position || null,
-        trafficPercentage: item.purchaseRate * 100, // Convert to percentage
+        trafficPercentage: item.trafficPercentage,
         cpc: item.bid,
         competitionScore: 0, // Will be calculated based on other factors
         // Enhanced reverse ASIN fields
         products: item.products,
+        purchases: item.purchases,
         purchaseRate: item.purchaseRate,
         // PPC/Advertising metrics
-        bidMax: item.bid,
+        bidMax: item.bidMax || item.bid, // Use bidMax if available, fallback to bid
         bidMin: item.bidMin,
+        // Use latest30daysAds for adProducts if available
+        adProducts: item.latest30daysAds,
         badges: item.badges ? (Array.isArray(item.badges) ? item.badges : [item.badges]) : undefined,
         // Ranking data
-        rank: item.rank,
-        position: item.position,
-        page: item.page,
+        rank: item.searchesRank,
+        position: item.adPosition?.position,
+        page: item.adPosition?.page,
         // Advertising competition
-        latest1DaysAds: item.Latest_1_days_Ads,
-        latest7DaysAds: item.Latest_7_days_Ads,
-        latest30DaysAds: item.Latest_30_days_Ads,
+        latest1DaysAds: item.latest1daysAds,
+        latest7DaysAds: item.latest7daysAds,
+        latest30DaysAds: item.latest30daysAds,
         // Market analysis
         supplyDemandRatio: item.supplyDemandRatio,
         trafficKeywordType: item.trafficKeywordType,
         conversionKeywordType: item.conversionKeywordType,
         // Time-based metrics
         calculatedWeeklySearches: item.calculatedWeeklySearches,
-        updatedTime: item.updatedTime || item.updated_time
+        updatedTime: item.updatedTime || item.updated_time,
+        // Additional enhanced fields
+        monopolyClickRate: item.monopolyClickRate,
+        titleDensity: item.titleDensity,
+        spr: item.spr,
+        clicks: item.clicks,
+        impressions: item.impressions,
+        naturalRatio: item.naturalRatio,
+        adRatio: item.adRatio,
+        top3ClickingRate: item.top3ClickingRate,
+        top3ConversionRate: item.top3ConversionRate
       }))
 
       // No caching - fresh keyword data ensures accuracy

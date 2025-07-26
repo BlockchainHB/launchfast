@@ -4,6 +4,7 @@ import { keywordResearchService, type KeywordResearchOptions } from '@/lib/keywo
 import { kwDB } from '@/lib/keyword-research-db'
 import { kwCache } from '@/lib/keyword-research-cache'
 import { Logger } from '@/lib/logger'
+import crypto from 'crypto'
 
 // Progress event matching existing pattern
 interface ProgressEvent {
@@ -156,8 +157,46 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Perform research using service layer
-      const finalResult = await keywordResearchService.researchKeywords(asins, options, progressCallback)
+      // Create session ID early so we can save raw data immediately
+      const sessionId = crypto.randomUUID()
+      
+      // Create the session in the database early
+      try {
+        await kwDB.createSession(userId, sessionId, sessionName)
+        Logger.dev.trace(`Created session ${sessionId} early for streaming research`)
+      } catch (error) {
+        Logger.error('Failed to create session early', error)
+        sendEvent(controller, {
+          phase: 'error',
+          message: 'Failed to create research session',
+          progress: 0,
+          timestamp: new Date().toISOString()
+        }, isClosed)
+        if (!isClosed) {
+          controller.close()
+          isClosed = true
+        }
+        return
+      }
+      
+      // Create a custom progress callback that saves raw keywords
+      const enhancedProgressCallback = async (phase: string, message: string, progress: number, data?: any) => {
+        progressCallback(phase, message, progress, data)
+        
+        // If this is keyword extraction phase and we have keywords, save them immediately
+        if (phase === 'keyword_extraction' && data?.keywords && data?.asin) {
+          try {
+            await kwDB.saveRawKeywords(sessionId, data.asin, data.keywords)
+            Logger.dev.trace(`Saved raw keywords for ${data.asin} to session ${sessionId}`)
+          } catch (error) {
+            Logger.error('Failed to save raw keywords', error)
+            // Don't fail the whole process, continue
+          }
+        }
+      }
+
+      // Perform research using service layer with enhanced callback
+      const finalResult = await keywordResearchService.researchKeywords(asins, options, enhancedProgressCallback)
       
       // Check if controller was closed during research
       if (isClosed) {
@@ -166,7 +205,6 @@ export async function GET(request: NextRequest) {
       }
 
       // Save to database in background
-      let sessionId: string | undefined
       try {
         sendEvent(controller, {
           phase: 'complete',
@@ -176,7 +214,8 @@ export async function GET(request: NextRequest) {
           timestamp: new Date().toISOString()
         }, isClosed)
 
-        sessionId = await kwDB.saveResearchSession(userId, asins, finalResult, options, sessionName)
+        // Save the full session (will update existing keywords)
+        await kwDB.saveResearchSession(userId, asins, finalResult, options, sessionName, sessionId)
         
         // Cache the results
         await kwCache.cacheSessionResult(userId, sessionId, finalResult)

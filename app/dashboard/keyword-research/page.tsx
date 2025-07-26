@@ -378,23 +378,23 @@ export default function Page() {
                     )}
 
                     {/* Active Options Display */}
-                    {(researchOptions.includeOpportunities || researchOptions.includeGapAnalysis) && (
+                        {(researchOptions.includeOpportunities || researchOptions.includeGapAnalysis) && (
                       <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
                         <span>Active:</span>
                         <div className="flex gap-1">
-                          {researchOptions.includeOpportunities && (
+                            {researchOptions.includeOpportunities && (
                             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
                               Opportunities
                             </span>
-                          )}
-                          {researchOptions.includeGapAnalysis && (
+                            )}
+                            {researchOptions.includeGapAnalysis && (
                             <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">
                               Gap Analysis
                             </span>
                           )}
-                        </div>
-                      </div>
-                    )}
+                            </div>
+                          </div>
+                      )}
                   </div>
                 </div>
 
@@ -402,12 +402,12 @@ export default function Page() {
               </div>
 
               {/* Keyword Research Results - Now without the Card wrapper */}
-              <KeywordResearchResultsTable
-                data={keywordResearchData}
-                loading={isResearching}
-                error={error}
-                onRefresh={handleRefresh}
-              />
+                <KeywordResearchResultsTable
+                  data={keywordResearchData}
+                  loading={isResearching}
+                  error={error}
+                  onRefresh={handleRefresh}
+                />
             </div>
           </div>
         </div>

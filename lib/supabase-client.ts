@@ -276,7 +276,25 @@ export const QueryBuilders = {
           keyword_research_keywords (
             keyword_text,
             search_volume,
-            cpc
+            cpc,
+            purchases,
+            purchase_rate,
+            monopoly_click_rate,
+            products_count,
+            ad_products_count,
+            supply_demand_ratio,
+            avg_price,
+            avg_rating,
+            bid_min,
+            bid_max,
+            title_density,
+            relevancy_score,
+            word_count,
+            spr_rank,
+            search_rank,
+            departments,
+            amazon_choice,
+            is_supplement
           )
         `)
         .eq('session_id', sessionId),
@@ -285,11 +303,52 @@ export const QueryBuilders = {
       opportunities: supabaseServer
         .from(TABLES.OPPORTUNITIES)
         .select(`
-          *,
+          session_id,
+          keyword_id,
+          opportunity_type,
+          competition_score,
+          supply_demand_ratio,
+          competitor_performance,
+          purchases,
+          purchase_rate,
+          monopoly_click_rate,
+          cvs_share_rate,
+          products_count,
+          ad_products_count,
+          avg_price,
+          avg_rating,
+          bid_min,
+          bid_max,
+          title_density,
+          relevancy_score,
+          word_count,
+          spr_rank,
+          search_rank,
+          departments,
+          amazon_choice,
+          is_supplement,
           keyword_research_keywords (
             keyword_text,
             search_volume,
-            cpc
+            cpc,
+            purchases,
+            purchase_rate,
+            monopoly_click_rate,
+            products_count,
+            ad_products_count,
+            supply_demand_ratio,
+            avg_price,
+            avg_rating,
+            bid_min,
+            bid_max,
+            title_density,
+            relevancy_score,
+            word_count,
+            spr_rank,
+            search_rank,
+            departments,
+            amazon_choice,
+            is_supplement
           )
         `)
         .eq('session_id', sessionId),
@@ -302,7 +361,25 @@ export const QueryBuilders = {
           keyword_research_keywords (
             keyword_text,
             search_volume,
-            cpc
+            cpc,
+            purchases,
+            purchase_rate,
+            monopoly_click_rate,
+            products_count,
+            ad_products_count,
+            supply_demand_ratio,
+            avg_price,
+            avg_rating,
+            bid_min,
+            bid_max,
+            title_density,
+            relevancy_score,
+            word_count,
+            spr_rank,
+            search_rank,
+            departments,
+            amazon_choice,
+            is_supplement
           )
         `)
         .eq('session_id', sessionId)
