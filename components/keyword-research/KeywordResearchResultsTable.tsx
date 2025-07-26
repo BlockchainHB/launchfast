@@ -52,6 +52,9 @@ interface TabConfig {
 
 export function KeywordResearchResultsTable({ 
   data, 
+  loading = false,
+  error = null,
+  onRefresh,
   className 
 }: KeywordResearchResultsTableProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('overview')
