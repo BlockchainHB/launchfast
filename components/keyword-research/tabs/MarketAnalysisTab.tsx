@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -85,6 +85,12 @@ export function MarketAnalysisTab({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [globalFilter, setGlobalFilter] = useState('')
   const [pageSize, setPageSize] = useState(25)
+  const [pageIndex, setPageIndex] = useState(0)
+
+  // Reset page index when data or global filter changes
+  useEffect(() => {
+    setPageIndex(0)
+  }, [data, globalFilter])
 
   // Detect if we're dealing with enhanced data (OpportunityData) or basic data (AggregatedKeyword)
   const isEnhancedData = (data.length > 0 && 'competitionScore' in data[0]) as boolean
@@ -367,11 +373,20 @@ export function MarketAnalysisTab({
       globalFilter,
       pagination: {
         pageSize,
-        pageIndex: 0,
+        pageIndex,
       },
     },
     onGlobalFilterChange: setGlobalFilter,
-    pageCount: Math.ceil(data.length / pageSize),
+    onPaginationChange: (updater) => {
+      if (typeof updater === 'function') {
+        const newPagination = updater({ pageSize, pageIndex })
+        setPageSize(newPagination.pageSize)
+        setPageIndex(newPagination.pageIndex)
+      } else {
+        setPageSize(updater.pageSize)
+        setPageIndex(updater.pageIndex)
+      }
+    },
   })
 
   // Export function
@@ -582,8 +597,11 @@ export function MarketAnalysisTab({
           <Select
             value={`${pageSize}`}
             onValueChange={(value) => {
-              setPageSize(Number(value))
-              table.setPageSize(Number(value))
+              const newPageSize = Number(value)
+              setPageSize(newPageSize)
+              setPageIndex(0)
+              table.setPageSize(newPageSize)
+              table.setPageIndex(0)
             }}
           >
               <SelectTrigger className="h-8 w-[65px] text-xs">
