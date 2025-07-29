@@ -419,3 +419,225 @@ export const passwordResetConfirmationEmail = (userEmail: string) => {
     `
   });
 };
+
+// Trial reminder email template
+export const trialReminderEmail = (daysRemaining: number, promoCodeUsed: string, userEmail: string) => {
+  const isUrgent = daysRemaining <= 3;
+  const isCritical = daysRemaining <= 1;
+  
+  let urgencyText = '';
+  let headingText = '';
+  let ctaButtonColor = '#007bff';
+  
+  if (isCritical) {
+    urgencyText = '🚨 Final Notice';
+    headingText = `${daysRemaining === 0 ? 'Your Trial Expires Today!' : 'Only 1 Day Left in Your Trial!'}`;
+    ctaButtonColor = '#dc3545'; // Red for critical
+  } else if (isUrgent) {
+    urgencyText = '⚠️ Important Reminder';
+    headingText = `${daysRemaining} Days Left in Your Free Trial`;
+    ctaButtonColor = '#fd7e14'; // Orange for urgent
+  } else {
+    urgencyText = '✨ Trial Reminder';
+    headingText = `${daysRemaining} Days Remaining in Your Free Trial`;
+  }
+
+  return baseEmailTemplate({
+    preheaderText: `${urgencyText} - Don't lose access to your Amazon intelligence data. Subscribe now to continue using LaunchFast.`,
+    mainHeading: headingText,
+    bodyContent: `
+      <p class="body-text" style="margin-bottom: 24px;">
+        Hi there! Your 7-day free trial of LaunchFast is coming to an end. You have <strong>${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining</strong> to continue accessing your Amazon product intelligence dashboard.
+      </p>
+      
+      ${promoCodeUsed ? `
+      <div style="background-color: #e7f3ff; border: 1px solid #bee5eb; border-radius: 4px; padding: 16px; margin: 24px 0;">
+        <p class="body-text" style="margin: 0; color: #0c5460;">
+          <strong>🎉 Webinar Attendee:</strong> You used code <strong>${promoCodeUsed}</strong> to access this trial.
+        </p>
+      </div>
+      ` : ''}
+      
+      <p class="body-text" style="margin-bottom: 24px;">
+        <strong>What you'll lose access to:</strong>
+      </p>
+      <ul style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 16px; line-height: 24px; color: #333333; margin: 0 0 24px 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Product research and ASIN analysis</li>
+        <li style="margin-bottom: 8px;">Keyword mining and optimization tools</li>
+        <li style="margin-bottom: 8px;">Market opportunity identification</li>
+        <li style="margin-bottom: 8px;">Competitor analysis insights</li>
+        <li style="margin-bottom: 8px;">Real-time BSR tracking</li>
+        <li style="margin-bottom: 8px;">All your saved research data</li>
+      </ul>
+      
+      ${isCritical ? `
+      <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; padding: 16px; margin: 24px 0;">
+        <p class="body-text" style="margin: 0; color: #721c24;">
+          <strong>⏰ Time is running out!</strong> Your trial expires ${daysRemaining === 0 ? 'today' : 'tomorrow'}. Subscribe now to avoid losing access to all your research data.
+        </p>
+      </div>
+      ` : ''}
+    `,
+    ctaText: "Subscribe Now - $199/month",
+    ctaUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}/api/stripe/create-checkout?plan=pro&email=${encodeURIComponent(userEmail)}`,
+    additionalContent: `
+      <div style="text-align: center; margin: 32px 0;">
+        <p class="body-text" style="margin-bottom: 16px;">
+          <strong>Full access to LaunchFast Pro includes:</strong>
+        </p>
+        <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; text-align: left;">
+          <ul style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 16px; line-height: 24px; color: #333333; margin: 0; padding-left: 20px;">
+            <li style="margin-bottom: 8px;">✅ Unlimited product research</li>
+            <li style="margin-bottom: 8px;">✅ Advanced keyword analysis</li>
+            <li style="margin-bottom: 8px;">✅ Market trend insights</li>
+            <li style="margin-bottom: 8px;">✅ Competitor tracking</li>
+            <li style="margin-bottom: 8px;">✅ Export capabilities</li>
+            <li style="margin-bottom: 8px;">✅ Priority support</li>
+            <li style="margin-bottom: 0;">✅ Cancel anytime</li>
+          </ul>
+        </div>
+      </div>
+      
+      <p class="body-text" style="margin-bottom: 16px; text-align: center;">
+        <strong>Questions about LaunchFast?</strong>
+      </p>
+      <p class="body-text" style="margin-bottom: 24px; text-align: center;">
+        Reply to this email or contact us at <a href="mailto:launchfastlegacyx@gmail.com" style="color: #007bff;">launchfastlegacyx@gmail.com</a>
+      </p>
+    `
+  }).replace('background-color: #007bff;', `background-color: ${ctaButtonColor};`)
+    .replace('background-color: #0056b3;', `background-color: ${ctaButtonColor === '#007bff' ? '#0056b3' : ctaButtonColor};`);
+};
+
+// Trial expired email template
+export const trialExpiredEmail = (promoCodeUsed: string, userEmail: string) => {
+  return baseEmailTemplate({
+    preheaderText: "Your LaunchFast trial has expired. Subscribe now to regain access to your Amazon intelligence dashboard and data.",
+    mainHeading: "Your Free Trial Has Expired",
+    bodyContent: `
+      <p class="body-text" style="margin-bottom: 24px;">
+        Your 7-day free trial of LaunchFast has ended. Don't worry - your data is safe and waiting for you when you subscribe!
+      </p>
+      
+      ${promoCodeUsed ? `
+      <div style="background-color: #e7f3ff; border: 1px solid #bee5eb; border-radius: 4px; padding: 16px; margin: 24px 0;">
+        <p class="body-text" style="margin: 0; color: #0c5460;">
+          <strong>🎉 Thank you for being a webinar attendee!</strong> You used code <strong>${promoCodeUsed}</strong> for your trial.
+        </p>
+      </div>
+      ` : ''}
+      
+      <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 16px; margin: 24px 0;">
+        <p class="body-text" style="margin: 0; color: #856404;">
+          <strong>🔒 Your Research Data is Secure:</strong> All your saved research, keywords, and analysis are safely stored and will be immediately available when you subscribe.
+        </p>
+      </div>
+      
+      <p class="body-text" style="margin-bottom: 24px;">
+        <strong>What you're missing out on:</strong>
+      </p>
+      <ul style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 16px; line-height: 24px; color: #333333; margin: 0 0 24px 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Access to your saved product research</li>
+        <li style="margin-bottom: 8px;">New market opportunities and insights</li>
+        <li style="margin-bottom: 8px;">Keyword mining and analysis tools</li>
+        <li style="margin-bottom: 8px;">Competitor tracking features</li>
+        <li style="margin-bottom: 8px;">Export and reporting capabilities</li>
+      </ul>
+      
+      <p class="body-text" style="margin-bottom: 24px;">
+        Subscribe now to pick up exactly where you left off. Your dashboard and all data will be restored immediately.
+      </p>
+    `,
+    ctaText: "Reactivate Your Account - $199/month",
+    ctaUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}/api/stripe/create-checkout?plan=pro&email=${encodeURIComponent(userEmail)}`,
+    securityTitle: "Need Help?",
+    securityText: "If you have questions about your subscription or need assistance, reply to this email or contact our support team at launchfastlegacyx@gmail.com. We're here to help!",
+    additionalContent: `
+      <div style="text-align: center; margin: 32px 0;">
+        <p class="body-text" style="margin-bottom: 16px;">
+          <strong>LaunchFast Pro Features:</strong>
+        </p>
+        <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; text-align: left;">
+          <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+            <div style="flex: 1; min-width: 250px;">
+              <ul style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 14px; line-height: 20px; color: #333333; margin: 0; padding-left: 16px;">
+                <li style="margin-bottom: 6px;">Unlimited product searches</li>
+                <li style="margin-bottom: 6px;">Advanced filtering options</li>
+                <li style="margin-bottom: 6px;">Historical trend data</li>
+                <li style="margin-bottom: 6px;">Bulk export capabilities</li>
+              </ul>
+            </div>
+            <div style="flex: 1; min-width: 250px;">
+              <ul style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 14px; line-height: 20px; color: #333333; margin: 0; padding-left: 16px;">
+                <li style="margin-bottom: 6px;">Real-time BSR tracking</li>
+                <li style="margin-bottom: 6px;">Keyword opportunity scoring</li>
+                <li style="margin-bottom: 6px;">Priority customer support</li>
+                <li style="margin-bottom: 6px;">Cancel anytime</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+  });
+};
+
+// Trial welcome email template
+export const trialWelcomeEmail = (promoCodeUsed: string, trialEndDate: string, userEmail: string) => {
+  return baseEmailTemplate({
+    preheaderText: "Welcome to your 7-day LaunchFast trial! Start exploring powerful Amazon product intelligence tools right away.",
+    mainHeading: "🎉 Your Free Trial is Now Active!",
+    bodyContent: `
+      <p class="body-text" style="margin-bottom: 24px;">
+        Congratulations! Your 7-day free trial of LaunchFast is now active and ready to use.
+      </p>
+      
+      ${promoCodeUsed ? `
+      <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; padding: 16px; margin: 24px 0;">
+        <p class="body-text" style="margin: 0; color: #0c5460;">
+          <strong>✨ Webinar Special:</strong> You successfully redeemed code <strong>${promoCodeUsed}</strong> for exclusive access!
+        </p>
+      </div>
+      ` : ''}
+      
+      <div style="background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px; padding: 16px; margin: 24px 0;">
+        <p class="body-text" style="margin: 0; color: #155724;">
+          <strong>⏰ Trial Details:</strong> Your free trial ends on <strong>${new Date(trialEndDate).toLocaleDateString()}</strong>. Mark your calendar!
+        </p>
+      </div>
+      
+      <p class="body-text" style="margin-bottom: 24px;">
+        <strong>Get started with these powerful features:</strong>
+      </p>
+      <ul style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 16px; line-height: 24px; color: #333333; margin: 0 0 24px 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;"><strong>Product Research:</strong> Analyze any ASIN for profitability insights</li>
+        <li style="margin-bottom: 8px;"><strong>Keyword Mining:</strong> Discover high-opportunity keywords</li>
+        <li style="margin-bottom: 8px;"><strong>Market Analysis:</strong> Identify trending products and niches</li>
+        <li style="margin-bottom: 8px;"><strong>Competitor Tracking:</strong> Monitor competitor performance</li>
+        <li style="margin-bottom: 8px;"><strong>BSR Monitoring:</strong> Track Best Seller Rank changes</li>
+      </ul>
+    `,
+    ctaText: "Start Exploring LaunchFast",
+    ctaUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://launchfastlegacyx.com'}/dashboard`,
+    additionalContent: `
+      <div style="background-color: #f8f9fa; border-radius: 8px; padding: 24px; margin: 32px 0;">
+        <p class="body-text" style="margin-bottom: 16px;">
+          <strong>💡 Quick Start Tips:</strong>
+        </p>
+        <ol style="font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 16px; line-height: 24px; color: #333333; margin: 0; padding-left: 20px;">
+          <li style="margin-bottom: 12px;">Start by researching a product you're familiar with to see LaunchFast in action</li>
+          <li style="margin-bottom: 12px;">Use the keyword mining tool to discover new opportunities in your niche</li>
+          <li style="margin-bottom: 12px;">Save interesting products to your dashboard for easy reference</li>
+          <li style="margin-bottom: 12px;">Explore different markets to understand the breadth of available data</li>
+        </ol>
+      </div>
+      
+      <p class="body-text" style="margin-bottom: 16px; text-align: center;">
+        <strong>Questions or need help getting started?</strong>
+      </p>
+      <p class="body-text" style="margin-bottom: 24px; text-align: center;">
+        Our support team is here to help! Email us at <a href="mailto:launchfastlegacyx@gmail.com" style="color: #007bff;">launchfastlegacyx@gmail.com</a>
+      </p>
+    `
+  });
+};

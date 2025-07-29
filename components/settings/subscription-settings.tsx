@@ -8,8 +8,9 @@ import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
-import { IconCreditCard, IconExternalLink, IconCheck, IconX, IconAlertTriangle } from '@tabler/icons-react'
+import { IconCreditCard, IconExternalLink, IconCheck, IconX, IconAlertTriangle, IconClock, IconSparkles } from '@tabler/icons-react'
 import { SUBSCRIPTION_PLANS, getSubscriptionPlan, hasUnlimitedSearches } from '@/lib/stripe'
+import { getTrialInfo, getTrialUrgencyMessage, getTrialColorTheme, TrialInfo } from '@/lib/trial-utils'
 
 interface SubscriptionData {
   subscription_tier: string
@@ -41,12 +42,33 @@ export function SubscriptionSettings() {
   const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([])
   const [isManagingSubscription, setIsManagingSubscription] = useState(false)
   const [isCancellingSubscription, setIsCancellingSubscription] = useState(false)
+  const [trialInfo, setTrialInfo] = useState<TrialInfo | null>(null)
 
   useEffect(() => {
     fetchSubscriptionData()
     fetchUsageData()
     fetchBillingHistory()
+    fetchTrialInfo()
   }, [])
+
+  const fetchTrialInfo = async () => {
+    try {
+      const response = await fetch('/api/user/profile')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.id) {
+          // Get trial info using the utility function
+          const response = await fetch('/api/user/trial-info')
+          if (response.ok) {
+            const trialData = await response.json()
+            setTrialInfo(trialData)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load trial data:', error)
+    }
+  }
 
   const fetchSubscriptionData = async () => {
     try {
@@ -124,7 +146,12 @@ export function SubscriptionSettings() {
   }
 
   const handleUpgrade = () => {
-    window.location.href = '/api/subscribe'
+    // For trial users, redirect to standard $199 pricing (not legacy customer pricing)
+    if (subscription?.subscription_tier === 'trial') {
+      window.location.href = '/api/stripe/create-checkout?plan=pro'
+    } else {
+      window.location.href = '/api/subscribe'
+    }
   }
 
   const handleCancelSubscription = async () => {
@@ -191,9 +218,72 @@ export function SubscriptionSettings() {
   const isActive = ['active', 'trialing'].includes(subscription.subscription_status || '')
   const isUnlimited = subscription.subscription_tier === 'unlimited'
   const isPro = subscription.subscription_tier === 'pro'
+  const isTrial = subscription.subscription_tier === 'trial' && subscription.subscription_status === 'trialing'
 
   return (
     <div className="space-y-6">
+      {/* Trial Status Banner (if on trial) */}
+      {isTrial && trialInfo && trialInfo.isActive && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Free Trial Status</h3>
+          <Card className={getTrialColorTheme(trialInfo.urgencyLevel).borderColor}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${getTrialColorTheme(trialInfo.urgencyLevel).bgColor}`}>
+                    <IconSparkles className={`h-5 w-5 ${getTrialColorTheme(trialInfo.urgencyLevel).textColor}`} />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">
+                      {trialInfo.daysRemaining > 0 
+                        ? `${trialInfo.daysRemaining} Days Remaining` 
+                        : `${trialInfo.hoursRemaining} Hours Remaining!`
+                      }
+                    </CardTitle>
+                    <CardDescription>
+                      {getTrialUrgencyMessage(trialInfo)}
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <IconClock className={`h-5 w-5 ${getTrialColorTheme(trialInfo.urgencyLevel).textColor}`} />
+                  <span className={`text-sm font-semibold ${getTrialColorTheme(trialInfo.urgencyLevel).textColor}`}>
+                    {trialInfo.promoCodeUsed && `Code: ${trialInfo.promoCodeUsed}`}
+                  </span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className={`p-4 rounded-lg border ${getTrialColorTheme(trialInfo.urgencyLevel).bgColor} ${getTrialColorTheme(trialInfo.urgencyLevel).borderColor}`}>
+                  <div className="flex items-start gap-3">
+                    <IconAlertTriangle className={`h-5 w-5 mt-0.5 ${getTrialColorTheme(trialInfo.urgencyLevel).textColor}`} />
+                    <div>
+                      <p className={`font-medium ${getTrialColorTheme(trialInfo.urgencyLevel).textColor}`}>
+                        Don't lose access to your data!
+                      </p>
+                      <p className={`text-sm mt-1 ${getTrialColorTheme(trialInfo.urgencyLevel).textColor}`}>
+                        Subscribe now to continue using LaunchFast after your trial expires. 
+                        Your trial will automatically end on {trialInfo.trialEndDate?.toLocaleDateString()}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={handleUpgrade}
+                  className={`w-full text-white font-semibold ${getTrialColorTheme(trialInfo.urgencyLevel).buttonColor}`}
+                  size="lg"
+                >
+                  <IconCreditCard className="h-4 w-4 mr-2" />
+                  Subscribe Now - $199/month
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Current Plan */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Current Plan</h3>

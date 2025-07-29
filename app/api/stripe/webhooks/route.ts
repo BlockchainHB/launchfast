@@ -226,6 +226,12 @@ async function updateUserSubscription(
   const status = subscription.status
   const currentPeriodStart = new Date(subscription.current_period_start * 1000)
   const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+
+  // Check if user has an active promo trial that's converting to paid
+  const { data: trialInfo } = await supabaseAdmin
+    .rpc('get_user_promo_trial_info', { check_user_id: userId })
+
+  const isTrialConversion = trialInfo && status === 'active' && subscription.status === 'active'
   
   console.log('Raw timestamps from Stripe:')
   console.log('current_period_start:', subscription.current_period_start)
@@ -274,6 +280,21 @@ async function updateUserSubscription(
   console.log('User ID:', userId)
   console.log('Subscription Tier:', subscriptionTier)
   console.log('Subscription Status:', status)
+  console.log('Is Trial Conversion:', isTrialConversion)
+
+  // If this is a trial conversion, update the promo code redemption record
+  if (isTrialConversion && trialInfo) {
+    await supabaseAdmin
+      .from('promo_code_redemptions')
+      .update({
+        stripe_subscription_id: subscription.id,
+        status: 'converted',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', trialInfo.redemption_id)
+
+    console.log('Updated promo trial conversion for redemption:', trialInfo.redemption_id)
+  }
 
   // Try to update existing profile first
   const { error: updateError } = await supabaseAdmin

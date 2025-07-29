@@ -6,18 +6,23 @@ import { MarketTableSkeleton } from "@/components/market-table-skeleton"
 import { SectionCards } from "@/components/section-cards"
 import { SiteHeader } from "@/components/site-header"
 import { WelcomeModal } from "@/components/ui/welcome-modal"
+import { TrialBanner } from "@/components/trial-banner"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { useEffect, useState } from "react"
 import { DashboardData, DashboardDataResponse, transformMarketToTableRow } from "@/types/dashboard"
+import { useTrialNotifications } from "@/hooks/use-trial-notifications"
 
 export default function Page() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  
+  // Trial notifications hook
+  const { trialInfo, handleSubscribe } = useTrialNotifications()
 
   useEffect(() => {
     // Update document title
@@ -74,6 +79,13 @@ export default function Page() {
         <AppSidebar variant="inset" onDataRefresh={fetchDashboardData} />
         <SidebarInset>
           <SiteHeader />
+          {/* Trial Banner */}
+          {trialInfo && trialInfo.isActive && (
+            <TrialBanner 
+              trialInfo={trialInfo} 
+              onUpgradeClick={handleSubscribe}
+            />
+          )}
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -100,6 +112,13 @@ export default function Page() {
         <AppSidebar variant="inset" onDataRefresh={fetchDashboardData} />
         <SidebarInset>
           <SiteHeader />
+          {/* Trial Banner */}
+          {trialInfo && trialInfo.isActive && (
+            <TrialBanner 
+              trialInfo={trialInfo} 
+              onUpgradeClick={handleSubscribe}
+            />
+          )}
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -139,6 +158,13 @@ export default function Page() {
       <AppSidebar variant="inset" onDataRefresh={fetchDashboardData} />
       <SidebarInset>
         <SiteHeader />
+        {/* Trial Banner */}
+        {trialInfo && trialInfo.isActive && (
+          <TrialBanner 
+            trialInfo={trialInfo} 
+            onUpgradeClick={handleSubscribe}
+          />
+        )}
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { email, password, full_name, company } = await request.json()
+    const { email, password, full_name, company, promo_code } = await request.json()
 
     if (!email || !password) {
       return NextResponse.json(
@@ -41,27 +41,50 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate promo code if provided
+    let promoRedemption = null
+    if (promo_code && data.user) {
+      try {
+        const { data: redemptionResult, error: promoError } = await supabaseAdmin
+          .rpc('redeem_promo_code', { 
+            promo_code: promo_code.toUpperCase().trim(),
+            user_id: data.user.id
+          })
+
+        if (promoError) {
+          console.error('Promo code redemption failed during signup:', promoError)
+        } else if (redemptionResult?.success) {
+          promoRedemption = redemptionResult
+        }
+      } catch (promoError) {
+        console.error('Promo code processing error during signup:', promoError)
+      }
+    }
+
     // Create user profile
     if (data.user) {
       try {
+        const profileData = {
+          id: data.user.id,
+          full_name: full_name || 'User',
+          company: company || null,
+          invitation_code: null,
+          role: 'user',
+          subscription_tier: promoRedemption ? 'trial' : 'free',
+          subscription_status: promoRedemption ? 'trialing' : 'active',
+          stripe_customer_id: null,
+          stripe_subscription_id: null,
+          subscription_current_period_start: promoRedemption?.trial_start_date || null,
+          subscription_current_period_end: promoRedemption?.trial_end_date || null,
+          subscription_cancel_at_period_end: false,
+          payment_method_last4: null,
+          payment_method_brand: null,
+          promo_code_used: promo_code?.toUpperCase().trim() || null
+        }
+
         const { error: profileError } = await supabaseAdmin
           .from('user_profiles')
-          .upsert({
-            id: data.user.id,
-            full_name: full_name || 'User',
-            company: company || null,
-            invitation_code: null,
-            role: 'user',
-            subscription_tier: 'free',
-            subscription_status: 'active',
-            stripe_customer_id: null,
-            stripe_subscription_id: null,
-            subscription_current_period_start: null,
-            subscription_current_period_end: null,
-            subscription_cancel_at_period_end: false,
-            payment_method_last4: null,
-            payment_method_brand: null
-          })
+          .upsert(profileData)
 
         if (profileError) {
           console.error('Failed to create user profile:', profileError)
@@ -100,7 +123,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       user: data.user,
-      message: 'User created successfully. Please check your email for confirmation.'
+      promoRedemption: promoRedemption,
+      message: promoRedemption 
+        ? `User created successfully with ${promoRedemption.trial_days}-day free trial! Please check your email for confirmation.`
+        : 'User created successfully. Please check your email for confirmation.'
     })
 
   } catch (error) {

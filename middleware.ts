@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { getTrialStatus } from '@/lib/trial-utils'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -79,13 +80,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
   
-  // HARD PAYWALL: Check subscription status for authenticated users on protected routes
+  // ACCESS CONTROL: Check subscription and trial status for authenticated users on protected routes
   if (user && isProtectedRoute) {
     try {
       // Get user profile with subscription info
       const { data: profile, error } = await supabase
         .from('user_profiles')
-        .select('subscription_tier')
+        .select('subscription_tier, subscription_status')
         .eq('id', user.id)
         .single()
       
@@ -100,11 +101,32 @@ export async function middleware(request: NextRequest) {
       }
       
       const subscriptionTier = profile?.subscription_tier || 'expired'
+      const subscriptionStatus = profile?.subscription_status || 'inactive'
       
-      // Hard paywall: Only allow 'pro' or 'unlimited' tier
-      const hasValidSubscription = subscriptionTier === 'pro' || subscriptionTier === 'unlimited'
+      // Check for active paid subscription
+      const hasValidSubscription = (subscriptionTier === 'pro' || subscriptionTier === 'unlimited') && subscriptionStatus === 'active'
       
-      if (!hasValidSubscription) {
+      // Check for active trial
+      let hasTrialAccess = false
+      if (subscriptionTier === 'trial' && subscriptionStatus === 'trialing') {
+        const trialStatus = await getTrialStatus(user.id)
+        hasTrialAccess = trialStatus.hasAccess
+        
+        // If trial expired, update status and deny access
+        if (!trialStatus.hasAccess && trialStatus.trialInfo.status === 'expired') {
+          // Trial has expired, redirect to trial expired page
+          const expiredUrl = new URL('/trial-expired', request.url)
+          if (user.email) {
+            expiredUrl.searchParams.set('email', user.email)
+          }
+          return NextResponse.redirect(expiredUrl)
+        }
+      }
+      
+      // Allow access if user has valid subscription or active trial
+      const hasAccess = hasValidSubscription || hasTrialAccess
+      
+      if (!hasAccess) {
         // Redirect to subscription page with user email for customer verification
         const subscribeUrl = new URL('/api/subscribe', request.url)
         if (user.email) {
@@ -113,7 +135,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(subscribeUrl)
       }
     } catch (error) {
-      console.error('Middleware subscription check error:', error)
+      console.error('Middleware access check error:', error)
       // On error, redirect to subscribe to be safe
       return NextResponse.redirect(new URL('/api/subscribe', request.url))
     }

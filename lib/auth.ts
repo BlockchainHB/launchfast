@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin, UserProfile } from './supabase'
 import { AuthError, User } from '@supabase/supabase-js'
+import { getTrialInfo, TrialInfo } from './trial-utils'
 
 // Authentication helper functions
 export const authHelpers = {
@@ -8,6 +9,7 @@ export const authHelpers = {
   async signUp(email: string, password: string, userData?: {
     full_name?: string
     company?: string
+    promo_code?: string
   }): Promise<{
     user?: User
     error?: string
@@ -23,7 +25,8 @@ export const authHelpers = {
           email,
           password,
           full_name: userData?.full_name || '',
-          company: userData?.company || ''
+          company: userData?.company || '',
+          promo_code: userData?.promo_code || ''
         })
       })
 
@@ -117,6 +120,35 @@ export const authHelpers = {
       return profile
     } catch (error) {
       return null
+    }
+  },
+
+  // Get user profile with trial information
+  async getUserProfileWithTrial(userId: string): Promise<{
+    profile: UserProfile | null
+    trialInfo: TrialInfo
+  }> {
+    try {
+      const [profile, trialInfo] = await Promise.all([
+        this.getUserProfile(userId),
+        getTrialInfo(userId)
+      ])
+
+      return { profile, trialInfo }
+    } catch (error) {
+      return { 
+        profile: null, 
+        trialInfo: {
+          isActive: false,
+          daysRemaining: 0,
+          hoursRemaining: 0,
+          trialEndDate: null,
+          status: 'none',
+          urgencyLevel: 'low',
+          promoCodeUsed: null,
+          redemptionId: null
+        }
+      }
     }
   },
 

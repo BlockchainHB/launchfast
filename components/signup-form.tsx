@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { authHelpers } from '@/lib/auth'
-import { GraduationCap, Sparkles, Mail } from 'lucide-react'
+import { GraduationCap, Sparkles, Mail, Tag, CheckCircle, AlertCircle } from 'lucide-react'
 
 export function SignupForm({
   className,
@@ -30,8 +30,67 @@ export function SignupForm({
     password: '',
     confirmPassword: '',
     full_name: '',
-    company: ''
+    company: '',
+    promo_code: ''
   })
+  const [promoValidation, setPromoValidation] = useState<{
+    isValidating: boolean
+    isValid: boolean | null
+    message: string
+    trialDays?: number
+  }>({
+    isValidating: false,
+    isValid: null,
+    message: ''
+  })
+
+  const validatePromoCode = async (code: string) => {
+    if (!code.trim()) {
+      setPromoValidation({ isValidating: false, isValid: null, message: '' })
+      return
+    }
+
+    setPromoValidation({ isValidating: true, isValid: null, message: 'Validating...' })
+
+    try {
+      const response = await fetch('/api/promo-codes/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim() })
+      })
+
+      const result = await response.json()
+
+      if (result.valid) {
+        setPromoValidation({
+          isValidating: false,
+          isValid: true,
+          message: `Valid! Get ${result.promoCode.trialDays} days free trial`,
+          trialDays: result.promoCode.trialDays
+        })
+      } else {
+        setPromoValidation({
+          isValidating: false,
+          isValid: false,
+          message: result.error || 'Invalid promo code'
+        })
+      }
+    } catch (error) {
+      setPromoValidation({
+        isValidating: false,
+        isValid: false,
+        message: 'Error validating code'
+      })
+    }
+  }
+
+  const handlePromoCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const code = e.target.value
+    setFormData({ ...formData, promo_code: code })
+    
+    // Debounce validation
+    setTimeout(() => validatePromoCode(code), 500)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,7 +117,8 @@ export function SignupForm({
         formData.password,
         {
           full_name: formData.full_name,
-          company: formData.company
+          company: formData.company,
+          promo_code: formData.promo_code
         }
       )
 
@@ -186,6 +246,47 @@ export function SignupForm({
                     required
                     className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50"
                   />
+                </div>
+
+                <div className="grid gap-3">
+                  <Label htmlFor="promo_code" className="flex items-center gap-2">
+                    <Tag className="h-4 w-4" />
+                    Promo Code (Optional)
+                  </Label>
+                  <div className="relative">
+                    <Input 
+                      id="promo_code" 
+                      type="text" 
+                      placeholder="Enter webinar code"
+                      value={formData.promo_code}
+                      onChange={handlePromoCodeChange}
+                      className="border-primary/20 bg-white/5 backdrop-blur-sm hover:border-primary/40 focus:border-primary/50 pr-10"
+                    />
+                    {promoValidation.isValidating && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                      </div>
+                    )}
+                    {!promoValidation.isValidating && promoValidation.isValid === true && (
+                      <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                    )}
+                    {!promoValidation.isValidating && promoValidation.isValid === false && (
+                      <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                  {promoValidation.message && (
+                    <div className={cn(
+                      "text-xs px-3 py-2 rounded-md flex items-center gap-2",
+                      promoValidation.isValid === true 
+                        ? "text-green-700 bg-green-50 border border-green-200" 
+                        : promoValidation.isValid === false 
+                        ? "text-red-700 bg-red-50 border border-red-200"
+                        : "text-muted-foreground bg-muted/50"
+                    )}>
+                      {promoValidation.isValid === true && <Sparkles className="h-3 w-3" />}
+                      {promoValidation.message}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="grid gap-3">
