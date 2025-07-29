@@ -41,23 +41,81 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate promo code if provided
-    let promoRedemption = null
-    if (promo_code && data.user) {
+    // Handle promo code redemption if provided
+    let trialInfo = null
+    if (data.user && promo_code && promo_code.trim()) {
       try {
-        const { data: redemptionResult, error: promoError } = await supabaseAdmin
-          .rpc('redeem_promo_code', { 
-            promo_code: promo_code.toUpperCase().trim(),
-            user_id: data.user.id
-          })
+        // Directly redeem promo code using database logic instead of RPC function
+        
+        // Get promo code details (case-insensitive)
+        const { data: promoCodes, error: promoError } = await supabaseAdmin
+          .from('promo_codes')
+          .select('*')
+          .eq('is_active', true)
 
-        if (promoError) {
-          console.error('Promo code redemption failed during signup:', promoError)
-        } else if (redemptionResult?.success) {
-          promoRedemption = redemptionResult
+        if (!promoError && promoCodes) {
+          // Find matching code (case-insensitive)
+          const promoCode = promoCodes.find(pc => 
+            pc.code.toLowerCase() === promo_code.trim().toLowerCase()
+          )
+
+          if (promoCode) {
+            // Check if promo code has expired
+            if (!promoCode.expires_at || new Date(promoCode.expires_at) >= new Date()) {
+              // Check if user has already redeemed this or any other promo code
+              const { data: existingRedemption } = await supabaseAdmin
+                .from('promo_code_redemptions')
+                .select('*')
+                .eq('user_id', data.user.id)
+                .single()
+
+              if (!existingRedemption) {
+                // Check usage limit
+                let canRedeem = true
+                if (promoCode.max_uses) {
+                  const { count: usageCount } = await supabaseAdmin
+                    .from('promo_code_redemptions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('promo_code_id', promoCode.id)
+
+                  if (usageCount && usageCount >= promoCode.max_uses) {
+                    canRedeem = false
+                  }
+                }
+
+                if (canRedeem) {
+                  // Calculate trial dates
+                  const trialStartDate = new Date()
+                  const trialEndDate = new Date(trialStartDate)
+                  trialEndDate.setDate(trialEndDate.getDate() + promoCode.trial_days)
+
+                  // Create redemption record
+                  const { error: createError } = await supabaseAdmin
+                    .from('promo_code_redemptions')
+                    .insert({
+                      user_id: data.user.id,
+                      promo_code_id: promoCode.id,
+                      redeemed_at: trialStartDate.toISOString(),
+                      trial_start_date: trialStartDate.toISOString(),
+                      trial_end_date: trialEndDate.toISOString(),
+                      status: 'active'
+                    })
+
+                  if (!createError) {
+                    trialInfo = {
+                      startDate: trialStartDate.toISOString(),
+                      endDate: trialEndDate.toISOString(),
+                      trialDays: promoCode.trial_days
+                    }
+                    console.log(`✅ Promo code ${promo_code} redeemed for user ${data.user.id}`)
+                  }
+                }
+              }
+            }
+          }
         }
       } catch (promoError) {
-        console.error('Promo code processing error during signup:', promoError)
+        console.error('Error redeeming promo code:', promoError)
       }
     }
 
@@ -70,16 +128,19 @@ export async function POST(request: NextRequest) {
           company: company || null,
           invitation_code: null,
           role: 'user',
-          subscription_tier: promoRedemption ? 'trial' : 'free',
-          subscription_status: promoRedemption ? 'trialing' : 'active',
+          subscription_tier: trialInfo ? 'trial' : 'free',
+          subscription_status: trialInfo ? 'trialing' : 'active',
           stripe_customer_id: null,
           stripe_subscription_id: null,
-          subscription_current_period_start: promoRedemption?.trial_start_date || null,
-          subscription_current_period_end: promoRedemption?.trial_end_date || null,
+          subscription_current_period_start: trialInfo ? trialInfo.startDate : null,
+          subscription_current_period_end: trialInfo ? trialInfo.endDate : null,
           subscription_cancel_at_period_end: false,
           payment_method_last4: null,
           payment_method_brand: null,
-          promo_code_used: promo_code?.toUpperCase().trim() || null
+          // Add trial info if promo code was redeemed
+          trial_status: trialInfo ? 'active' : null,
+          trial_start_date: trialInfo ? trialInfo.startDate : null,
+          trial_end_date: trialInfo ? trialInfo.endDate : null
         }
 
         const { error: profileError } = await supabaseAdmin
@@ -123,9 +184,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       user: data.user,
-      promoRedemption: promoRedemption,
-      message: promoRedemption 
-        ? `User created successfully with ${promoRedemption.trial_days}-day free trial! Please check your email for confirmation.`
+      trial: trialInfo,
+      trialMessage: trialInfo 
+        ? `🎉 Promo code applied! You now have ${trialInfo.trialDays} days of free access.`
+        : null,
+      message: trialInfo 
+        ? `User created successfully with ${trialInfo.trialDays}-day free trial! Please check your email for confirmation.`
         : 'User created successfully. Please check your email for confirmation.'
     })
 
