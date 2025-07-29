@@ -193,6 +193,16 @@ export class ApifyAmazonCrawler {
         }
       )
 
+      console.log(`📡 Apify response status: ${response.status}`)
+      console.log(`📊 Response data type: ${Array.isArray(response.data) ? 'array' : typeof response.data}`)
+      console.log(`📊 Response data length: ${response.data?.length || 'N/A'}`)
+
+      if (!response.data || !Array.isArray(response.data)) {
+        console.log(`❌ No data returned for keyword: ${keyword}`)
+        console.log(`❌ Full response:`, response.data)
+        return []
+      }
+
       console.log(`✅ Apify returned ${response.data.length} products`)
 
       // Process and enhance products with additional data extraction
