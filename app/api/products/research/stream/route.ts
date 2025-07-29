@@ -209,8 +209,22 @@ export async function GET(request: NextRequest) {
         })
       }, 240000) // 4 minutes
 
-      // Wait for Apify to complete
-      const apifyProducts = await apifyPromise
+      // Wait for Apify to complete with proper error handling
+      let apifyProducts
+      try {
+        apifyProducts = await apifyPromise
+      } catch (apifyError) {
+        console.error('Apify Amazon Crawler error:', apifyError)
+        sendEvent({
+          phase: 'error',
+          message: `Failed to search Amazon products: ${apifyError.message}`,
+          progress: 0,
+          data: { error: apifyError.message },
+          timestamp: new Date().toISOString()
+        })
+        closeController()
+        return
+      }
       
       // Clear the intervals and timeouts
       clearInterval(progressInterval)

@@ -103,10 +103,11 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     }
   }, [])
 
-  // Fetch available markets when modal opens
+  // Fetch available markets when modal opens (non-blocking)
   useEffect(() => {
     if (isOpen) {
-      fetchMarkets()
+      setResearchMode('new') // Default to new research mode
+      fetchMarkets() // This runs in background and won't block research
     }
   }, [isOpen])
 
@@ -117,9 +118,13 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
       if (response.ok) {
         const data = await response.json()
         setAvailableMarkets(data.markets || [])
+      } else {
+        console.warn('Markets API failed, continuing without market selection:', response.status)
+        setAvailableMarkets([]) // Set empty array so UI doesn't break
       }
     } catch (error) {
-      console.error('Failed to fetch markets:', error)
+      console.error('Failed to fetch markets (non-critical):', error)
+      setAvailableMarkets([]) // Set empty array so UI doesn't break
     } finally {
       setLoadingMarkets(false)
     }

@@ -492,7 +492,7 @@ export class ApifyAmazonCrawler {
 
 // Export singleton instance
 export const apifyClient = new ApifyAmazonCrawler(
-  process.env.APIFY_API || ''
+  process.env.APIFY_API_TOKEN || ''
 )
 
 // Export utility functions
