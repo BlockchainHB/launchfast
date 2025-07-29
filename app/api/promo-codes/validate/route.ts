@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if promo code exists and is active (case-insensitive)
+    // Check if promo code exists and is active (case-insensitive using LOWER)
     const { data: promoCodes, error: promoError } = await supabaseAdmin
       .from('promo_codes')
       .select('*')
@@ -60,6 +60,12 @@ export async function POST(request: NextRequest) {
         .select('*', { count: 'exact', head: true })
         .eq('promo_code_id', promoCode.id)
 
+      console.log(`🔍 Usage check for promo code "${promoCode.code}":`, {
+        maxUses: promoCode.max_uses,
+        currentUsage: usageCount,
+        promoCodeId: promoCode.id
+      })
+
       if (countError) {
         console.error('Error checking promo code usage:', countError)
         return NextResponse.json(
@@ -69,6 +75,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (usageCount && usageCount >= promoCode.max_uses) {
+        console.log(`❌ Usage limit reached: ${usageCount}/${promoCode.max_uses}`)
         return NextResponse.json({
           valid: false,
           error: 'Promo code usage limit reached'

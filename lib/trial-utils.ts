@@ -1,4 +1,4 @@
-import { supabaseAdmin, UserProfile } from './supabase'
+import { supabaseAdmin } from './supabase'
 
 export interface TrialInfo {
   isActive: boolean
@@ -59,37 +59,48 @@ export const getTrialInfo = async (userId: string): Promise<TrialInfo> => {
       }
     }
 
-    const trialEndDate = new Date(redemption.trial_end_date)
     const now = new Date()
+    const trialEndDate = new Date(redemption.trial_end_date)
     const msRemaining = trialEndDate.getTime() - now.getTime()
-    const hoursRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60)))
-    const daysRemaining = Math.max(0, Math.ceil(msRemaining / (1000 * 60 * 60 * 24)))
+    
+    // Check if trial has expired
+    if (msRemaining <= 0) {
+      return {
+        isActive: false,
+        daysRemaining: 0,
+        hoursRemaining: 0,
+        trialEndDate,
+        status: 'expired',
+        urgencyLevel: 'critical',
+        promoCodeUsed: redemption.promo_codes?.code || null,
+        redemptionId: redemption.id
+      }
+    }
 
-    const isActive = msRemaining > 0
-    const status = isActive ? 'active' : 'expired'
+    const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24))
+    const hoursRemaining = Math.ceil(msRemaining / (1000 * 60 * 60))
 
     // Determine urgency level
-    let urgencyLevel: 'low' | 'medium' | 'high' | 'critical'
-    if (daysRemaining <= 0) {
+    let urgencyLevel: 'low' | 'medium' | 'high' | 'critical' = 'low'
+    if (daysRemaining <= 1) {
       urgencyLevel = 'critical'
-    } else if (daysRemaining === 1) {
+    } else if (daysRemaining <= 2) {
       urgencyLevel = 'high'
     } else if (daysRemaining <= 3) {
       urgencyLevel = 'medium'
-    } else {
-      urgencyLevel = 'low'
     }
 
     return {
-      isActive,
+      isActive: true,
       daysRemaining,
       hoursRemaining,
       trialEndDate,
-      status,
+      status: 'active',
       urgencyLevel,
       promoCodeUsed: redemption.promo_codes?.code || null,
       redemptionId: redemption.id
     }
+
   } catch (error) {
     console.error('Error getting trial info:', error)
     return {
@@ -106,52 +117,57 @@ export const getTrialInfo = async (userId: string): Promise<TrialInfo> => {
 }
 
 /**
- * Check if user has access to paid features
+ * Check if user has access to paid features (subscription or active trial)
  */
-export const hasAccessToPaidFeatures = async (userProfile: UserProfile): Promise<boolean> => {
-  // If user has active paid subscription
-  if (userProfile.subscription_status === 'active' && userProfile.subscription_tier !== 'free') {
-    return true
-  }
+export const hasAccessToPaidFeatures = async (userId: string): Promise<boolean> => {
+  try {
+    // Check for active subscription
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('subscription_tier, subscription_status')
+      .eq('id', userId)
+      .single()
 
-  // If user is on trial, check if trial is still active
-  if (userProfile.subscription_tier === 'trial' && userProfile.subscription_status === 'trialing') {
-    const trialInfo = await getTrialInfo(userProfile.id)
-    return trialInfo.isActive
-  }
+    if (profile) {
+      // Has active paid subscription
+      if (['pro', 'unlimited'].includes(profile.subscription_tier) && profile.subscription_status === 'active') {
+        return true
+      }
 
-  return false
+      // Check for active trial
+      if (profile.subscription_tier === 'trial' && profile.subscription_status === 'trialing') {
+        const trialInfo = await getTrialInfo(userId)
+        return trialInfo.isActive
+      }
+    }
+
+    return false
+  } catch (error) {
+    console.error('Error checking paid access:', error)
+    return false
+  }
 }
 
 /**
- * Get trial status for middleware/auth checks
+ * Get trial status for middleware access control
  */
 export const getTrialStatus = async (userId: string): Promise<{
   hasAccess: boolean
-  isTrialing: boolean
-  needsSubscription: boolean
   trialInfo: TrialInfo
 }> => {
   const trialInfo = await getTrialInfo(userId)
-  
-  const isTrialing = trialInfo.status === 'active'
-  const hasAccess = isTrialing
-  const needsSubscription = trialInfo.status === 'expired' || (!isTrialing && trialInfo.status !== 'converted')
-
   return {
-    hasAccess,
-    isTrialing,
-    needsSubscription,
+    hasAccess: trialInfo.isActive,
     trialInfo
   }
 }
 
 /**
- * Expire trial for a user (called by background job or manually)
+ * Expire a trial (called when trial period ends)
  */
-export const expireTrial = async (userId: string): Promise<{ success: boolean; error?: string }> => {
+export const expireTrial = async (userId: string): Promise<boolean> => {
   try {
-    // Update promo code redemption status
+    // Update redemption status
     const { error: redemptionError } = await supabaseAdmin
       .from('promo_code_redemptions')
       .update({
@@ -161,122 +177,79 @@ export const expireTrial = async (userId: string): Promise<{ success: boolean; e
       .eq('user_id', userId)
       .eq('status', 'active')
 
-    if (redemptionError) {
-      console.error('Error updating redemption status:', redemptionError)
-      return { success: false, error: redemptionError.message }
-    }
-
     // Update user profile
     const { error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .update({
-        subscription_tier: 'free',
-        subscription_status: 'expired',
-        subscription_current_period_start: null,
-        subscription_current_period_end: null,
+        subscription_tier: 'expired',
+        subscription_status: 'inactive',
+        trial_status: 'expired',
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)
 
-    if (profileError) {
-      console.error('Error updating user profile:', profileError)
-      return { success: false, error: profileError.message }
-    }
-
-    return { success: true }
+    return !redemptionError && !profileError
   } catch (error) {
     console.error('Error expiring trial:', error)
-    return { success: false, error: 'Failed to expire trial' }
+    return false
   }
 }
 
 /**
- * Get urgency message based on trial status
+ * Get urgency message based on trial info
  */
 export const getTrialUrgencyMessage = (trialInfo: TrialInfo): string => {
   if (!trialInfo.isActive) {
-    return 'Your trial has expired. Subscribe now to continue using LaunchFast.'
+    return 'Your trial has ended'
   }
 
-  const { daysRemaining, hoursRemaining, urgencyLevel } = trialInfo
-
-  switch (urgencyLevel) {
-    case 'critical':
-      if (hoursRemaining <= 1) {
-        return `⚠️ Trial expires in less than 1 hour! Subscribe now to avoid losing access.`
-      }
-      return `⚠️ Trial expires in ${hoursRemaining} hours! Subscribe now to avoid losing access.`
-    
-    case 'high':
-      return `🔥 Only ${daysRemaining} day left in your trial! Don't lose access to your data.`
-    
-    case 'medium':
-      return `⏰ ${daysRemaining} days left in your trial. Secure your access now.`
-    
-    case 'low':
-    default:
-      return `✨ ${daysRemaining} days remaining in your free trial.`
+  if (trialInfo.daysRemaining <= 0) {
+    return `Only ${trialInfo.hoursRemaining} hours remaining!`
   }
+
+  if (trialInfo.daysRemaining === 1) {
+    return 'Your trial expires tomorrow!'
+  }
+
+  if (trialInfo.daysRemaining <= 3) {
+    return `Don't lose access - only ${trialInfo.daysRemaining} days left`
+  }
+
+  return `${trialInfo.daysRemaining} days remaining in your free trial`
 }
 
 /**
- * Get trial color theme based on urgency
+ * Get color theme based on urgency level
  */
-export const getTrialColorTheme = (urgencyLevel: string): {
-  bgColor: string
-  textColor: string
-  borderColor: string
-  buttonColor: string
-} => {
+export const getTrialColorTheme = (urgencyLevel: string) => {
   switch (urgencyLevel) {
     case 'critical':
       return {
-        bgColor: 'bg-red-50 dark:bg-red-950',
-        textColor: 'text-red-800 dark:text-red-200',
-        borderColor: 'border-red-200 dark:border-red-800',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        textColor: 'text-red-600',
         buttonColor: 'bg-red-600 hover:bg-red-700'
       }
-    
     case 'high':
       return {
-        bgColor: 'bg-orange-50 dark:bg-orange-950',
-        textColor: 'text-orange-800 dark:text-orange-200',
-        borderColor: 'border-orange-200 dark:border-orange-800',
+        bgColor: 'bg-orange-50',
+        borderColor: 'border-orange-200',
+        textColor: 'text-orange-600',
         buttonColor: 'bg-orange-600 hover:bg-orange-700'
       }
-    
     case 'medium':
       return {
-        bgColor: 'bg-yellow-50 dark:bg-yellow-950',
-        textColor: 'text-yellow-800 dark:text-yellow-200',
-        borderColor: 'border-yellow-200 dark:border-yellow-800',
+        bgColor: 'bg-yellow-50',
+        borderColor: 'border-yellow-200',
+        textColor: 'text-yellow-600',
         buttonColor: 'bg-yellow-600 hover:bg-yellow-700'
       }
-    
-    case 'low':
     default:
       return {
-        bgColor: 'bg-blue-50 dark:bg-blue-950',
-        textColor: 'text-blue-800 dark:text-blue-200',
-        borderColor: 'border-blue-200 dark:border-blue-800',
+        bgColor: 'bg-blue-50',
+        borderColor: 'border-blue-200',
+        textColor: 'text-blue-600',
         buttonColor: 'bg-blue-600 hover:bg-blue-700'
       }
   }
-}
-
-/**
- * Check if user should see subscription reminder popup
- */
-export const shouldShowReminderPopup = (trialInfo: TrialInfo): boolean => {
-  if (!trialInfo.isActive) return false
-  
-  // Show popup at days 5, 3, 1, and final hours
-  const { daysRemaining, hoursRemaining } = trialInfo
-  
-  return (
-    daysRemaining === 5 ||
-    daysRemaining === 3 ||
-    daysRemaining === 1 ||
-    (daysRemaining === 0 && hoursRemaining <= 12)
-  )
 }

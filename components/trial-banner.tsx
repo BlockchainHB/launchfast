@@ -1,206 +1,161 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { 
-  Clock, 
-  Sparkles, 
-  X, 
-  CreditCard,
-  AlertTriangle,
-  Timer,
-  Zap
-} from 'lucide-react'
+import { Button } from './ui/button'
+import { Card, CardContent } from './ui/card'
+import { Badge } from './ui/badge'
+import { Progress } from './ui/progress'
+import { X, Clock, Sparkles, CreditCard, AlertTriangle } from 'lucide-react'
 import { TrialInfo, getTrialUrgencyMessage, getTrialColorTheme } from '@/lib/trial-utils'
 
 interface TrialBannerProps {
   trialInfo: TrialInfo
   onUpgradeClick: () => void
-  className?: string
+  onDismiss?: () => void
+  showDismiss?: boolean
 }
 
-export function TrialBanner({ trialInfo, onUpgradeClick, className }: TrialBannerProps) {
-  const [isVisible, setIsVisible] = useState(true)
-  const [timeRemaining, setTimeRemaining] = useState({
-    days: trialInfo.daysRemaining,
-    hours: trialInfo.hoursRemaining
-  })
+export function TrialBanner({ 
+  trialInfo, 
+  onUpgradeClick, 
+  onDismiss, 
+  showDismiss = false 
+}: TrialBannerProps) {
+  const [timeRemaining, setTimeRemaining] = useState('')
+  const [progress, setProgress] = useState(0)
 
-  // Update countdown every minute
   useEffect(() => {
-    if (!trialInfo.isActive || !trialInfo.trialEndDate) return
-
     const updateCountdown = () => {
-      const now = new Date()
-      const endDate = new Date(trialInfo.trialEndDate!)
-      const msRemaining = Math.max(0, endDate.getTime() - now.getTime())
-      
-      const days = Math.floor(msRemaining / (1000 * 60 * 60 * 24))
-      const hours = Math.floor((msRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-      
-      setTimeRemaining({ days, hours })
+      if (!trialInfo.trialEndDate) return
+
+      const now = new Date().getTime()
+      const endTime = new Date(trialInfo.trialEndDate).getTime()
+      const remaining = endTime - now
+
+      if (remaining <= 0) {
+        setTimeRemaining('Trial expired')
+        setProgress(0)
+        return
+      }
+
+      const days = Math.floor(remaining / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+
+      if (days > 0) {
+        setTimeRemaining(`${days}d ${hours}h remaining`)
+      } else if (hours > 0) {
+        setTimeRemaining(`${hours}h ${minutes}m remaining`)
+      } else {
+        setTimeRemaining(`${minutes}m remaining`)
+      }
+
+      // Calculate progress (7 days = 100%)
+      const totalTrialMs = 7 * 24 * 60 * 60 * 1000
+      const usedMs = totalTrialMs - remaining
+      const progressPercent = Math.max(0, Math.min(100, (usedMs / totalTrialMs) * 100))
+      setProgress(progressPercent)
     }
 
     updateCountdown()
     const interval = setInterval(updateCountdown, 60000) // Update every minute
 
     return () => clearInterval(interval)
-  }, [trialInfo.isActive, trialInfo.trialEndDate])
+  }, [trialInfo.trialEndDate])
 
-  if (!trialInfo.isActive || !isVisible) {
+  if (!trialInfo.isActive) {
     return null
   }
 
-  const colors = getTrialColorTheme(trialInfo.urgencyLevel)
-  const message = getTrialUrgencyMessage(trialInfo)
-
-  const getIcon = () => {
-    switch (trialInfo.urgencyLevel) {
-      case 'critical':
-        return <AlertTriangle className="h-5 w-5 animate-pulse" />
-      case 'high':
-        return <Zap className="h-5 w-5" />
-      case 'medium':
-        return <Timer className="h-5 w-5" />
-      default:
-        return <Sparkles className="h-5 w-5" />
-    }
-  }
-
-  const getCountdownDisplay = () => {
-    if (timeRemaining.days > 0) {
-      return (
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <Clock className="h-4 w-4" />
-          <span>
-            {timeRemaining.days} day{timeRemaining.days !== 1 ? 's' : ''} remaining
-          </span>
-        </div>
-      )
-    } else {
-      return (
-        <div className="flex items-center gap-2 text-sm font-semibold animate-pulse">
-          <AlertTriangle className="h-4 w-4" />
-          <span>
-            {timeRemaining.hours} hour{timeRemaining.hours !== 1 ? 's' : ''} remaining!
-          </span>
-        </div>
-      )
-    }
-  }
+  const colorTheme = getTrialColorTheme(trialInfo.urgencyLevel)
+  const urgencyMessage = getTrialUrgencyMessage(trialInfo)
 
   return (
-    <div className={cn(
-      "sticky top-0 z-50 border-b backdrop-blur-sm",
-      colors.bgColor,
-      colors.borderColor,
-      className
-    )}>
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between py-3 gap-4">
-          {/* Left side - Icon and message */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className={cn("flex-shrink-0", colors.textColor)}>
-              {getIcon()}
+    <Card className={`mx-4 mt-4 ${colorTheme.borderColor} shadow-sm`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 flex-1">
+            {/* Icon */}
+            <div className={`p-2 rounded-lg ${colorTheme.bgColor}`}>
+              <Sparkles className={`h-5 w-5 ${colorTheme.textColor}`} />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className={cn("text-sm font-medium", colors.textColor)}>
-                {message}
-              </p>
+
+            {/* Trial Info */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-sm">
+                  {trialInfo.daysRemaining > 0 
+                    ? `${trialInfo.daysRemaining} Days Left` 
+                    : 'Final Hours!'
+                  }
+                </h3>
+                {trialInfo.promoCodeUsed && (
+                  <Badge variant="outline" className="text-xs">
+                    Code: {trialInfo.promoCodeUsed}
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span>{timeRemaining}</span>
+                </div>
+                
+                {trialInfo.urgencyLevel === 'critical' && (
+                  <div className="flex items-center gap-1">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    <span className="text-xs font-medium text-red-600">
+                      Don't lose access!
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mt-2 space-y-1">
+                <Progress 
+                  value={progress} 
+                  className="h-2"
+                  style={{
+                    '--progress-foreground': trialInfo.urgencyLevel === 'critical' 
+                      ? 'hsl(0 72% 51%)' 
+                      : trialInfo.urgencyLevel === 'high'
+                      ? 'hsl(25 95% 53%)'
+                      : 'hsl(221 83% 53%)'
+                  } as React.CSSProperties}
+                />
+                <div className="text-xs text-muted-foreground">
+                  {urgencyMessage}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Center - Countdown */}
-          <div className={cn("flex-shrink-0", colors.textColor)}>
-            {getCountdownDisplay()}
-          </div>
-
-          {/* Right side - Actions */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Actions */}
+          <div className="flex items-center gap-2">
             <Button
               onClick={onUpgradeClick}
-              className={cn(
-                "text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200",
-                colors.buttonColor
-              )}
+              className={`text-white font-semibold ${colorTheme.buttonColor} hover:shadow-lg transition-all duration-200`}
               size="sm"
             >
               <CreditCard className="h-4 w-4 mr-2" />
               Subscribe Now
             </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsVisible(false)}
-              className={cn("hover:bg-black/10", colors.textColor)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+
+            {showDismiss && onDismiss && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDismiss}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
-
-// Compact version for smaller screens
-export function TrialBannerCompact({ trialInfo, onUpgradeClick, className }: TrialBannerProps) {
-  const [isVisible, setIsVisible] = useState(true)
-
-  if (!trialInfo.isActive || !isVisible) {
-    return null
-  }
-
-  const colors = getTrialColorTheme(trialInfo.urgencyLevel)
-
-  return (
-    <div className={cn(
-      "sticky top-0 z-50 border-b backdrop-blur-sm",
-      colors.bgColor,
-      colors.borderColor,
-      className
-    )}>
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between py-2 gap-2">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className={cn("flex-shrink-0", colors.textColor)}>
-              {trialInfo.urgencyLevel === 'critical' ? 
-                <AlertTriangle className="h-4 w-4 animate-pulse" /> :
-                <Clock className="h-4 w-4" />
-              }
-            </div>
-            <span className={cn("text-xs font-medium truncate", colors.textColor)}>
-              {trialInfo.daysRemaining > 0 ? 
-                `${trialInfo.daysRemaining}d left` : 
-                `${trialInfo.hoursRemaining}h left`
-              }
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              onClick={onUpgradeClick}
-              className={cn(
-                "text-white font-semibold text-xs px-3 py-1 h-7",
-                colors.buttonColor
-              )}
-            >
-              Upgrade
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsVisible(false)}
-              className={cn("hover:bg-black/10 h-7 w-7 p-0", colors.textColor)}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
