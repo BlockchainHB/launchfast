@@ -75,22 +75,22 @@ export class KeywordResearchDB {
         Logger.dev.trace(`Using existing session ${sessionId}`)
       } else {
         // Create new session
-        const { data: session, error: sessionError } = await supabaseServer
-          .from(TABLES.SESSIONS)
-          .insert({
-            user_id: userId,
-            name,
-            settings: options
-          })
-          .select('id')
-          .single()
-        
-        if (sessionError || !session) {
-          throw new Error(`Failed to create session: ${sessionError?.message}`)
-        }
-        
+      const { data: session, error: sessionError } = await supabaseServer
+        .from(TABLES.SESSIONS)
+        .insert({
+          user_id: userId,
+          name,
+          settings: options
+        })
+        .select('id')
+        .single()
+      
+      if (sessionError || !session) {
+        throw new Error(`Failed to create session: ${sessionError?.message}`)
+      }
+      
         sessionId = session.id
-        Logger.dev.trace(`Created session ${sessionId}`)
+      Logger.dev.trace(`Created session ${sessionId}`)
       }
       
       // Save in transaction-like manner
@@ -781,11 +781,11 @@ export class KeywordResearchDB {
       return {
         keyword: kw.keyword,
         searchVolume: kw.searchVolume,
-        competitionScore: 0, // Default since we don't have this for all keywords
+      competitionScore: 0, // Default since we don't have this for all keywords
         supplyDemandRatio: (kw as any).supplyDemandRatio || 0,
         avgCpc: kw.avgCpc,
-        competitorPerformance: undefined,
-        opportunityType: undefined,
+      competitorPerformance: undefined,
+      opportunityType: undefined,
         // Enhanced fields from keyword_research_keywords table or aggregated data
         purchases: (kw as any).purchases || kwData?.purchases,
         purchaseRate: (kw as any).purchaseRate || kwData?.purchase_rate,

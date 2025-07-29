@@ -128,20 +128,20 @@ export function OpportunitiesTab({
       accessorKey: 'keyword',
       header: ({ column }) => (
         <div className="flex items-center">
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
             className="hover:bg-transparent p-0 h-auto text-xs font-medium"
-          >
-            Keyword
-            {column.getIsSorted() === 'asc' ? (
+        >
+          Keyword
+          {column.getIsSorted() === 'asc' ? (
               <ArrowUp className="ml-1 h-3 w-3" />
-            ) : column.getIsSorted() === 'desc' ? (
+          ) : column.getIsSorted() === 'desc' ? (
               <ArrowDown className="ml-1 h-3 w-3" />
-            ) : (
+          ) : (
               <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
-            )}
-          </Button>
+          )}
+        </Button>
         </div>
       ),
       cell: ({ row }) => (
@@ -170,20 +170,20 @@ export function OpportunitiesTab({
       accessorKey: 'searchVolume',
       header: ({ column }) => (
         <div className="text-right">
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
             className="hover:bg-transparent p-0 h-auto text-xs font-medium"
-          >
+        >
             Volume
-            {column.getIsSorted() === 'asc' ? (
+          {column.getIsSorted() === 'asc' ? (
               <ArrowUp className="ml-1 h-3 w-3" />
-            ) : column.getIsSorted() === 'desc' ? (
+          ) : column.getIsSorted() === 'desc' ? (
               <ArrowDown className="ml-1 h-3 w-3" />
-            ) : (
+          ) : (
               <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
-            )}
-          </Button>
+          )}
+        </Button>
         </div>
       ),
       cell: ({ row }) => {
@@ -202,23 +202,23 @@ export function OpportunitiesTab({
       size: 110,
     },
     {
-      accessorKey: 'competitionScore', 
+      accessorKey: 'competitionScore',
       header: ({ column }) => (
         <div className="text-center">
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
             className="hover:bg-transparent p-0 h-auto text-xs font-medium"
-          >
-            Competition
-            {column.getIsSorted() === 'asc' ? (
+        >
+          Competition
+          {column.getIsSorted() === 'asc' ? (
               <ArrowUp className="ml-1 h-3 w-3" />
-            ) : column.getIsSorted() === 'desc' ? (
+          ) : column.getIsSorted() === 'desc' ? (
               <ArrowDown className="ml-1 h-3 w-3" />
-            ) : (
+          ) : (
               <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
-            )}
-          </Button>
+          )}
+        </Button>
         </div>
       ),
       cell: ({ row }) => {
@@ -255,20 +255,20 @@ export function OpportunitiesTab({
       accessorKey: 'purchases',
       header: ({ column }) => (
         <div className="text-right">
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
             className="hover:bg-transparent p-0 h-auto text-xs font-medium"
-          >
+        >
             Monthly Sales
-            {column.getIsSorted() === 'asc' ? (
+          {column.getIsSorted() === 'asc' ? (
               <ArrowUp className="ml-1 h-3 w-3" />
-            ) : column.getIsSorted() === 'desc' ? (
+          ) : column.getIsSorted() === 'desc' ? (
               <ArrowDown className="ml-1 h-3 w-3" />
-            ) : (
+          ) : (
               <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
-            )}
-          </Button>
+          )}
+        </Button>
         </div>
       ),
       cell: ({ row }) => (
@@ -284,20 +284,20 @@ export function OpportunitiesTab({
       accessorKey: 'avgCpc',
       header: ({ column }) => (
         <div className="text-right">
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
             className="hover:bg-transparent p-0 h-auto text-xs font-medium"
-          >
+        >
             CPC
-            {column.getIsSorted() === 'asc' ? (
+          {column.getIsSorted() === 'asc' ? (
               <ArrowUp className="ml-1 h-3 w-3" />
-            ) : column.getIsSorted() === 'desc' ? (
+          ) : column.getIsSorted() === 'desc' ? (
               <ArrowDown className="ml-1 h-3 w-3" />
-            ) : (
+          ) : (
               <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
-            )}
-          </Button>
+          )}
+        </Button>
         </div>
       ),
       cell: ({ row }) => (
@@ -676,7 +676,7 @@ export function OpportunitiesTab({
               <p className="text-2xl font-bold text-gray-900 mt-1">{summaryStats.totalOpportunities}</p>
               <p className="text-[10px] text-gray-500 mt-0.5">
                 {summaryStats.highValueOpps} high-value
-              </p>
+            </p>
             </div>
           </div>
         </div>
@@ -691,7 +691,7 @@ export function OpportunitiesTab({
               <p className="text-2xl font-bold text-gray-900 mt-1">{summaryStats.totalVolume.toLocaleString()}</p>
               <p className="text-[10px] text-gray-500 mt-0.5">
                 combined searches
-              </p>
+            </p>
             </div>
           </div>
         </div>
@@ -708,7 +708,7 @@ export function OpportunitiesTab({
               </p>
               <p className="text-[10px] text-gray-500 mt-0.5">
                 per click
-              </p>
+            </p>
             </div>
           </div>
         </div>
@@ -733,7 +733,7 @@ export function OpportunitiesTab({
               </div>
               <p className="text-[10px] text-gray-500 mt-0.5">
                 gap / low / weak
-              </p>
+            </p>
             </div>
           </div>
         </div>
@@ -885,47 +885,47 @@ export function OpportunitiesTab({
         </div>
         
         <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
+            <Button
+              variant="outline"
             size="sm"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
             className="h-8 w-8 p-0"
-          >
+            >
             <ChevronsLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
+            </Button>
+            <Button
+              variant="outline"
             size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
             className="h-8 w-8 p-0"
-          >
+            >
             <ChevronLeft className="h-4 w-4" />
-          </Button>
+            </Button>
           <div className="flex items-center gap-1 px-2">
             <span className="text-xs text-gray-600">
               Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
             </span>
           </div>
-          <Button
-            variant="outline"
+            <Button
+              variant="outline"
             size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
             className="h-8 w-8 p-0"
-          >
+            >
             <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
+            </Button>
+            <Button
+              variant="outline"
             size="sm"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
             className="h-8 w-8 p-0"
-          >
+            >
             <ChevronsRight className="h-4 w-4" />
-          </Button>
+            </Button>
         </div>
       </div>
     </div>

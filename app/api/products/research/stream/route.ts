@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
     'Access-Control-Allow-Headers': 'Cache-Control'
   })
 
-  let controller: ReadableStreamDefaultController<Uint8Array>
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null
+  let controllerClosed = false
   
   const stream = new ReadableStream({
     start(controllerArg) {
@@ -43,8 +44,17 @@ export async function GET(request: NextRequest) {
 
   // Helper function to send SSE events
   const sendEvent = (event: ProgressEvent) => {
-    const data = `data: ${JSON.stringify(event)}\n\n`
-    controller.enqueue(new TextEncoder().encode(data))
+    if (controller && !controllerClosed) {
+      const data = `data: ${JSON.stringify(event)}\n\n`
+      controller.enqueue(new TextEncoder().encode(data))
+    }
+  }
+  
+  const closeController = () => {
+    if (controller && !controllerClosed) {
+      controller.close()
+      controllerClosed = true
+    }
   }
 
   // Start the research process
@@ -64,7 +74,7 @@ export async function GET(request: NextRequest) {
           progress: 0,
           timestamp: new Date().toISOString()
         })
-        controller.close()
+        closeController()
         return
       }
 
@@ -90,7 +100,7 @@ export async function GET(request: NextRequest) {
           progress: 0,
           timestamp: new Date().toISOString()
         })
-        controller.close()
+        closeController()
         return
       }
 
@@ -215,7 +225,7 @@ export async function GET(request: NextRequest) {
           data: { products: [], message: 'No products found for this keyword' },
           timestamp: new Date().toISOString()
         })
-        controller.close()
+        closeController()
         return
       }
 
@@ -376,7 +386,7 @@ export async function GET(request: NextRequest) {
           data: { products: [], message: 'No products passed verification' },
           timestamp: new Date().toISOString()
         })
-        controller.close()
+        closeController()
         return
       }
 
@@ -465,7 +475,7 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
     } finally {
-      controller.close()
+      closeController()
     }
   })()
 
