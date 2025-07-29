@@ -59,24 +59,24 @@ export class ApifyAmazonCrawler {
   }
 
   /**
-   * Scrape a single product by its Amazon URL (for ASIN research)
+   * Scrape products by Amazon URLs (handles single or multiple)
    */
-  async scrapeProductByUrl(amazonUrl: string): Promise<ApifyProduct | null> {
+  async scrapeProductsByUrls(amazonUrls: string[]): Promise<ApifyProduct[]> {
     try {
-      console.log(`🔍 Scraping Amazon product via Apify: ${amazonUrl}`)
+      console.log(`🔍 Scraping ${amazonUrls.length} Amazon product(s) via Apify`)
+      console.log(`🔑 API Token configured: ${this.apiToken ? 'YES' : 'NO'}`)
+      console.log(`🌐 Full URL: ${this.baseURL}?token=${this.apiToken}`)
 
-      // Prepare Apify request payload for single product
       const requestPayload = {
-        categoryOrProductUrls: [
-          {
-            url: amazonUrl,
-            method: "GET"
-          }
-        ],
+        categoryOrProductUrls: amazonUrls.map(url => ({
+          url,
+          method: "GET"
+        })),
         ensureLoadedProductDescriptionFields: true,
-        includeReviews: true,
-        maxReviews: 3, // Get recent reviews for AI analysis
-        maxItemsPerStartUrl: 1, // Single product
+        locationDeliverableRoutes: [
+          "PRODUCT"
+        ],
+        maxItemsPerStartUrl: 5,
         maxOffers: 0,
         proxyCountry: "US",
         scrapeProductDetails: true,
@@ -85,11 +85,13 @@ export class ApifyAmazonCrawler {
         useCaptchaSolver: true
       }
 
+      console.log(`📋 Request payload:`, JSON.stringify(requestPayload, null, 2))
+
       const response = await axios.post(
         `${this.baseURL}?token=${this.apiToken}`,
         requestPayload,
         {
-          timeout: 60000, // 60 seconds for single product
+          timeout: amazonUrls.length > 1 ? 120000 : 60000, // Longer timeout for multiple
           headers: {
             'Content-Type': 'application/json'
           },
@@ -98,33 +100,44 @@ export class ApifyAmazonCrawler {
         }
       )
 
-      if (!response.data || response.data.length === 0) {
-        console.log(`❌ No product found at URL: ${amazonUrl}`)
-        return null
+      console.log(`📡 Apify response status: ${response.status}`)
+      console.log(`📊 Response data type: ${Array.isArray(response.data) ? 'array' : typeof response.data}`)
+      console.log(`📊 Response data length: ${response.data?.length || 'N/A'}`)
+
+      if (!response.data || !Array.isArray(response.data)) {
+        console.log(`❌ No data returned for URLs: ${amazonUrls.join(', ')}`)
+        console.log(`❌ Full response:`, response.data)
+        return []
       }
 
-      const product = response.data[0]
-      
-      if (!product) {
-        console.log(`❌ Product data is empty for URL: ${amazonUrl}`)
-        return null
-      }
-      
-      const enhancedProduct = this.enhanceProductData(product)
+      console.log(`✅ Apify returned ${response.data.length} results for ${amazonUrls.length} URLs`)
 
-      if (!this.isValidProduct(enhancedProduct)) {
-        console.log(`❌ Invalid product data for URL: ${amazonUrl}`)
-        return null
-      }
+      const enhancedProducts = response.data
+        .filter(product => product && product.asin)
+        .map(product => this.enhanceProductData(product))
+        .filter(product => this.isValidProduct(product))
 
-      console.log(`✅ Successfully scraped product: ${enhancedProduct.title}`)
-      return enhancedProduct
+      console.log(`🚀 Successfully processed ${enhancedProducts.length} valid products`)
+      return enhancedProducts
 
     } catch (error) {
-      console.error('Apify single product scraping error:', error)
+      console.error('Apify scraping error:', error)
       if (axios.isAxiosError(error)) {
         console.error('Apify API response:', error.response?.data)
       }
+      throw new Error(`Failed to scrape products: ${error.message}`)
+    }
+  }
+
+  /**
+   * Scrape a single product by its Amazon URL (for ASIN research)
+   */
+  async scrapeProductByUrl(amazonUrl: string): Promise<ApifyProduct | null> {
+    try {
+      const results = await this.scrapeProductsByUrls([amazonUrl])
+      return results.length > 0 ? results[0] : null
+    } catch (error) {
+      console.error('Single product scraping error:', error)
       return null
     }
   }
@@ -469,7 +482,7 @@ export class ApifyAmazonCrawler {
 
 // Export singleton instance
 export const apifyClient = new ApifyAmazonCrawler(
-  process.env.APIFY_API_TOKEN || ''
+  process.env.APIFY_API || ''
 )
 
 // Export utility functions

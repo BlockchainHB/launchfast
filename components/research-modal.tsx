@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { ProgressDisplayController } from "@/lib/progress-display-controller"
-import { IconSearch, IconBarcode, IconCheck, IconX, IconLoader2, IconChevronDown, IconChevronRight } from "@tabler/icons-react"
+import { IconSearch, IconBarcode, IconCheck, IconX, IconLoader2, IconChevronDown, IconChevronRight, IconPlus, IconDatabase } from "@tabler/icons-react"
 import { getStatusIcon, getResearchPhaseIcon } from "@/lib/icons"
 import { IbmWatsonDiscovery, BusinessMetrics, IbmDataProductExchange, IbmWatsonxCodeAssistantForZValidationAssistant, RecordingFilledAlt, ChartRelationship, DoubleAxisChartColumn } from "@carbon/icons-react"
 
@@ -30,6 +30,11 @@ interface ResearchModalProps {
 export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalProps) {
   const [keyword, setKeyword] = useState("")
   const [asin, setAsin] = useState("")
+  const [asinInput, setAsinInput] = useState("")
+  const [selectedMarket, setSelectedMarket] = useState<string | null>(null)
+  const [availableMarkets, setAvailableMarkets] = useState<any[]>([])
+  const [loadingMarkets, setLoadingMarkets] = useState(false)
+  const [researchMode, setResearchMode] = useState<'new' | 'add-to-market'>('new')
   const [isLoading, setIsLoading] = useState(false)
   const [results, setResults] = useState<Record<string, unknown>[]>([])
   const [marketAnalysis, setMarketAnalysis] = useState<Record<string, unknown> | null>(null)
@@ -65,6 +70,44 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
       displayControllerRef.current?.destroy()
     }
   }, [])
+
+  // Fetch available markets when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchMarkets()
+    }
+  }, [isOpen])
+
+  const fetchMarkets = async () => {
+    setLoadingMarkets(true)
+    try {
+      const response = await fetch('/api/markets')
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableMarkets(data.markets || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch markets:', error)
+    } finally {
+      setLoadingMarkets(false)
+    }
+  }
+
+  // Parse and validate ASINs from input
+  const parseAsins = (input: string): string[] => {
+    return input
+      .split(/[,\n\s]+/)
+      .map(asin => asin.trim().toUpperCase())
+      .filter(asin => /^[A-Z0-9]{10}$/.test(asin))
+  }
+
+  // Get invalid ASINs for validation feedback
+  const getInvalidAsins = (input: string): string[] => {
+    return input
+      .split(/[,\n\s]+/)
+      .map(asin => asin.trim().toUpperCase())
+      .filter(asin => asin.length > 0 && !/^[A-Z0-9]{10}$/.test(asin))
+  }
 
   // Helper function to get grade color and status
   const getGradeInfo = (grade: string) => {
@@ -206,14 +249,30 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
 
   const handleAsinSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!asin.trim()) return
+    if (!asinInput.trim()) return
 
-    const asinValue = asin.trim().toUpperCase()
+    const asins = parseAsins(asinInput)
+    const invalidAsins = getInvalidAsins(asinInput)
     
-    // Validate ASIN format
-    const asinRegex = /^[A-Z0-9]{10}$/
-    if (!asinRegex.test(asinValue)) {
-      setError("Invalid ASIN format. Must be 10 alphanumeric characters (e.g., B0XXXXXXXXX)")
+    // Validate ASINs
+    if (invalidAsins.length > 0) {
+      setError(`Invalid ASIN format: ${invalidAsins.join(', ')}. ASINs must be 10 alphanumeric characters.`)
+      return
+    }
+    
+    if (asins.length === 0) {
+      setError("Please enter at least one valid ASIN")
+      return
+    }
+    
+    if (asins.length > 10) {
+      setError("Maximum 10 ASINs allowed per research session")
+      return
+    }
+
+    // Check if we're adding to an existing market
+    if (researchMode === 'add-to-market' && !selectedMarket) {
+      setError("Please select a market to add ASINs to")
       return
     }
 
@@ -232,13 +291,27 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     })
     
     try {
-      console.log("Starting SSE research for ASIN:", asinValue)
+      const endpoint = asins.length === 1 
+        ? '/api/products/research/asin/stream' 
+        : '/api/products/research/multi-asin/stream'
       
-      const params = new URLSearchParams({
-        asin: asinValue
-      })
+      const params = new URLSearchParams()
       
-      const eventSource = new EventSource(`/api/products/research/asin/stream?${params}`)
+      if (asins.length === 1) {
+        params.set('asin', asins[0])
+      } else {
+        params.set('asins', asins.join(','))
+      }
+      
+      // Add market information if adding to existing market
+      if (researchMode === 'add-to-market' && selectedMarket) {
+        params.set('marketId', selectedMarket)
+        params.set('mode', 'add-to-market')
+      }
+      
+      console.log(`Starting SSE research for ${asins.length} ASIN(s):`, asins)
+      
+      const eventSource = new EventSource(`${endpoint}?${params}`)
 
       eventSource.onmessage = (event) => {
         try {
@@ -300,7 +373,9 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
           products: results,
           marketAnalysis: marketAnalysis,
           refreshMode: refreshMode,
-          existingMarketId: refreshMode === 'refresh' ? existingMarket?.id : null
+          existingMarketId: refreshMode === 'refresh' ? existingMarket?.id : selectedMarket,
+          researchMode: researchMode,
+          targetMarketId: researchMode === 'add-to-market' ? selectedMarket : null
         }),
       })
 
@@ -368,6 +443,9 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
     setError(null)
     setKeyword("")
     setAsin("")
+    setAsinInput("")
+    setSelectedMarket(null)
+    setResearchMode('new')
     setShowProducts(false)
     setSaveSuccess(false)
     setExistingMarket(null)
@@ -998,20 +1076,108 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
         </TabsContent>
         
         <TabsContent value="asin" className="space-y-4">
-          <form onSubmit={handleAsinSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="asin">ASIN</Label>
-              <div className="relative">
-                <IconBarcode className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="asin"
-                  placeholder="e.g., B0XXXXXXXXX"
-                  value={asin}
-                  onChange={(e) => setAsin(e.target.value)}
-                  className="pl-10"
+          <form onSubmit={handleAsinSubmit} className="space-y-6">
+            {/* Research Mode Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Research Mode</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={researchMode === 'new' ? 'default' : 'outline'}
+                  className="h-auto p-3 justify-start"
+                  onClick={() => setResearchMode('new')}
                   disabled={isLoading}
+                >
+                  <IconPlus className="w-4 h-4 mr-2" />
+                  <div className="text-left">
+                    <div className="font-medium">New Research</div>
+                    <div className="text-xs text-muted-foreground">Standalone analysis</div>
+                  </div>
+                </Button>
+                <Button
+                  type="button"
+                  variant={researchMode === 'add-to-market' ? 'default' : 'outline'}
+                  className="h-auto p-3 justify-start"
+                  onClick={() => setResearchMode('add-to-market')}
+                  disabled={isLoading || availableMarkets.length === 0}
+                >
+                  <IconDatabase className="w-4 h-4 mr-2" />
+                  <div className="text-left">
+                    <div className="font-medium">Add to Market</div>
+                    <div className="text-xs text-muted-foreground">Expand existing market</div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+
+            {/* Market Selection (shown when add-to-market is selected) */}
+            {researchMode === 'add-to-market' && (
+              <div className="space-y-2">
+                <Label htmlFor="market-select">Select Market</Label>
+                <select
+                  id="market-select"
+                  value={selectedMarket || ''}
+                  onChange={(e) => setSelectedMarket(e.target.value || null)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isLoading || loadingMarkets}
+                >
+                  <option value="">Select a market...</option>
+                  {availableMarkets.map((market) => (
+                    <option key={market.id} value={market.id}>
+                      {market.keyword} ({market.total_products_analyzed || 0} products)
+                    </option>
+                  ))}
+                </select>
+                {loadingMarkets && (
+                  <p className="text-xs text-muted-foreground">Loading markets...</p>
+                )}
+              </div>
+            )}
+
+            {/* ASIN Input */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="asin-input">ASINs (1-10)</Label>
+                <Badge variant="outline" className="text-xs">
+                  {parseAsins(asinInput).length}/10
+                </Badge>
+              </div>
+              <div className="relative">
+                <IconBarcode className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <textarea
+                  id="asin-input"
+                  placeholder="B0XXXXXXXXX, B0YYYYYYYYY, B0ZZZZZZZZZ&#10;Or one per line..."
+                  value={asinInput}
+                  onChange={(e) => setAsinInput(e.target.value)}
+                  className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isLoading}
+                  rows={3}
                 />
               </div>
+              
+              {/* ASIN Validation Feedback */}
+              {asinInput.trim() && (
+                <div className="space-y-1">
+                  {parseAsins(asinInput).length > 0 && (
+                    <div className="flex items-center gap-1 text-xs text-emerald-600">
+                      <IconCheck className="w-3 h-3" />
+                      {parseAsins(asinInput).length} valid ASIN(s)
+                    </div>
+                  )}
+                  {getInvalidAsins(asinInput).length > 0 && (
+                    <div className="flex items-center gap-1 text-xs text-red-600">
+                      <IconX className="w-3 h-3" />
+                      Invalid: {getInvalidAsins(asinInput).join(', ')}
+                    </div>
+                  )}
+                  {parseAsins(asinInput).length > 10 && (
+                    <div className="flex items-center gap-1 text-xs text-red-600">
+                      <IconX className="w-3 h-3" />
+                      Maximum 10 ASINs allowed
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="flex justify-end space-x-2">
@@ -1025,9 +1191,9 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || !asin.trim()}
+                disabled={isLoading || !asinInput.trim() || parseAsins(asinInput).length === 0}
               >
-                {isLoading ? "Analyzing..." : "Start Research"}
+                {isLoading ? "Analyzing..." : `Analyze ${parseAsins(asinInput).length || 0} ASIN${parseAsins(asinInput).length === 1 ? '' : 's'}`}
               </Button>
             </div>
           </form>

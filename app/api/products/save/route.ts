@@ -8,7 +8,14 @@ import { MarketRecalculator } from '@/lib/market-recalculator'
 
 export async function POST(request: NextRequest) {
   try {
-    const { products, marketAnalysis, refreshMode, existingMarketId } = await request.json()
+    const { 
+      products, 
+      marketAnalysis, 
+      refreshMode, 
+      existingMarketId, 
+      researchMode, 
+      targetMarketId 
+    } = await request.json()
 
     if (!products || !Array.isArray(products)) {
       return NextResponse.json(
@@ -57,8 +64,129 @@ export async function POST(request: NextRequest) {
     
     Logger.save.start(products.length, !!marketAnalysis)
     
+    // Handle adding ASINs to existing market (new ASIN research mode)
+    if (researchMode === 'add-to-market' && targetMarketId) {
+      console.log(`📦 Add-to-market mode: Adding ${products.length} ASIN products to existing market ${targetMarketId}`)
+      
+      // Validate market ownership
+      const { data: targetMarket, error: marketError } = await supabaseAdmin
+        .from('markets')
+        .select('id, keyword, user_id')
+        .eq('id', targetMarketId)
+        .eq('user_id', userId)
+        .single()
+
+      if (marketError || !targetMarket) {
+        return NextResponse.json(
+          { error: 'Target market not found or access denied' },
+          { status: 403 }
+        )
+      }
+
+      // 1. Check for existing ASINs to avoid duplicates
+      const asinsToCheck = products.map(p => p.asin)
+      const { data: existingProducts } = await supabaseAdmin
+        .from('products')
+        .select('asin')
+        .eq('user_id', userId)
+        .in('asin', asinsToCheck)
+
+      const existingAsins = new Set(existingProducts?.map(p => p.asin) || [])
+      const newProducts = products.filter(p => !existingAsins.has(p.asin))
+      duplicateCount = products.length - newProducts.length
+
+      console.log(`📊 ASIN analysis: ${newProducts.length} new, ${duplicateCount} duplicates for market "${targetMarket.keyword}"`)
+
+      // 2. Insert only new products linked to target market
+      let insertedProducts: any[] = []
+      if (newProducts.length > 0) {
+        const newProductInserts = newProducts.map((product, index) => ({
+          user_id: userId,
+          market_id: targetMarketId,
+          asin: product.asin,
+          title: product.title,
+          brand: product.brand || 'Unknown',
+          price: product.price,
+          bsr: product.bsr || null,
+          reviews: product.reviews || 0,
+          rating: product.rating || null,
+          monthly_sales: product.salesData?.monthlySales || null,
+          monthly_revenue: product.salesData?.monthlyRevenue || null,
+          profit_estimate: product.salesData?.monthlyProfit || null,
+          grade: product.grade ? product.grade.substring(0, 2) : null,
+          images: product.images || [],
+          dimensions: product.dimensions || {},
+          reviews_data: product.reviewsData || {},
+          sales_data: product.salesData || {},
+          competitive_intelligence: product.competitiveIntelligence || '',
+          apify_source: product.apifySource || false,
+          seller_sprite_verified: product.sellerSpriteVerified || false,
+          calculated_metrics: product.calculatedMetrics || {},
+          is_market_representative: false,
+          analysis_rank: index + 1,
+          created_at: new Date().toISOString()
+        }))
+
+        const { data: insertResult, error: productError } = await supabaseAdmin
+          .from('products')
+          .insert(newProductInserts)
+          .select()
+
+        if (productError) {
+          Logger.error('ASIN product insertion failed', productError)
+          console.error('ASIN product insertion error details:', productError)
+          throw new Error(`Failed to insert ASIN products: ${productError.message}`)
+        }
+
+        insertedProducts = insertResult || []
+      }
+
+      savedProducts.push(...insertedProducts)
+      newProductIds = insertedProducts.map(p => p.id)
+
+      // 3. Update market metadata with new products count
+      const { data: currentMarket } = await supabaseAdmin
+        .from('markets')
+        .select('total_products_analyzed, products_verified')
+        .eq('id', targetMarketId)
+        .single()
+
+      if (currentMarket && insertedProducts.length > 0) {
+        await supabaseAdmin
+          .from('markets')
+          .update({
+            total_products_analyzed: (currentMarket.total_products_analyzed || 0) + insertedProducts.length,
+            products_verified: (currentMarket.products_verified || 0) + insertedProducts.length,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', targetMarketId)
+      }
+
+      // 4. Trigger market recalculation with new ASIN products
+      console.log(`🔄 Starting market recalculation for market ${targetMarketId} with ${insertedProducts.length} new ASINs`)
+      const marketRecalculator = new MarketRecalculator()
+      const recalculationResult = await marketRecalculator.recalculateMarket(
+        targetMarketId,
+        userId,
+        `Added ${insertedProducts.length} new ASIN products`
+      )
+
+      recalculationTriggered = !!recalculationResult
+      console.log(`📊 Market recalculation ${recalculationTriggered ? 'successful' : 'failed'}`)
+
+      // 5. Get updated market for response
+      const { data: updatedMarket } = await supabaseAdmin
+        .from('markets')
+        .select('*')
+        .eq('id', targetMarketId)
+        .single()
+
+      savedMarket = updatedMarket
+
+      // Skip normal market creation and go to response
+    }
     // Handle market refresh mode - add products to existing market
-    if (refreshMode === 'refresh' && existingMarketId) {
+    else if (refreshMode === 'refresh' && existingMarketId) {
       console.log(`🔄 Refresh mode: Adding ${products.length} products to existing market ${existingMarketId}`)
       
       // 1. Check for existing ASINs to avoid duplicates
