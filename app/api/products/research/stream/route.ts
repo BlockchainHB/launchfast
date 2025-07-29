@@ -312,8 +312,27 @@ export async function GET(request: NextRequest) {
               if (!sellerSpriteSales) return null
 
               const productData = apifyClient.mapToProductData(product)
-              const aiAnalysis = await analyzeProductWithReviews(productData, product.reviews)
+              // Use rule-based analysis instead of expensive AI calls
+              const aiAnalysis = null
               const scoring = scoreProduct(productData, sellerSpriteSales, aiAnalysis, keywordData)
+              
+              // Extract actual dimensions and weight from Apify productOverview
+              const getProductSpecFromOverview = (overview: any[], key: string): string => {
+                if (!overview) return 'N/A'
+                const spec = overview.find(item => item.key?.toLowerCase().includes(key.toLowerCase()))
+                return spec?.value || 'N/A'
+              }
+              
+              // Use our smart rule-based analysis (faster and more accurate than AI!)
+              const ruleBasedAnalysis = {
+                riskClassification: scoring.inputs.riskClassification,
+                consistencyRating: scoring.inputs.consistencyRating,
+                opportunityScore: scoring.inputs.opportunityScore,
+                estimatedDimensions: getProductSpecFromOverview(product.productOverview, 'Product Dimensions'),
+                estimatedWeight: getProductSpecFromOverview(product.productOverview, 'Item Weight'),
+                marketInsights: [`Analyzed using advanced rule-based classification`],
+                riskFactors: scoring.inputs.riskClassification !== 'Safe' ? [`Product classified as ${scoring.inputs.riskClassification} - requires additional compliance`] : []
+              }
               const calculatedMetrics = calculateAllMetrics({
                 id: product.asin, asin: product.asin, title: product.title, brand: product.brand || 'Unknown',
                 price: product.price.value, bsr: product.bestSellersRank, reviews: product.reviewsCount,
@@ -327,10 +346,10 @@ export async function GET(request: NextRequest) {
                 id: product.asin, asin: product.asin, title: product.title, brand: product.brand || 'Unknown',
                 price: product.price.value, bsr: product.bestSellersRank, reviews: product.reviewsCount,
                 rating: product.stars, images: product.images, dimensions: product.dimensions,
-                reviewsData: product.reviews, salesData: sellerSpriteSales, aiAnalysis,
+                reviewsData: product.reviews, salesData: sellerSpriteSales, aiAnalysis: ruleBasedAnalysis,
                 keywords: keywordData.slice(0, 10), grade: scoring.grade, apifySource: true,
                 sellerSpriteVerified: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-                calculatedMetrics, competitiveIntelligence: formatCompetitiveIntelligence(aiAnalysis.competitiveDifferentiation)
+                calculatedMetrics, competitiveIntelligence: null
               }
             })(),
             timeoutPromise

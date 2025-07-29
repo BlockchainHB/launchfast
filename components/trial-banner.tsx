@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from './ui/button'
-import { Card, CardContent } from './ui/card'
 import { Badge } from './ui/badge'
 import { Progress } from './ui/progress'
-import { X, Clock, Sparkles, CreditCard, AlertTriangle } from 'lucide-react'
+import { X, Clock, Sparkles, CreditCard, AlertTriangle, Crown, Zap, Timer, Lightbulb } from 'lucide-react'
 import { TrialInfo, getTrialUrgencyMessage, getTrialColorTheme } from '@/lib/trial-utils'
 
 interface TrialBannerProps {
@@ -67,79 +66,135 @@ export function TrialBanner({
     return null
   }
 
-  const colorTheme = getTrialColorTheme(trialInfo.urgencyLevel)
+  // Get theme colors based on urgency level with clean card-based design
+  const getThemeClasses = () => {
+    switch (trialInfo.urgencyLevel) {
+      case 'critical':
+        return {
+          container: 'border-l-red-500',
+          icon: 'bg-red-100 text-red-600',
+          text: 'text-red-900',
+          badge: 'bg-red-100 text-red-700 border-red-200',
+          button: 'bg-red-600 hover:bg-red-700'
+        }
+      case 'high':
+        return {
+          container: 'border-l-orange-500',
+          icon: 'bg-orange-100 text-orange-600',
+          text: 'text-orange-900',
+          badge: 'bg-orange-100 text-orange-700 border-orange-200',
+          button: 'bg-orange-600 hover:bg-orange-700'
+        }
+      case 'medium':
+        return {
+          container: 'border-l-blue-500',
+          icon: 'bg-blue-100 text-blue-600',
+          text: 'text-blue-900',
+          badge: 'bg-blue-100 text-blue-700 border-blue-200',
+          button: 'bg-blue-600 hover:bg-blue-700'
+        }
+      default:
+        return {
+          container: 'border-l-gray-400',
+          icon: 'bg-gray-100 text-gray-600',
+          text: 'text-gray-900',
+          badge: 'bg-gray-100 text-gray-700 border-gray-200',
+          button: 'bg-gray-900 hover:bg-gray-800'
+        }
+    }
+  }
+
+  const theme = getThemeClasses()
   const urgencyMessage = getTrialUrgencyMessage(trialInfo)
 
   return (
-    <Card className={`mx-4 mt-4 ${colorTheme.borderColor} shadow-sm`}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            {/* Icon */}
-            <div className={`p-2 rounded-lg ${colorTheme.bgColor}`}>
-              <Sparkles className={`h-5 w-5 ${colorTheme.textColor}`} />
+    <div className={`mx-4 mb-4 border rounded-lg shadow-sm bg-white border-l-4 ${theme.container}`}>
+      <div className="px-4 py-3">
+        <div className="flex items-center justify-between gap-4">
+          {/* Main Content - Single Row */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Compact Icon */}
+            <div className={`p-1.5 rounded-lg ${theme.icon} flex-shrink-0`}>
+              {trialInfo.urgencyLevel === 'critical' ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : (
+                <Crown className="h-4 w-4" />
+              )}
             </div>
 
-            {/* Trial Info */}
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-sm">
+            {/* Compact Content */}
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`font-semibold text-sm ${theme.text}`}>
                   {trialInfo.daysRemaining > 0 
-                    ? `${trialInfo.daysRemaining} Days Left` 
-                    : 'Final Hours!'
+                    ? `${trialInfo.daysRemaining} days left` 
+                    : 'Trial ending soon!'
                   }
-                </h3>
+                </span>
                 {trialInfo.promoCodeUsed && (
-                  <Badge variant="outline" className="text-xs">
-                    Code: {trialInfo.promoCodeUsed}
+                  <Badge className={`text-xs px-1.5 py-0.5 ${theme.badge}`}>
+                    {trialInfo.promoCodeUsed}
                   </Badge>
                 )}
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  <span>{timeRemaining}</span>
-                </div>
-                
+                {/* Urgency indicator for all levels */}
                 {trialInfo.urgencyLevel === 'critical' && (
-                  <div className="flex items-center gap-1">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    <span className="text-xs font-medium text-red-600">
-                      Don't lose access!
-                    </span>
-                  </div>
+                  <span className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                    <AlertTriangle className="h-3 w-3" />
+                    URGENT
+                  </span>
+                )}
+                {trialInfo.urgencyLevel === 'high' && (
+                  <span className="flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                    <Zap className="h-3 w-3" />
+                    ACT SOON
+                  </span>
+                )}
+                {trialInfo.urgencyLevel === 'medium' && (
+                  <span className="flex items-center gap-1 text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                    <Lightbulb className="h-3 w-3" />
+                    REMINDER
+                  </span>
+                )}
+                {trialInfo.urgencyLevel === 'low' && (
+                  <span className="flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-200">
+                    <Timer className="h-3 w-3" />
+                    TRIAL ACTIVE
+                  </span>
                 )}
               </div>
 
-              {/* Progress Bar */}
-              <div className="mt-2 space-y-1">
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Clock className="h-3 w-3" />
+                <span>{timeRemaining}</span>
+              </div>
+
+
+              {/* Compact Progress */}
+              <div className="flex-1 max-w-32">
                 <Progress 
                   value={progress} 
-                  className="h-2"
+                  className="h-1.5"
                   style={{
                     '--progress-foreground': trialInfo.urgencyLevel === 'critical' 
-                      ? 'hsl(0 72% 51%)' 
+                      ? '#dc2626' 
                       : trialInfo.urgencyLevel === 'high'
-                      ? 'hsl(25 95% 53%)'
-                      : 'hsl(221 83% 53%)'
+                      ? '#ea580c'
+                      : trialInfo.urgencyLevel === 'medium'
+                      ? '#2563eb'
+                      : '#374151'
                   } as React.CSSProperties}
                 />
-                <div className="text-xs text-muted-foreground">
-                  {urgencyMessage}
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
+          {/* Compact Action */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               onClick={onUpgradeClick}
-              className={`text-white font-semibold ${colorTheme.buttonColor} hover:shadow-lg transition-all duration-200`}
               size="sm"
+              className={`text-white font-medium px-3 py-1.5 h-auto text-xs ${theme.button}`}
             >
-              <CreditCard className="h-4 w-4 mr-2" />
               Subscribe Now
             </Button>
 
@@ -148,14 +203,14 @@ export function TrialBanner({
                 variant="ghost"
                 size="sm"
                 onClick={onDismiss}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-gray-400 hover:text-gray-600 p-1"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
               </Button>
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

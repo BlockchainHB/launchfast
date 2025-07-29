@@ -304,7 +304,7 @@ export interface ScoreBreakdown {
 export function scoreProduct(
   product: any,
   salesData: SalesPrediction,
-  aiAnalysis: AIAnalysis,
+  aiAnalysis: AIAnalysis | null,
   keywordData: KeywordData[] = []
 ): {
   grade: string
@@ -317,18 +317,23 @@ export function scoreProduct(
     ? keywordData.reduce((sum, kw) => sum + kw.cpc, 0) / keywordData.length
     : 0
 
+  // Simple rule-based replacements for AI analysis (to reduce costs)
+  const riskClassification = calculateRiskClassification(product, salesData)
+  const consistencyRating = calculateConsistencyRating(product, salesData)
+  const opportunityScore = calculateOpportunityScore(product, salesData)
+
   const inputs: ScoringInputs = {
     monthlyProfit: salesData.monthlyProfit,
     price: product.price,
     margin: salesData.margin,
     reviews: product.reviews,
     avgCPC,
-    riskClassification: aiAnalysis.riskClassification,
-    consistencyRating: aiAnalysis.consistencyRating,
+    riskClassification,
+    consistencyRating,
     ppu: salesData.ppu,
     bsr: product.bsr,
     rating: product.rating,
-    opportunityScore: aiAnalysis.opportunityScore
+    opportunityScore
   }
 
   const result = calculateGrade(inputs)
@@ -337,6 +342,108 @@ export function scoreProduct(
     ...result,
     inputs
   }
+}
+
+// Rule-based AI analysis replacements (to reduce OpenAI costs)
+function calculateRiskClassification(product: any, salesData: SalesPrediction): string {
+  const title = product.title?.toLowerCase() || ''
+  const category = product.category?.toLowerCase() || ''
+  
+  // Electric products
+  if (title.includes('smart') || title.includes('electric') || title.includes('electronic') || 
+      title.includes('bluetooth') || title.includes('wireless') || title.includes('battery') ||
+      title.includes('charger') || title.includes('led') || title.includes('lcd') ||
+      category.includes('electronics')) {
+    return 'Electric'
+  }
+  
+  // Medical products  
+  if (title.includes('medical') || title.includes('health') || title.includes('supplement') ||
+      title.includes('vitamin') || title.includes('therapeutic') || title.includes('prescription') ||
+      category.includes('health')) {
+    return 'Medical'
+  }
+  
+  // Breakable products
+  if (title.includes('glass') || title.includes('ceramic') || title.includes('fragile') ||
+      title.includes('crystal') || title.includes('porcelain') || 
+      product.dimensions?.weight > 5) { // Heavy items more likely to break in shipping
+    return 'Breakable'
+  }
+  
+  // Prohibited items (only truly banned items, not toys)
+  if ((title.includes('tobacco') && !title.includes('toy')) ||
+      (title.includes('alcohol') && !title.includes('toy') && !title.includes('cleaner')) ||
+      title.includes('illegal') || title.includes('drug paraphernalia') ||
+      title.includes('real weapon') || title.includes('actual weapon') ||
+      (title.includes('gun') && title.includes('real') && !title.includes('toy')) ||
+      title.includes('cbd') || title.includes('thc') || title.includes('cannabis')) {
+    return 'Prohibited'
+  }
+  
+  return 'Safe'
+}
+
+function calculateConsistencyRating(product: any, salesData: SalesPrediction): string {
+  const title = product.title?.toLowerCase() || ''
+  const category = product.category?.toLowerCase() || ''
+  
+  // Trendy/seasonal products
+  if (title.includes('halloween') || title.includes('christmas') || title.includes('valentine') ||
+      title.includes('trending') || title.includes('viral') || title.includes('tiktok') ||
+      title.includes('fidget') || title.includes('craze')) {
+    return 'Trendy'
+  }
+  
+  // Consistent demand products
+  if (title.includes('kitchen') || title.includes('bathroom') || title.includes('cleaning') ||
+      title.includes('storage') || title.includes('organization') || title.includes('fitness') ||
+      title.includes('health') || title.includes('pet') || title.includes('baby') ||
+      category.includes('home') || category.includes('kitchen') || category.includes('health')) {
+    return 'Consistent'
+  }
+  
+  // Check BSR for consistency indicator
+  if (product.bsr && product.bsr < 50000) {
+    return 'Consistent' // Low BSR usually means steady sales
+  }
+  
+  // Check reviews count - high reviews usually mean established product
+  if (product.reviews > 1000) {
+    return 'Consistent'
+  }
+  
+  return 'Low'
+}
+
+function calculateOpportunityScore(product: any, salesData: SalesPrediction): number {
+  let score = 5 // Base score
+  
+  // Higher profit = higher opportunity
+  if (salesData.monthlyProfit > 10000) score += 3
+  else if (salesData.monthlyProfit > 5000) score += 2
+  else if (salesData.monthlyProfit > 1000) score += 1
+  
+  // Good margin
+  if (salesData.margin > 0.4) score += 2
+  else if (salesData.margin > 0.3) score += 1
+  
+  // Low competition (fewer reviews = less competition)
+  if (product.reviews < 100) score += 2
+  else if (product.reviews < 500) score += 1
+  
+  // Good rating
+  if (product.rating >= 4.5) score += 1
+  else if (product.rating < 3.5) score -= 2
+  
+  // Price sweet spot
+  if (product.price >= 20 && product.price <= 100) score += 1
+  
+  // BSR consideration
+  if (product.bsr && product.bsr < 10000) score += 2
+  else if (product.bsr && product.bsr > 100000) score -= 1
+  
+  return Math.max(1, Math.min(10, score))
 }
 
 // Preliminary scoring for Apify data only (before SellerSprite verification)

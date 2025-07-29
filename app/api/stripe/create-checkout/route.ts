@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return await createCheckoutSession({ plan, email, successUrl, cancelUrl }, request)
+    const result = await createCheckoutSession({ plan, email, successUrl, cancelUrl }, request)
+    return NextResponse.json(result)
 
   } catch (error) {
     console.error('Stripe checkout creation error:', error)
@@ -68,30 +69,6 @@ async function createCheckoutSession(
   request: NextRequest
 ) {
   const subscriptionPlan = SUBSCRIPTION_PLANS[plan]
-
-  // Determine price ID based on customer verification
-  let priceId = subscriptionPlan.stripeId; // Default price
-
-  if (email) {
-    try {
-      // Verify if customer is legacy customer - direct database call for server-side
-      const { data: legacyCustomer, error } = await supabaseAdmin
-        .from('legacyx_customers')
-        .select('id, customer_name, customer_email')
-        .eq('customer_email', email.toLowerCase().trim())
-        .single();
-
-      if (!error && legacyCustomer) {
-        priceId = PRICE_IDS.LEGACY_CUSTOMER;
-      } else {
-        priceId = PRICE_IDS.NEW_CUSTOMER;
-      }
-    } catch (error) {
-      console.error('Customer verification failed, using default pricing:', error);
-      // Continue with default pricing on verification failure - this ensures checkout always works
-      priceId = subscriptionPlan.stripeId;
-    }
-  }
 
   // Get authenticated user
   const supabase = createServerClient(
@@ -130,6 +107,33 @@ async function createCheckoutSession(
   }
 
   let customerId = profile.stripe_customer_id
+
+  // Determine price ID based on customer verification and trial status
+  let priceId = subscriptionPlan.stripeId; // Default price
+
+  // Check if user is on trial - use specific trial price
+  if (profile.subscription_tier === 'trial' && profile.subscription_status === 'trialing') {
+    priceId = 'price_1RnrlBDWe1hjENea5v1s4s9H'; // Trial-specific price
+  } else if (email) {
+    try {
+      // Verify if customer is legacy customer - direct database call for server-side
+      const { data: legacyCustomer, error } = await supabaseAdmin
+        .from('legacyx_customers')
+        .select('id, customer_name, customer_email')
+        .eq('customer_email', email.toLowerCase().trim())
+        .single();
+
+      if (!error && legacyCustomer) {
+        priceId = PRICE_IDS.LEGACY_CUSTOMER;
+      } else {
+        priceId = PRICE_IDS.NEW_CUSTOMER;
+      }
+    } catch (error) {
+      console.error('Customer verification failed, using default pricing:', error);
+      // Continue with default pricing on verification failure - this ensures checkout always works
+      priceId = subscriptionPlan.stripeId;
+    }
+  }
 
   // Create Stripe customer if doesn't exist
   if (!customerId) {
@@ -189,9 +193,10 @@ async function createCheckoutSession(
     }
   })
 
-  return NextResponse.json({
+  // For GET requests, return URL for redirect. For POST requests, return JSON.
+  return {
     success: true,
     sessionId: session.id,
     url: session.url
-  })
+  }
 }

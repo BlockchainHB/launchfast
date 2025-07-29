@@ -201,43 +201,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     size: 80,
     filterFn: 'minGrade',
   },
-  // 4. Consistency
-  {
-    accessorKey: "aiAnalysis.consistencyRating",
-    header: ({ column }) => (
-      <div className="text-center text-xs font-medium">Consistency</div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex justify-center">
-        <Badge 
-          variant="outline" 
-          className={`text-xs ${getConsistencyColor(row.original.aiAnalysis?.consistencyRating || 'Unknown')}`}
-        >
-          {row.original.aiAnalysis?.consistencyRating || 'Unknown'}
-        </Badge>
-      </div>
-    ),
-    size: 100,
-  },
-  // 5. Risk Type
-  {
-    accessorKey: "aiAnalysis.riskClassification",
-    header: ({ column }) => (
-      <div className="text-center text-xs font-medium">Risk</div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex justify-center">
-        <Badge 
-          variant="outline" 
-          className={`text-xs ${getRiskColor(row.original.aiAnalysis?.riskClassification || 'Unknown')}`}
-        >
-          {row.original.aiAnalysis?.riskClassification || 'Unknown'}
-        </Badge>
-      </div>
-    ),
-    size: 100,
-    filterFn: 'nestedProperty',
-  },
+  // AI analysis columns removed to reduce costs
   // 6. Daily Revenue
   {
     accessorKey: "calculatedMetrics.dailyRevenue",
@@ -472,28 +436,7 @@ const columns: ColumnDef<EnhancedProduct>[] = [
     ),
     size: 100,
   },
-  // 19. AI Analysis
-  {
-    accessorKey: "competitiveIntelligence",
-    header: ({ column }) => (
-      <div className="text-xs font-medium">AI Analysis</div>
-    ),
-    cell: ({ row }) => (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="text-xs text-muted-foreground cursor-help max-w-[150px] truncate">
-              {row.original.competitiveIntelligence || 'No analysis available'}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-[300px]">
-            <p>{row.original.competitiveIntelligence || 'No analysis available'}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    ),
-    size: 150,
-  },
+  // AI Analysis column removed to reduce costs
   // 20. Date
   {
     accessorKey: "createdAt",
@@ -757,17 +700,7 @@ export function DataTable({
       type: 'select' as const,
       options: getGradeFilterOptions()
     },
-    {
-      column: 'aiAnalysis.riskClassification',
-      label: 'Risk Level',
-      type: 'select' as const,
-      options: [
-        { label: 'Low Risk', value: 'Low Risk', color: '#10b981' },
-        { label: 'Medium Risk', value: 'Medium Risk', color: '#eab308' },
-        { label: 'High Risk', value: 'High Risk', color: '#ef4444' },
-        { label: 'Unknown', value: 'Unknown', color: '#6b7280' }
-      ]
-    },
+    // Risk level filter removed (AI analysis no longer used)
     {
       column: 'salesData.monthlyRevenue',
       label: 'Monthly Revenue',

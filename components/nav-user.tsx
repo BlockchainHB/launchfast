@@ -5,9 +5,6 @@ import { useState } from "react"
 import {
   MoreVertical,
   LogOut,
-  Settings,
-  CreditCard,
-  User,
 } from "lucide-react"
 
 import {
@@ -18,7 +15,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -151,32 +147,6 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
-            
-            <DropdownMenuSeparator className="bg-gray-100" />
-            
-            <DropdownMenuGroup>
-              <DropdownMenuItem 
-                onClick={() => router.push('/dashboard/settings')}
-                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-              >
-                <User className="mr-2.5 h-4 w-4 text-gray-400" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => router.push('/dashboard/settings?tab=subscription')}
-                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-              >
-                <CreditCard className="mr-2.5 h-4 w-4 text-gray-400" />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => router.push('/dashboard/settings')}
-                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
-              >
-                <Settings className="mr-2.5 h-4 w-4 text-gray-400" />
-                Settings
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
             
             <DropdownMenuSeparator className="bg-gray-100" />
             

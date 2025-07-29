@@ -146,7 +146,7 @@ export function SubscriptionSettings() {
   }
 
   const handleUpgrade = () => {
-    // For trial users, redirect to standard $199 pricing (not legacy customer pricing)
+    // For trial users, API will automatically detect trial status and use correct price
     if (subscription?.subscription_tier === 'trial') {
       window.location.href = '/api/stripe/create-checkout?plan=pro'
     } else {
@@ -264,7 +264,7 @@ export function SubscriptionSettings() {
                       </p>
                       <p className={`text-sm mt-1 ${getTrialColorTheme(trialInfo.urgencyLevel).textColor}`}>
                         Subscribe now to continue using LaunchFast after your trial expires. 
-                        Your trial will automatically end on {trialInfo.trialEndDate?.toLocaleDateString()}.
+                        Your trial will automatically end on {trialInfo.trialEndDate ? new Date(trialInfo.trialEndDate).toLocaleDateString() : 'soon'}.
                       </p>
                     </div>
                   </div>

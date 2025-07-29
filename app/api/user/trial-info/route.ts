@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 import { getTrialInfo } from '@/lib/trial-utils'
 
 export async function GET(request: NextRequest) {
   try {
-    // Use the imported supabase client
+    // Create server client with proper cookie handling
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+        },
+      }
+    )
 
     // Get the current user
     const { data: { user }, error: authError } = await supabase.auth.getUser()

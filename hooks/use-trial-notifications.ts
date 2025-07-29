@@ -20,15 +20,19 @@ export const useTrialNotifications = () => {
 
     const checkTrialStatus = async () => {
       try {
-        // Get current user
-        const user = await authHelpers.getCurrentUser()
-        if (!user || !isMounted) {
-          setIsLoading(false)
-          return
+        // Get trial info via API endpoint (handles auth internally)
+        const response = await fetch('/api/user/trial-info')
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            // User not authenticated, skip trial notifications
+            setIsLoading(false)
+            return
+          }
+          throw new Error('Failed to fetch trial info')
         }
 
-        // Get trial info
-        const info = await getTrialInfo(user.id)
+        const info = await response.json()
         if (!isMounted) return
 
         setTrialInfo(info)
@@ -72,7 +76,8 @@ export const useTrialNotifications = () => {
         urgency_level: trialInfo?.urgencyLevel || 'low'
       })
     }
-    router.push('/api/stripe/create-checkout?plan=pro')
+    // Use window.location.href for full page redirect to Stripe
+    window.location.href = '/api/stripe/create-checkout?plan=pro'
   }
 
   // Function to go to settings

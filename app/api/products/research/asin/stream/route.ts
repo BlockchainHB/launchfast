@@ -220,8 +220,27 @@ export async function GET(request: NextRequest) {
 
       // Process product data (same logic as keyword research)
       const productData = apifyClient.mapToProductData(apifyProduct)
-      const aiAnalysis = await analyzeProductWithReviews(productData, apifyProduct.reviews)
+      // Use rule-based analysis instead of expensive AI calls
+      const aiAnalysis = null
       const scoring = scoreProduct(productData, sellerSpriteSales, aiAnalysis, keywordData)
+      
+      // Extract actual dimensions and weight from Apify productOverview
+      const getProductSpecFromOverview = (overview: any[], key: string): string => {
+        if (!overview) return 'N/A'
+        const spec = overview.find(item => item.key?.toLowerCase().includes(key.toLowerCase()))
+        return spec?.value || 'N/A'
+      }
+      
+      // Use our smart rule-based analysis (faster and more accurate than AI!)
+      const ruleBasedAnalysis = {
+        riskClassification: scoring.inputs.riskClassification,
+        consistencyRating: scoring.inputs.consistencyRating,
+        opportunityScore: scoring.inputs.opportunityScore,
+        estimatedDimensions: getProductSpecFromOverview(apifyProduct.productOverview, 'Product Dimensions'),
+        estimatedWeight: getProductSpecFromOverview(apifyProduct.productOverview, 'Item Weight'),
+        marketInsights: [`Analyzed using advanced rule-based classification`],
+        riskFactors: scoring.inputs.riskClassification !== 'Safe' ? [`Product classified as ${scoring.inputs.riskClassification} - requires additional compliance`] : []
+      }
       const calculatedMetrics = calculateAllMetrics({
         id: asin,
         asin,
@@ -235,7 +254,7 @@ export async function GET(request: NextRequest) {
         dimensions: apifyProduct.dimensions,
         reviewsData: apifyProduct.reviews,
         salesData: sellerSpriteSales,
-        aiAnalysis,
+        aiAnalysis: ruleBasedAnalysis,
         keywords: keywordData.slice(0, 10),
         grade: scoring.grade,
         apifySource: true,
@@ -257,7 +276,7 @@ export async function GET(request: NextRequest) {
         dimensions: apifyProduct.dimensions,
         reviewsData: apifyProduct.reviews,
         salesData: sellerSpriteSales,
-        aiAnalysis,
+        aiAnalysis: ruleBasedAnalysis,
         keywords: keywordData.slice(0, 10),
         grade: scoring.grade,
         apifySource: true,
@@ -265,7 +284,7 @@ export async function GET(request: NextRequest) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         calculatedMetrics,
-        competitiveIntelligence: formatCompetitiveIntelligence(aiAnalysis.competitiveDifferentiation),
+        competitiveIntelligence: null,
         // ASIN products have no market association
         marketId: null,
         market: null

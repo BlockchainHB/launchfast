@@ -24,6 +24,8 @@ export const getGradeIcon = (grade: string, size: number = 16) => {
   
   if (gradeUpper === 'A10') {
     return <Trophy size={size} className="text-yellow-600" />
+  } else if (gradeUpper === 'AVOID' || gradeUpper === 'F1') {
+    return <ErrorFilled size={size} className="text-red-700" />
   } else if (gradeUpper.startsWith('A')) {
     return <CheckmarkFilled size={size} className="text-green-600" />
   } else if (gradeUpper.startsWith('B')) {
@@ -34,8 +36,6 @@ export const getGradeIcon = (grade: string, size: number = 16) => {
     return <WarningFilled size={size} className="text-orange-600" />
   } else if (gradeUpper.startsWith('E')) {
     return <WarningAltFilled size={size} className="text-red-600" />
-  } else if (gradeUpper === 'F1') {
-    return <ErrorFilled size={size} className="text-red-700" />
   } else if (gradeUpper.startsWith('F')) {
     return <Close size={size} className="text-red-600" />
   }

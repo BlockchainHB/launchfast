@@ -3,6 +3,7 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { WelcomeModal } from "@/components/ui/welcome-modal"
+import { TrialBanner } from "@/components/trial-banner"
 import { KeywordResearchResultsTable } from "@/components/keyword-research/KeywordResearchResultsTable"
 import {
   SidebarInset,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useEffect, useState } from "react"
 import type { KeywordResearchResult } from "@/lib/keyword-research"
+import { useTrialNotifications } from "@/hooks/use-trial-notifications"
 import { 
   Target, 
   Search, 
@@ -27,6 +29,9 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const [isResearching, setIsResearching] = useState(false)
+  
+  // Trial notifications hook
+  const { trialInfo, handleSubscribe } = useTrialNotifications()
   const [progressInfo, setProgressInfo] = useState<{
     phase: string
     message: string
@@ -277,6 +282,13 @@ export default function Page() {
       <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
+        {/* Trial Banner */}
+        {trialInfo && trialInfo.isActive && (
+          <TrialBanner 
+            trialInfo={trialInfo} 
+            onUpgradeClick={handleSubscribe}
+          />
+        )}
         <div className="flex flex-1 flex-col">
           <div className="flex-1 space-y-4">
             <div className="container max-w-7xl mx-auto px-4 lg:px-6 py-8">
