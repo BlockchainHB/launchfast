@@ -13,6 +13,12 @@ export async function GET(request: NextRequest) {
           get(name: string) {
             return request.cookies.get(name)?.value
           },
+          set() {
+            // Read-only endpoint - no cookie setting needed
+          },
+          remove() {
+            // Read-only endpoint - no cookie removal needed
+          },
         },
       }
     )
