@@ -286,6 +286,9 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
   const [savedSuppliers, setSavedSuppliers] = useState<SavedSupplier[]>([])
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [supplierToSave, setSupplierToSave] = useState<any>(null)
+  const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set())
+  const [showBatchSaveModal, setShowBatchSaveModal] = useState(false)
+  const [sortBy, setSortBy] = useState<'quality' | 'years' | 'moq' | 'reviews'>('quality')
 
   // Helper function to clean HTML tags from text
   const cleanText = (text: string) => {
@@ -313,23 +316,67 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
     setAppliedFiltersCount(count)
   }, [filters])
 
-  // No frontend filtering - API already filtered and scored the suppliers
+  // Frontend view filtering and sorting - filter and sort the already-returned suppliers for display
   const filteredSuppliers = React.useMemo(() => {
     if (!data?.suppliers) return []
     
-    // Debug: Log first supplier structure
-    if (data.suppliers.length > 0) {
-      console.log('🔍 Displaying API-filtered suppliers:', data.suppliers.length)
-      console.log('🔍 First supplier structure:', {
-        trust: data.suppliers[0].trust,
-        goldSupplier: data.suppliers[0].trust?.goldSupplier,
-        tradeAssurance: data.suppliers[0].trust?.tradeAssurance || data.suppliers[0].metrics?.tradeAssurance
-      })
-    }
+    // First filter
+    const filtered = data.suppliers.filter(supplier => {
+      // Gold Supplier filter
+      if (filters.goldSupplier && !supplier.trust?.goldSupplier) {
+        return false
+      }
+      
+      // Trade Assurance filter  
+      if (filters.tradeAssurance && !(supplier.trust?.tradeAssurance || supplier.metrics?.tradeAssurance)) {
+        return false
+      }
+      
+      // MOQ range filter
+      const supplierMOQ = supplier.moq || supplier.minOrderQuantity || 0
+      if (supplierMOQ > 0 && (supplierMOQ < filters.moqRange[0] || supplierMOQ > filters.moqRange[1])) {
+        return false
+      }
+      
+      // Years in business filter
+      const yearsInBusiness = supplier.yearsInBusiness || 0
+      if (yearsInBusiness < filters.yearsRange[0]) {
+        return false
+      }
+      
+      // Quality score filter
+      const qualityScore = supplier.qualityScore?.overall || supplier.qualityScore || 0
+      if (qualityScore < filters.minQualityScore) {
+        return false
+      }
+      
+      return true
+    })
     
-    // Return all suppliers - they're already filtered and scored by the API
-    return data.suppliers
-  }, [data?.suppliers])
+    // Then sort
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'quality':
+          const aQuality = a.qualityScore?.overall || a.qualityScore || 0
+          const bQuality = b.qualityScore?.overall || b.qualityScore || 0
+          return bQuality - aQuality // Highest first
+        case 'years':
+          const aYears = a.yearsInBusiness || 0
+          const bYears = b.yearsInBusiness || 0
+          return bYears - aYears // Most experience first
+        case 'moq':
+          const aMOQ = a.moq || a.minOrderQuantity || 9999
+          const bMOQ = b.moq || b.minOrderQuantity || 9999
+          return aMOQ - bMOQ // Lowest MOQ first
+        case 'reviews':
+          const aReviews = a.reviewCount || 0
+          const bReviews = b.reviewCount || 0
+          return bReviews - aReviews // Most reviews first
+        default:
+          return 0
+      }
+    })
+  }, [data?.suppliers, filters, sortBy])
 
   const clearAllFilters = () => {
     setFilters(defaultFilters)
@@ -348,6 +395,69 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
 
   const isSupplierSaved = (supplierId: string) => {
     return savedSuppliers.some(saved => saved.supplier.id === supplierId)
+  }
+
+  // Selection handling
+  const toggleSupplierSelection = (supplierId: string) => {
+    setSelectedSuppliers(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(supplierId)) {
+        newSet.delete(supplierId)
+      } else {
+        newSet.add(supplierId)
+      }
+      return newSet
+    })
+  }
+
+  const selectAllSuppliers = () => {
+    setSelectedSuppliers(new Set(filteredSuppliers.map(s => s.id)))
+  }
+
+  const clearSelection = () => {
+    setSelectedSuppliers(new Set())
+  }
+
+  // Context-aware save functionality
+  const handleContextAwareSave = () => {
+    if (selectedSuppliers.size === 0) {
+      // Save all filtered suppliers
+      const suppliersToSave = filteredSuppliers
+      handleBatchSave(suppliersToSave)
+    } else {
+      // Save selected suppliers
+      const suppliersToSave = filteredSuppliers.filter(s => selectedSuppliers.has(s.id))
+      handleBatchSave(suppliersToSave)
+    }
+  }
+
+  const handleBatchSave = (suppliers: any[]) => {
+    // TODO: Implement API call to save batch of suppliers
+    // This should create a save batch and link all suppliers to it
+    console.log('Saving batch of suppliers:', suppliers.length)
+    console.log('Market context:', marketContext)
+    console.log('Search query:', data?.searchQuery)
+    
+    // For now, simulate the save
+    const batchId = `batch_${Date.now()}`
+    const newSavedSuppliers = suppliers.map(supplier => ({
+      id: `saved_${supplier.id}_${Date.now()}`,
+      supplier,
+      tags: [],
+      notes: '',
+      category: 'prospects',
+      priority: 'medium' as const,
+      savedAt: new Date().toISOString(),
+      isFavorite: false,
+      batchId,
+      batchName: `${data?.searchQuery || 'Search'} - ${new Date().toLocaleDateString()}`
+    }))
+    
+    setSavedSuppliers(prev => [...prev, ...newSavedSuppliers])
+    clearSelection()
+    
+    // Show success feedback
+    alert(`Successfully saved ${suppliers.length} suppliers!`)
   }
 
   if (!data || !data.suppliers?.length) {
@@ -399,16 +509,60 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
             )}
             {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
           </button>
+          
+          {/* Sort Dropdown */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'quality' | 'years' | 'moq' | 'reviews')}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-colors"
+          >
+            <option value="quality">Sort by Quality Score</option>
+            <option value="years">Sort by Experience</option>
+            <option value="moq">Sort by MOQ (Low to High)</option>
+            <option value="reviews">Sort by Reviews</option>
+          </select>
+          
           <div className="flex items-center gap-2">
+            {/* Selection Controls */}
+            {selectedSuppliers.size > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                  <span className="text-sm text-blue-700">{selectedSuppliers.size} selected</span>
+                  <button 
+                    onClick={clearSelection}
+                    className="text-blue-500 hover:text-blue-700 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                {selectedSuppliers.size < filteredSuppliers.length && (
+                  <button 
+                    onClick={selectAllSuppliers}
+                    className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Select All
+                  </button>
+                )}
+              </div>
+            )}
+            
+            {/* Saved Suppliers Feedback */}
             {savedSuppliers.length > 0 && (
               <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
                 <BookmarkCheck className="h-4 w-4 text-green-600" />
                 <span className="text-sm text-green-700">{savedSuppliers.length} saved</span>
               </div>
             )}
-            <button className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors">
+            
+            {/* Context-Aware Save Button */}
+            <button 
+              onClick={handleContextAwareSave}
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+            >
               <Bookmark className="h-4 w-4 mr-2" />
-              Save All ({filteredSuppliers.length})
+              {selectedSuppliers.size === 0 && `Save All (${filteredSuppliers.length})`}
+              {selectedSuppliers.size > 0 && selectedSuppliers.size < filteredSuppliers.length && `Save Selected (${selectedSuppliers.size})`}
+              {selectedSuppliers.size === filteredSuppliers.length && selectedSuppliers.size > 0 && `Save All (${selectedSuppliers.size})`}
             </button>
           </div>
         </div>
@@ -581,7 +735,21 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         {filteredSuppliers.map((supplier, index) => {
           
           return (
-            <div key={supplier.id || index} className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+            <div key={supplier.id || index} className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 group relative">
+              {/* Selection Checkbox - appears on hover or when selected */}
+              <div className={`absolute top-3 left-3 transition-opacity duration-200 ${
+                selectedSuppliers.has(supplier.id) 
+                  ? 'opacity-100' 
+                  : 'opacity-0 group-hover:opacity-100'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={selectedSuppliers.has(supplier.id)}
+                  onChange={() => toggleSupplierSelection(supplier.id)}
+                  className="h-4 w-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 shadow-sm"
+                />
+              </div>
+              
               <div className="p-6">
                 {/* Product Image & Supplier Header */}
                 <div className="flex items-start gap-4 mb-4">
@@ -618,14 +786,16 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
                   </div>
                 </div>
 
-                {/* Key Metrics Row */}
+                {/* Key Product Metrics Row */}
                 <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
                   <div className="text-center">
                     <div className="text-sm font-semibold text-gray-900">{supplier.price || 'Contact'}</div>
                     <div className="text-xs text-gray-500">Price</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm font-semibold text-gray-900">{supplier.reviewScore || 'N/A'}</div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {supplier.reviewScore ? `${supplier.reviewScore}/5` : 'N/A'}
+                    </div>
                     <div className="text-xs text-gray-500">Review Score</div>
                   </div>
                   <div className="text-center">
