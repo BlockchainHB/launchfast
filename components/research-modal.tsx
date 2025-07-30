@@ -472,8 +472,15 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
           if (progressEvent.phase === 'complete') {
             if (progressEvent.data.products && progressEvent.data.products.length > 0) {
               setResults(progressEvent.data.products)
-              // ASIN research doesn't produce market analysis
-              setMarketAnalysis(null)
+              
+              // Handle prepared market analysis for Multi-ASIN (user can choose to save)
+              if (progressEvent.data.marketAnalysis) {
+                setMarketAnalysis(progressEvent.data.marketAnalysis)
+                console.log(`📊 Prepared market analysis: "${progressEvent.data.marketAnalysis.keyword}" ready for user to save`)
+              } else {
+                // Single ASIN research without market analysis
+                setMarketAnalysis(null)
+              }
             } else {
               setError(progressEvent.data.message || "ASIN not found or invalid")
             }
@@ -1187,15 +1194,23 @@ export function ResearchModal({ isOpen, onClose, onSaveSuccess }: ResearchModalP
           {marketAnalysis && (
             <div className="space-y-3">
               {/* Header with Badge */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-gray-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Market Analysis</h3>
-                  <span className="text-sm text-gray-500">• "{keyword}"</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-gray-600" />
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                      Market Analysis
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-gray-500 truncate max-w-xs">
+                      "{marketAnalysis.keyword || keyword}"
+                    </span>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs shrink-0">
+                      {results.length} Products
+                    </Badge>
+                  </div>
                 </div>
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {results.length} Products
-                </Badge>
               </div>
 
               {/* Compact Metrics Row */}

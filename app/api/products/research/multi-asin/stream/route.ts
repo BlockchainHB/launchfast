@@ -21,6 +21,37 @@ const ASIN_REGEX = /^[A-Z0-9]{10}$/
 const TIMEOUT = 90000 // 90 seconds for multiple ASINs
 const MAX_ASINS = 10
 
+/**
+ * Generate intelligent market name for Multi-ASIN analysis
+ */
+function generateASINMarketName(asins: string[], products: EnhancedProduct[]): string {
+  // Try to detect common brand/category
+  const brands = products.map(p => p.brand).filter(Boolean)
+  const commonBrand = brands.length > 0 && brands.every(b => b === brands[0]) ? brands[0] : null
+  
+  if (commonBrand && asins.length > 2) {
+    return `${commonBrand} Multi-Product`
+  }
+  
+  // Try to detect common category from titles
+  const titles = products.map(p => p.title.toLowerCase())
+  const commonWords = ['wireless', 'bluetooth', 'usb', 'led', 'smart', 'portable', 'car', 'phone', 'case', 'charger']
+  const categoryWord = commonWords.find(word => 
+    titles.filter(title => title.includes(word)).length >= Math.ceil(titles.length * 0.6)
+  )
+  
+  if (categoryWord && asins.length > 2) {
+    return `${categoryWord.charAt(0).toUpperCase() + categoryWord.slice(1)} Products`
+  }
+  
+  // Fallback to ASIN-based naming
+  if (asins.length <= 3) {
+    return asins.join(', ')
+  } else {
+    return `${asins.slice(0, 3).join(', ')} + ${asins.length - 3} more`
+  }
+}
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
   
@@ -319,7 +350,7 @@ export async function GET(request: NextRequest) {
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 calculatedMetrics,
-                competitiveIntelligence: formatCompetitiveIntelligence(aiAnalysis.competitiveDifferentiation),
+                competitiveIntelligence: formatCompetitiveIntelligence(null),
                 marketId: targetMarket?.id || null,
                 market: targetMarket || null
               }
@@ -340,7 +371,41 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Phase 3: Market Integration (if applicable)
+      // Phase 3: Prepare Market Analysis (for user to save manually)
+      let marketAnalysis = null
+      if (mode !== 'add-to-market' && results.length > 0) {
+        sendEvent({
+          phase: 'market_integration',
+          message: `Preparing market analysis for ${results.length} analyzed products`,
+          progress: 85,
+          data: {
+            productsAnalyzed: results.length,
+            mode: 'prepare-market-analysis'
+          },
+          timestamp: new Date().toISOString()
+        })
+
+        try {
+          // Generate intelligent market name
+          const marketName = generateASINMarketName(asins, results)
+          
+          // Create market analysis using existing logic (but don't save to DB yet)
+          const { createMarketAnalysis } = await import('@/lib/market-calculations')
+          marketAnalysis = createMarketAnalysis(marketName, results, { 
+            asins: asins,
+            search_type: 'multi-asin',
+            prepared_for_save: true 
+          })
+          
+          Logger.dev.trace(`Prepared market analysis: "${marketAnalysis.keyword}" for ${results.length} products`)
+          
+        } catch (error) {
+          Logger.error('Market analysis preparation failed', error)
+          // Continue without market analysis - user can still save individual products
+        }
+      }
+
+      // Phase 4: Market Integration (if adding to existing market)
       if (mode === 'add-to-market' && targetMarket && results.length > 0) {
         sendEvent({
           phase: 'market_integration',
@@ -366,13 +431,15 @@ export async function GET(request: NextRequest) {
         data: {
           products: results,
           processingTime,
+          marketAnalysis: marketAnalysis, // Prepared market analysis for user to save
           stats: {
             total_asins: asins.length,
             successful_asins: results.length,
             failed_asins: errors.length,
             errors: errors.length > 0 ? errors : undefined,
             target_market: targetMarket?.keyword,
-            mode: mode
+            mode: mode,
+            market_prepared: marketAnalysis ? true : false
           }
         },
         timestamp: new Date().toISOString()

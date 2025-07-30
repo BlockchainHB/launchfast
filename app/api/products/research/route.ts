@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date().toISOString(),
           // 🆕 Calculated metrics for dashboard
           calculatedMetrics,
-          competitiveIntelligence: formatCompetitiveIntelligence(aiAnalysis.competitiveDifferentiation)
+          competitiveIntelligence: formatCompetitiveIntelligence(null)
         }
 
         return enhancedProduct
