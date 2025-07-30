@@ -37,25 +37,6 @@ interface SaveSupplierModalProps {
   onSave: (savedSupplier: SavedSupplier) => void
 }
 
-interface FilterState {
-  goldSupplier: boolean
-  tradeAssurance: boolean
-  moqRange: [number, number]
-  yearsRange: [number, number]
-  locations: string[]
-  minQualityScore: number
-  certifications: string[]
-}
-
-const defaultFilters: FilterState = {
-  goldSupplier: false, // Don't filter by default - let users see all suppliers
-  tradeAssurance: false, // Don't filter by default - let users see all suppliers
-  moqRange: [1, 500],
-  yearsRange: [0, 20],
-  locations: [],
-  minQualityScore: 0, // Don't filter by quality by default
-  certifications: []
-}
 
 function SaveSupplierModal({ supplier, isOpen, onClose, onSave }: SaveSupplierModalProps) {
   const [tags, setTags] = useState<string[]>([])
@@ -280,14 +261,10 @@ function SaveSupplierModal({ supplier, isOpen, onClose, onSave }: SaveSupplierMo
 }
 
 export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: SearchDiscoveryTabProps) {
-  const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState<FilterState>(defaultFilters)
-  const [appliedFiltersCount, setAppliedFiltersCount] = useState(0)
   const [savedSuppliers, setSavedSuppliers] = useState<SavedSupplier[]>([])
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [supplierToSave, setSupplierToSave] = useState<any>(null)
   const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set())
-  const [showBatchSaveModal, setShowBatchSaveModal] = useState(false)
   const [sortBy, setSortBy] = useState<'quality' | 'years' | 'moq' | 'reviews'>('quality')
 
   // Helper function to clean HTML tags from text
@@ -303,58 +280,12 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
       .trim()
   }
 
-  // Calculate applied filters count
-  React.useEffect(() => {
-    let count = 0
-    if (!filters.goldSupplier) count++
-    if (!filters.tradeAssurance) count++
-    if (filters.moqRange[0] !== 1 || filters.moqRange[1] !== 500) count++
-    if (filters.yearsRange[0] !== 0 || filters.yearsRange[1] !== 20) count++
-    if (filters.locations.length > 0) count++
-    if (filters.minQualityScore !== 70) count++
-    if (filters.certifications.length > 0) count++
-    setAppliedFiltersCount(count)
-  }, [filters])
-
-  // Frontend view filtering and sorting - filter and sort the already-returned suppliers for display
-  const filteredSuppliers = React.useMemo(() => {
+  // Frontend sorting - sort the already-returned suppliers for display
+  const sortedSuppliers = React.useMemo(() => {
     if (!data?.suppliers) return []
     
-    // First filter
-    const filtered = data.suppliers.filter(supplier => {
-      // Gold Supplier filter
-      if (filters.goldSupplier && !supplier.trust?.goldSupplier) {
-        return false
-      }
-      
-      // Trade Assurance filter  
-      if (filters.tradeAssurance && !(supplier.trust?.tradeAssurance || supplier.metrics?.tradeAssurance)) {
-        return false
-      }
-      
-      // MOQ range filter
-      const supplierMOQ = supplier.moq || supplier.minOrderQuantity || 0
-      if (supplierMOQ > 0 && (supplierMOQ < filters.moqRange[0] || supplierMOQ > filters.moqRange[1])) {
-        return false
-      }
-      
-      // Years in business filter
-      const yearsInBusiness = supplier.yearsInBusiness || 0
-      if (yearsInBusiness < filters.yearsRange[0]) {
-        return false
-      }
-      
-      // Quality score filter
-      const qualityScore = supplier.qualityScore?.overall || supplier.qualityScore || 0
-      if (qualityScore < filters.minQualityScore) {
-        return false
-      }
-      
-      return true
-    })
-    
-    // Then sort
-    return filtered.sort((a, b) => {
+    // Sort the suppliers
+    return [...data.suppliers].sort((a, b) => {
       switch (sortBy) {
         case 'quality':
           const aQuality = a.qualityScore?.overall || a.qualityScore || 0
@@ -376,21 +307,76 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
           return 0
       }
     })
-  }, [data?.suppliers, filters, sortBy])
-
-  const clearAllFilters = () => {
-    setFilters(defaultFilters)
-  }
+  }, [data?.suppliers, sortBy])
 
   const handleSaveSupplier = (supplier: any) => {
     setSupplierToSave(supplier)
     setShowSaveModal(true)
   }
 
-  const handleSaveComplete = (savedSupplier: SavedSupplier) => {
-    setSavedSuppliers(prev => [...prev, savedSupplier])
-    // Here you would typically save to backend
-    console.log('Saved supplier:', savedSupplier)
+  const handleSaveComplete = async (savedSupplier: SavedSupplier) => {
+    try {
+      // TODO: Get actual user ID from auth
+      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+      
+      // Use the same context system for individual saves
+      const searchContext = {
+        searchQuery: data?.searchQuery || 'Unknown Search',
+        searchSource: marketContext ? 'market_research' as const : 'direct_search' as const,
+        marketId: marketContext?.marketId,
+        keyword: initialSearchTerm,
+        marketContext: marketContext ? {
+          marketGrade: marketContext.marketGrade,
+          estimatedProfit: marketContext.estimatedProfit,
+          competitionLevel: marketContext.competitionLevel
+        } : undefined
+      }
+
+      // Save single supplier using batch API (with 1 supplier)
+      const response = await fetch('/api/supplier-relationships/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          suppliers: [savedSupplier.supplier],
+          searchContext,
+          batchName: `Individual Save - ${savedSupplier.supplier.companyName}`
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save supplier')
+      }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save supplier')
+      }
+
+      console.log('✅ Individual save successful:', result.data)
+
+      // Update local state
+      setSavedSuppliers(prev => [...prev, {
+        ...savedSupplier,
+        batchId: result.data.batchId,
+        batchName: result.data.batchName
+      }])
+
+      // Show success feedback
+      const successMessage = searchContext.searchSource === 'market_research' 
+        ? `Saved ${savedSupplier.supplier.companyName} from ${marketContext?.marketGrade} market research!`
+        : `Saved ${savedSupplier.supplier.companyName} from your search!`
+      
+      alert(successMessage)
+
+    } catch (error) {
+      console.error('❌ Individual save failed:', error)
+      alert(`Failed to save supplier: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   const isSupplierSaved = (supplierId: string) => {
@@ -411,7 +397,7 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
   }
 
   const selectAllSuppliers = () => {
-    setSelectedSuppliers(new Set(filteredSuppliers.map(s => s.id)))
+    setSelectedSuppliers(new Set(sortedSuppliers.map(s => s.id)))
   }
 
   const clearSelection = () => {
@@ -421,43 +407,98 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
   // Context-aware save functionality
   const handleContextAwareSave = () => {
     if (selectedSuppliers.size === 0) {
-      // Save all filtered suppliers
-      const suppliersToSave = filteredSuppliers
+      // Save all sorted suppliers
+      const suppliersToSave = sortedSuppliers
       handleBatchSave(suppliersToSave)
     } else {
       // Save selected suppliers
-      const suppliersToSave = filteredSuppliers.filter(s => selectedSuppliers.has(s.id))
+      const suppliersToSave = sortedSuppliers.filter(s => selectedSuppliers.has(s.id))
       handleBatchSave(suppliersToSave)
     }
   }
 
-  const handleBatchSave = (suppliers: any[]) => {
-    // TODO: Implement API call to save batch of suppliers
-    // This should create a save batch and link all suppliers to it
-    console.log('Saving batch of suppliers:', suppliers.length)
-    console.log('Market context:', marketContext)
-    console.log('Search query:', data?.searchQuery)
-    
-    // For now, simulate the save
-    const batchId = `batch_${Date.now()}`
-    const newSavedSuppliers = suppliers.map(supplier => ({
-      id: `saved_${supplier.id}_${Date.now()}`,
-      supplier,
-      tags: [],
-      notes: '',
-      category: 'prospects',
-      priority: 'medium' as const,
-      savedAt: new Date().toISOString(),
-      isFavorite: false,
-      batchId,
-      batchName: `${data?.searchQuery || 'Search'} - ${new Date().toLocaleDateString()}`
-    }))
-    
-    setSavedSuppliers(prev => [...prev, ...newSavedSuppliers])
-    clearSelection()
-    
-    // Show success feedback
-    alert(`Successfully saved ${suppliers.length} suppliers!`)
+  const handleBatchSave = async (suppliers: any[]) => {
+    try {
+      // TODO: Get actual user ID from auth
+      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+      
+      // Determine search context based on how user arrived at this page
+      const searchContext = {
+        searchQuery: data?.searchQuery || 'Unknown Search',
+        searchSource: marketContext ? 'market_research' as const : 'direct_search' as const,
+        marketId: marketContext?.marketId,
+        keyword: initialSearchTerm,
+        marketContext: marketContext ? {
+          marketGrade: marketContext.marketGrade,
+          estimatedProfit: marketContext.estimatedProfit,
+          competitionLevel: marketContext.competitionLevel
+        } : undefined
+      }
+
+      console.log('🔄 Starting batch save:', {
+        supplierCount: suppliers.length,
+        searchContext,
+        marketContext
+      })
+
+      // Call batch save API
+      const response = await fetch('/api/supplier-relationships/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          suppliers,
+          searchContext
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save suppliers')
+      }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save suppliers')
+      }
+
+      console.log('✅ Batch save successful:', result.data)
+
+      // Update local state for UI feedback
+      const newSavedSuppliers = suppliers.map((supplier, index) => ({
+        id: `saved_${supplier.id}_${Date.now()}_${index}`,
+        supplier,
+        tags: [],
+        notes: '',
+        category: 'prospects',
+        priority: 'medium' as const,
+        savedAt: new Date().toISOString(),
+        isFavorite: false,
+        batchId: result.data.batchId,
+        batchName: result.data.batchName
+      }))
+      
+      setSavedSuppliers(prev => [...prev, ...newSavedSuppliers])
+      clearSelection()
+      
+      // Show success feedback with context
+      const successMessage = searchContext.searchSource === 'market_research' 
+        ? `Successfully saved ${result.data.savedCount} suppliers from ${marketContext?.marketGrade} market research!`
+        : `Successfully saved ${result.data.savedCount} suppliers from your search!`
+      
+      if (result.data.skippedCount > 0) {
+        alert(`${successMessage}\n\n${result.data.skippedCount} suppliers were skipped (already saved).`)
+      } else {
+        alert(successMessage)
+      }
+
+    } catch (error) {
+      console.error('❌ Batch save failed:', error)
+      alert(`Failed to save suppliers: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   if (!data || !data.suppliers?.length) {
@@ -484,32 +525,13 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h3 className="text-lg font-semibold text-gray-900">
-            Found {filteredSuppliers.length} Suppliers
-            {filteredSuppliers.length !== data.suppliers.length && (
-              <span className="text-sm text-gray-500 font-normal ml-2">
-                (filtered from {data.suppliers.length})
-              </span>
-            )}
+            Found {sortedSuppliers.length} Suppliers
           </h3>
           <p className="text-sm text-gray-500">
             {data.qualityAnalysis?.goldSuppliers || 0} Gold Suppliers • {data.qualityAnalysis?.tradeAssurance || 0} with Trade Assurance
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Advanced Filters
-            {appliedFiltersCount > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                {appliedFiltersCount}
-              </span>
-            )}
-            {showFilters ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
-          </button>
-          
           {/* Sort Dropdown */}
           <select
             value={sortBy}
@@ -535,7 +557,7 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
                     <X className="h-3 w-3" />
                   </button>
                 </div>
-                {selectedSuppliers.size < filteredSuppliers.length && (
+                {selectedSuppliers.size < sortedSuppliers.length && (
                   <button 
                     onClick={selectAllSuppliers}
                     className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
@@ -560,9 +582,9 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
               className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
             >
               <Bookmark className="h-4 w-4 mr-2" />
-              {selectedSuppliers.size === 0 && `Save All (${filteredSuppliers.length})`}
-              {selectedSuppliers.size > 0 && selectedSuppliers.size < filteredSuppliers.length && `Save Selected (${selectedSuppliers.size})`}
-              {selectedSuppliers.size === filteredSuppliers.length && selectedSuppliers.size > 0 && `Save All (${selectedSuppliers.size})`}
+              {selectedSuppliers.size === 0 && `Save All (${sortedSuppliers.length})`}
+              {selectedSuppliers.size > 0 && selectedSuppliers.size < sortedSuppliers.length && `Save Selected (${selectedSuppliers.size})`}
+              {selectedSuppliers.size === sortedSuppliers.length && selectedSuppliers.size > 0 && `Save All (${selectedSuppliers.size})`}
             </button>
           </div>
         </div>
@@ -619,135 +641,45 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         </div>
       )}
 
-      {/* Advanced Filters Panel */}
-      {showFilters && (
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-medium text-gray-900">Filter Suppliers</h4>
-              <div className="flex items-center gap-2">
-                {appliedFiltersCount > 0 && (
-                  <button 
-                    onClick={clearAllFilters}
-                    className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    Clear all
-                  </button>
-                )}
-                <button 
-                  onClick={() => setShowFilters(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Trust & Credentials */}
-              <div className="space-y-4">
-                <h5 className="text-sm font-medium text-gray-900">Trust & Credentials</h5>
-                <div className="space-y-3">
-                  <label className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={filters.goldSupplier}
-                      onChange={(e) => setFilters(prev => ({ ...prev, goldSupplier: e.target.checked }))}
-                      className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500" 
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Gold Suppliers Only</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input 
-                      type="checkbox" 
-                      checked={filters.tradeAssurance}
-                      onChange={(e) => setFilters(prev => ({ ...prev, tradeAssurance: e.target.checked }))}
-                      className="rounded border-gray-300 text-green-600 focus:ring-green-500" 
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Trade Assurance</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* MOQ Range */}
-              <div className="space-y-4">
-                <h5 className="text-sm font-medium text-gray-900">MOQ Range</h5>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{filters.moqRange[0]} units</span>
-                    <span>{filters.moqRange[1]} units</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="500" 
-                    value={filters.moqRange[1]}
-                    onChange={(e) => setFilters(prev => ({ ...prev, moqRange: [prev.moqRange[0], parseInt(e.target.value)] }))}
-                    className="w-full" 
-                  />
-                </div>
-              </div>
-
-              {/* Years in Business */}
-              <div className="space-y-4">
-                <h5 className="text-sm font-medium text-gray-900">Experience</h5>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{filters.yearsRange[0]}+ years</span>
-                    <span>{filters.yearsRange[1]}+ years</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="20" 
-                    value={filters.yearsRange[0]}
-                    onChange={(e) => setFilters(prev => ({ ...prev, yearsRange: [parseInt(e.target.value), prev.yearsRange[1]] }))}
-                    className="w-full" 
-                  />
-                </div>
-              </div>
-
-              {/* Quality Score */}
-              <div className="space-y-4">
-                <h5 className="text-sm font-medium text-gray-900">Quality Score</h5>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{filters.minQualityScore}+</span>
-                    <span>100</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    value={filters.minQualityScore}
-                    onChange={(e) => setFilters(prev => ({ ...prev, minQualityScore: parseInt(e.target.value) }))}
-                    className="w-full" 
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Supplier Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredSuppliers.map((supplier, index) => {
+        {sortedSuppliers.map((supplier, index) => {
           
           return (
-            <div key={supplier.id || index} className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 group relative">
-              {/* Selection Checkbox - appears on hover or when selected */}
-              <div className={`absolute top-3 left-3 transition-opacity duration-200 ${
+            <div key={supplier.id || index} className={`bg-white border rounded-xl shadow-sm hover:shadow-md transition-all duration-200 group relative ${
+              selectedSuppliers.has(supplier.id) 
+                ? 'border-blue-300 ring-2 ring-blue-100' 
+                : 'border-gray-200'
+            }`}>
+              {/* Selection Checkbox - top right corner with professional styling */}
+              <div className={`absolute top-4 right-4 z-10 transition-all duration-200 ${
                 selectedSuppliers.has(supplier.id) 
-                  ? 'opacity-100' 
-                  : 'opacity-0 group-hover:opacity-100'
+                  ? 'opacity-100 scale-100' 
+                  : 'opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100'
               }`}>
-                <input
-                  type="checkbox"
-                  checked={selectedSuppliers.has(supplier.id)}
-                  onChange={() => toggleSupplierSelection(supplier.id)}
-                  className="h-4 w-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 shadow-sm"
-                />
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={selectedSuppliers.has(supplier.id)}
+                    onChange={() => toggleSupplierSelection(supplier.id)}
+                    className="sr-only"
+                  />
+                  <div 
+                    onClick={() => toggleSupplierSelection(supplier.id)}
+                    className={`w-6 h-6 rounded-md border-2 cursor-pointer transition-all duration-200 flex items-center justify-center ${
+                      selectedSuppliers.has(supplier.id)
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                        : 'bg-white border-gray-300 hover:border-blue-400 hover:bg-blue-50 shadow-sm'
+                    }`}
+                  >
+                    {selectedSuppliers.has(supplier.id) && (
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
               </div>
               
               <div className="p-6">
