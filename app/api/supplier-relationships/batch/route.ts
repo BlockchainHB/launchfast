@@ -21,13 +21,14 @@ interface BatchSaveRequest {
     }
   }
   batchName?: string
+  existingBatchId?: string // Optional: add to existing batch
 }
 
 // POST - Batch save supplier relationships with context
 export async function POST(request: NextRequest) {
   try {
     const body: BatchSaveRequest = await request.json()
-    const { userId, suppliers, searchContext, batchName } = body
+    const { userId, suppliers, searchContext, batchName, existingBatchId } = body
 
     // Validate required fields
     if (!userId || !suppliers?.length || !searchContext?.searchQuery) {
@@ -39,35 +40,64 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔄 Starting batch save: ${suppliers.length} suppliers for user ${userId}`)
     console.log(`📊 Search context:`, searchContext)
+    console.log(`📦 Existing batch ID:`, existingBatchId)
 
-    // Generate batch name if not provided
-    const finalBatchName = batchName || generateBatchName(searchContext)
+    let batchId: string
+    let finalBatchName: string
+    let saveBatch: any
 
-    // Create save batch record
-    const batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    
-    const { data: saveBatch, error: batchError } = await supabase
-      .from('supplier_save_batches')
-      .insert({
-        id: batchId,
-        user_id: userId,
-        market_id: searchContext.marketId || null,
-        keyword: searchContext.keyword || null,
-        search_query: searchContext.searchQuery,
-        search_source: searchContext.searchSource,
-        batch_name: finalBatchName,
-        total_suppliers_saved: suppliers.length,
-        market_context: searchContext.marketContext || null
-      })
-      .select()
-      .single()
+    if (existingBatchId) {
+      // Use existing batch
+      const { data: existingBatch, error: fetchError } = await supabase
+        .from('supplier_save_batches')
+        .select('*')
+        .eq('id', existingBatchId)
+        .eq('user_id', userId)
+        .single()
 
-    if (batchError) {
-      console.error('❌ Failed to create save batch:', batchError)
-      throw batchError
+      if (fetchError || !existingBatch) {
+        console.warn(`❌ Existing batch ${existingBatchId} not found, creating new batch`)
+        // Fall back to creating new batch
+        batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        finalBatchName = batchName || generateBatchName(searchContext)
+      } else {
+        batchId = existingBatchId
+        finalBatchName = existingBatch.batch_name
+        saveBatch = existingBatch
+        console.log(`✅ Using existing batch: ${batchId} - "${finalBatchName}"`)
+      }
+    } else {
+      // Create new batch
+      batchId = `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      finalBatchName = batchName || generateBatchName(searchContext)
     }
 
-    console.log(`✅ Created save batch: ${batchId} - "${finalBatchName}"`)
+    // Create new batch if needed
+    if (!saveBatch) {
+      const { data: newBatch, error: batchError } = await supabase
+        .from('supplier_save_batches')
+        .insert({
+          id: batchId,
+          user_id: userId,
+          market_id: searchContext.marketId || null,
+          keyword: searchContext.keyword || null,
+          search_query: searchContext.searchQuery,
+          search_source: searchContext.searchSource,
+          batch_name: finalBatchName,
+          total_suppliers_saved: suppliers.length,
+          market_context: searchContext.marketContext || null
+        })
+        .select()
+        .single()
+
+      if (batchError) {
+        console.error('❌ Failed to create save batch:', batchError)
+        throw batchError
+      }
+
+      saveBatch = newBatch
+      console.log(`✅ Created save batch: ${batchId} - "${finalBatchName}"`)
+    }
 
     // Prepare supplier relationships data
     const relationships = []
@@ -150,14 +180,27 @@ export async function POST(request: NextRequest) {
         .insert(interactions)
     }
 
-    // Update batch with final count
-    await supabase
-      .from('supplier_save_batches')
-      .update({
-        total_suppliers_saved: savedRelationships.length,
-        suppliers_skipped: skippedSuppliers.length
-      })
-      .eq('id', batchId)
+    // Update batch with final count (increment if existing batch)
+    if (existingBatchId && saveBatch) {
+      // Increment existing count
+      await supabase
+        .from('supplier_save_batches')
+        .update({
+          total_suppliers_saved: (saveBatch.total_suppliers_saved || 0) + savedRelationships.length,
+          suppliers_skipped: (saveBatch.suppliers_skipped || 0) + skippedSuppliers.length,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', batchId)
+    } else {
+      // Set initial count for new batch
+      await supabase
+        .from('supplier_save_batches')
+        .update({
+          total_suppliers_saved: savedRelationships.length,
+          suppliers_skipped: skippedSuppliers.length
+        })
+        .eq('id', batchId)
+    }
 
     return NextResponse.json({
       success: true,

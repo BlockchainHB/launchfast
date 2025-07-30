@@ -267,6 +267,7 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
   const [supplierToSave, setSupplierToSave] = useState<any>(null)
   const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<'quality' | 'years' | 'moq' | 'reviews'>('quality')
+  const [sessionBatchId, setSessionBatchId] = useState<string | null>(null) // Track session batch
 
   // Helper function to clean HTML tags from text
   const cleanText = (text: string) => {
@@ -279,6 +280,20 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .trim()
+  }
+
+  // Helper function to generate session batch name
+  const generateSessionBatchName = (searchContext: any) => {
+    const date = new Date().toLocaleDateString('en-US', { 
+      month: 'short', 
+      year: 'numeric' 
+    })
+    
+    if (searchContext.searchSource === 'market_research' && searchContext.keyword) {
+      return `${searchContext.keyword} Market - ${date}`
+    } else {
+      return `${searchContext.searchQuery} Search - ${date}`
+    }
   }
 
   // Frontend sorting - sort the already-returned suppliers for display
@@ -333,7 +348,7 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         } : undefined
       }
 
-      // Save single supplier using batch API (with 1 supplier)
+      // Save single supplier using batch API (add to session batch if exists)
       const response = await fetch('/api/supplier-relationships/batch', {
         method: 'POST',
         headers: {
@@ -343,7 +358,8 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
           userId,
           suppliers: [savedSupplier.supplier],
           searchContext,
-          batchName: `Individual Save - ${savedSupplier.supplier.companyName}`
+          existingBatchId: sessionBatchId, // Use session batch if available
+          batchName: sessionBatchId ? undefined : generateSessionBatchName(searchContext) // Only provide name for new batch
         })
       })
 
@@ -360,6 +376,11 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
 
       console.log('✅ Individual save successful:', result.data)
 
+      // Store the batch ID for subsequent saves in this session (if not already set)
+      if (!sessionBatchId) {
+        setSessionBatchId(result.data.batchId)
+      }
+
       // Update local state
       setSavedSuppliers(prev => [...prev, {
         ...savedSupplier,
@@ -373,7 +394,9 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         : `Saved ${savedSupplier.supplier.companyName} from your search`
       
       toast.success(successMessage, {
-        description: `Added to "${result.data.batchName}" batch`
+        description: sessionBatchId 
+          ? `Added to existing "${result.data.batchName}" batch`
+          : `Added to "${result.data.batchName}" batch`
       })
 
     } catch (error) {
@@ -409,20 +432,35 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
     setSelectedSuppliers(new Set())
   }
 
+  // Get unsaved suppliers (exclude already saved ones)
+  const unsavedSuppliers = React.useMemo(() => {
+    return sortedSuppliers.filter(supplier => !isSupplierSaved(supplier.id))
+  }, [sortedSuppliers, savedSuppliers])
+
   // Context-aware save functionality
   const handleContextAwareSave = () => {
     if (selectedSuppliers.size === 0) {
-      // Save all sorted suppliers
-      const suppliersToSave = sortedSuppliers
+      // Save all unsaved suppliers
+      const suppliersToSave = unsavedSuppliers
       handleBatchSave(suppliersToSave)
     } else {
-      // Save selected suppliers
-      const suppliersToSave = sortedSuppliers.filter(s => selectedSuppliers.has(s.id))
+      // Save selected suppliers (filter out already saved ones)
+      const suppliersToSave = sortedSuppliers.filter(s => 
+        selectedSuppliers.has(s.id) && !isSupplierSaved(s.id)
+      )
       handleBatchSave(suppliersToSave)
     }
   }
 
   const handleBatchSave = async (suppliers: any[]) => {
+    // Early return if no suppliers to save
+    if (suppliers.length === 0) {
+      toast.info('No new suppliers to save', {
+        description: 'All selected suppliers are already saved'
+      })
+      return
+    }
+
     const loadingToast = toast.loading(`Saving ${suppliers.length} suppliers...`)
     
     try {
@@ -448,7 +486,7 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         marketContext
       })
 
-      // Call batch save API
+      // Call batch save API (use session batch if available)
       const response = await fetch('/api/supplier-relationships/batch', {
         method: 'POST',
         headers: {
@@ -457,7 +495,8 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         body: JSON.stringify({
           userId,
           suppliers,
-          searchContext
+          searchContext,
+          existingBatchId: sessionBatchId // Use session batch if available
         })
       })
 
@@ -490,6 +529,9 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
       
       setSavedSuppliers(prev => [...prev, ...newSavedSuppliers])
       clearSelection()
+      
+      // Store the batch ID for subsequent individual saves in this session
+      setSessionBatchId(result.data.batchId)
       
       // Show success toast with context
       const successMessage = searchContext.searchSource === 'market_research' 
@@ -596,12 +638,20 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
             {/* Context-Aware Save Button */}
             <button 
               onClick={handleContextAwareSave}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+              disabled={selectedSuppliers.size === 0 && unsavedSuppliers.length === 0}
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Bookmark className="h-4 w-4 mr-2" />
-              {selectedSuppliers.size === 0 && `Save All (${sortedSuppliers.length})`}
-              {selectedSuppliers.size > 0 && selectedSuppliers.size < sortedSuppliers.length && `Save Selected (${selectedSuppliers.size})`}
-              {selectedSuppliers.size === sortedSuppliers.length && selectedSuppliers.size > 0 && `Save All (${selectedSuppliers.size})`}
+              {selectedSuppliers.size === 0 && unsavedSuppliers.length > 0 && `Save All (${unsavedSuppliers.length})`}
+              {selectedSuppliers.size === 0 && unsavedSuppliers.length === 0 && `All Saved`}
+              {selectedSuppliers.size > 0 && (
+                (() => {
+                  const unsavedSelected = Array.from(selectedSuppliers).filter(id => !isSupplierSaved(id)).length
+                  if (unsavedSelected === 0) return 'Selected Already Saved'
+                  if (unsavedSelected < selectedSuppliers.size) return `Save Selected (${unsavedSelected})`
+                  return `Save Selected (${selectedSuppliers.size})`
+                })()
+              )}
             </button>
           </div>
         </div>
