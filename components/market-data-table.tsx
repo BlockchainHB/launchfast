@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -27,6 +28,7 @@ import {
   IconExternalLink,
   IconTrash,
   IconDots,
+  IconSearch,
 } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -249,7 +251,7 @@ function ProductSubRow({ product, isLast }: { product: EnhancedProduct; isLast: 
   )
 }
 
-function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketTableRow>[] {
+function createColumns(expandedRows: Record<string, boolean>, router: any): ColumnDef<MarketTableRow>[] {
   return [
   // 1. Select + Keyword (Combined)
   {
@@ -614,6 +616,46 @@ function createColumns(expandedRows: Record<string, boolean>): ColumnDef<MarketT
     ),
     size: 80,
   },
+  
+  // Find Suppliers Action Column
+  {
+    id: "supplier-actions",
+    header: "Find Suppliers",
+    cell: ({ row }) => {
+      const market = row.original
+      
+      const handleFindSuppliers = () => {
+        // Extract product name from keyword for search
+        const searchTerm = market.keyword || market.product_name || ''
+        
+        // Create URL with market context
+        const params = new URLSearchParams({
+          search: searchTerm,
+          market_id: market.id,
+          auto_search: 'true',
+          market_grade: market.grade || '',
+          market_profit: market.avg_monthly_revenue?.toString() || '0'
+        })
+        
+        // Navigate to supplier sourcing page with context
+        router.push(`/dashboard/suppliers?${params.toString()}`)
+      }
+      
+      return (
+        <div className="flex items-center justify-center">
+          <Button
+            size="sm"
+            onClick={handleFindSuppliers}
+            className="bg-gray-900 hover:bg-gray-800 text-white"
+          >
+            <IconSearch className="h-4 w-4 mr-1" />
+            Find Suppliers
+          </Button>
+        </div>
+      )
+    },
+    size: 120,
+  },
   ]
 }
 
@@ -622,6 +664,7 @@ export function MarketDataTable({
 }: {
   data: MarketTableRow[]
 }) {
+  const router = useRouter()
   const [data] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
@@ -634,8 +677,8 @@ export function MarketDataTable({
   const [expandedRows, setExpandedRows] = React.useState<Record<string, boolean>>({})
   const [isExporting, setIsExporting] = React.useState(false)
 
-  // Create columns with access to expandedRows state
-  const columns = React.useMemo(() => createColumns(expandedRows), [expandedRows])
+  // Create columns with access to expandedRows state and router
+  const columns = React.useMemo(() => createColumns(expandedRows, router), [expandedRows, router])
 
   const handleBatchDeleteMarkets = async () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows

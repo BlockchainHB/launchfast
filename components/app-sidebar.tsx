@@ -86,11 +86,11 @@ const navData = {
     },
     {
       name: "Supplier Sourcing",
-      url: "#",
+      url: "/dashboard/suppliers",
       icon: Users,
-      active: false,
-      badge: "Soon",
-      badgeColor: "bg-gray-100 text-gray-600",
+      active: true,
+      badge: "New",
+      badgeColor: "bg-blue-100 text-blue-700",
       description: "Find reliable suppliers",
     },
     {
