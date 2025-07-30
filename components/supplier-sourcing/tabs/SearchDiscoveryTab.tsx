@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { Search, Filter, Bookmark, Eye, Star, ChevronDown, ChevronUp, MapPin, Calendar, Award, Shield, X, Plus, Tag, Heart, BookmarkCheck, BarChart3, Package } from 'lucide-react'
+import { toast } from "sonner"
 import type { SupplierSearchResult } from '@/types/supplier'
 
 interface MarketContext {
@@ -366,16 +367,20 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         batchName: result.data.batchName
       }])
 
-      // Show success feedback
+      // Show success toast
       const successMessage = searchContext.searchSource === 'market_research' 
-        ? `Saved ${savedSupplier.supplier.companyName} from ${marketContext?.marketGrade} market research!`
-        : `Saved ${savedSupplier.supplier.companyName} from your search!`
+        ? `Saved ${savedSupplier.supplier.companyName} from ${marketContext?.marketGrade} market research`
+        : `Saved ${savedSupplier.supplier.companyName} from your search`
       
-      alert(successMessage)
+      toast.success(successMessage, {
+        description: `Added to "${result.data.batchName}" batch`
+      })
 
     } catch (error) {
       console.error('❌ Individual save failed:', error)
-      alert(`Failed to save supplier: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error('Failed to save supplier', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
     }
   }
 
@@ -418,6 +423,8 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
   }
 
   const handleBatchSave = async (suppliers: any[]) => {
+    const loadingToast = toast.loading(`Saving ${suppliers.length} suppliers...`)
+    
     try {
       // TODO: Get actual user ID from auth
       const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
@@ -484,20 +491,30 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
       setSavedSuppliers(prev => [...prev, ...newSavedSuppliers])
       clearSelection()
       
-      // Show success feedback with context
+      // Show success toast with context
       const successMessage = searchContext.searchSource === 'market_research' 
-        ? `Successfully saved ${result.data.savedCount} suppliers from ${marketContext?.marketGrade} market research!`
-        : `Successfully saved ${result.data.savedCount} suppliers from your search!`
+        ? `Successfully saved ${result.data.savedCount} suppliers from ${marketContext?.marketGrade} market research`
+        : `Successfully saved ${result.data.savedCount} suppliers from your search`
+      
+      // Dismiss loading toast and show success
+      toast.dismiss(loadingToast)
       
       if (result.data.skippedCount > 0) {
-        alert(`${successMessage}\n\n${result.data.skippedCount} suppliers were skipped (already saved).`)
+        toast.success(successMessage, {
+          description: `${result.data.skippedCount} suppliers were skipped (already saved)`
+        })
       } else {
-        alert(successMessage)
+        toast.success(successMessage, {
+          description: `Added to "${result.data.batchName}" batch`
+        })
       }
 
     } catch (error) {
       console.error('❌ Batch save failed:', error)
-      alert(`Failed to save suppliers: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.dismiss(loadingToast)
+      toast.error('Failed to save suppliers', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
     }
   }
 
