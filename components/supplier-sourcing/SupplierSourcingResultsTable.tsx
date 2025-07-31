@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils'
 import { SearchDiscoveryTab } from './tabs/SearchDiscoveryTab'
 import { SupplierManagerTab } from './tabs/SupplierManagerTab'
 import { SampleTrackerTab } from './tabs/SampleTrackerTab'
-import { MarketIntelligenceTab } from './tabs/MarketIntelligenceTab'
 import { CommunicationHubTab } from './tabs/CommunicationHubTab'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { SupplierSearchResult } from '@/types/supplier'
@@ -41,7 +40,7 @@ interface SupplierSourcingResultsTableProps {
   initialSearchTerm?: string
 }
 
-type TabValue = 'search' | 'manager' | 'samples' | 'intelligence' | 'communication'
+type TabValue = 'search' | 'manager' | 'samples' | 'communication'
 
 interface TabConfig {
   value: TabValue
@@ -71,7 +70,6 @@ export function SupplierSourcingResultsTable({
         { value: 'search', label: 'Search & Discovery', icon: Search, description: 'Find new suppliers', disabled: false },
         { value: 'manager', label: 'Supplier Manager', icon: Users, description: 'Manage relationships', disabled: false },
         { value: 'samples', label: 'Sample Tracker', icon: Package, description: 'Track sample requests', disabled: false },
-        { value: 'intelligence', label: 'Market Intelligence', icon: BarChart3, description: 'Market analysis', disabled: false },
         { value: 'communication', label: 'Communication Hub', icon: MessageCircle, description: 'Email templates', disabled: false }
       ]
     }
@@ -97,13 +95,6 @@ export function SupplierSourcingResultsTable({
         icon: Package,
         description: 'Track sample requests',
         badge: 0 // TODO: Get from samples API
-      },
-      {
-        value: 'intelligence',
-        label: 'Market Intelligence',
-        icon: BarChart3,
-        description: 'Market analysis',
-        badge: data.suppliers ? 1 : 0 // Has analysis if has data
       },
       {
         value: 'communication',
@@ -241,10 +232,6 @@ export function SupplierSourcingResultsTable({
 
             <TabsContent value="samples">
               <SampleTrackerTab data={data} />
-            </TabsContent>
-
-            <TabsContent value="intelligence">
-              <MarketIntelligenceTab data={data} />
             </TabsContent>
 
             <TabsContent value="communication">

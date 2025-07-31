@@ -146,9 +146,13 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showProjectSelector])
 
+  // Add projects loading state
+  const [projectsLoading, setProjectsLoading] = useState(true)
+
   // Load available projects (markets and batches)
   const loadProjects = async () => {
     try {
+      setProjectsLoading(true)
       const userId = await getUserId()
       if (!userId) return
 
@@ -194,6 +198,8 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
     } catch (error) {
       console.error('❌ Error loading projects:', error)
       toast.error('Failed to load projects')
+    } finally {
+      setProjectsLoading(false)
     }
   }
 
@@ -491,16 +497,24 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="relative project-selector">
-              <button
-                onClick={() => setShowProjectSelector(!showProjectSelector)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <FolderOpen className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-900">
-                  {selectedProjectData ? selectedProjectData.name : 'Select Project'}
-                </span>
-                <ChevronDown className="h-4 w-4 text-gray-500" />
-              </button>
+              {projectsLoading ? (
+                <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg">
+                  <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                  <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowProjectSelector(!showProjectSelector)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <FolderOpen className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-900">
+                    {selectedProjectData ? selectedProjectData.name : 'Select Project'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                </button>
+              )}
               
               {showProjectSelector && (
                 <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
@@ -573,7 +587,12 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
               )}
             </div>
             
-            {selectedProjectData && (
+            {projectsLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-6 bg-gray-200 rounded-full w-24 animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+              </div>
+            ) : selectedProjectData && (
               <div className="flex items-center gap-2">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                   selectedProjectData.type === 'market' 
@@ -624,25 +643,111 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
       </div>
 
       {/* Pipeline Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {pipelineStages.map((stage) => {
-          const Icon = stage.icon
-          return (
-            <div key={stage.id} className="bg-white border border-gray-200 rounded-lg p-4">
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-white border border-gray-200 rounded-lg p-4">
               <div className="text-center">
-                <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full ${stage.color} mb-2`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="text-2xl font-bold text-gray-900">{stage.count}</div>
-                <div className="text-xs text-gray-500 mt-1">{stage.name}</div>
+                <div className="w-10 h-10 bg-gray-200 rounded-full mx-auto mb-2 animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded mb-1 animate-pulse"></div>
+                <div className="h-3 bg-gray-200 rounded w-16 mx-auto animate-pulse"></div>
               </div>
             </div>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {pipelineStages.map((stage) => {
+            const Icon = stage.icon
+            return (
+              <div key={stage.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="text-center">
+                  <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full ${stage.color} mb-2`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">{stage.count}</div>
+                  <div className="text-xs text-gray-500 mt-1">{stage.name}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Interactive Kanban Board */}
-      {!selectedProject ? (
+      {projectsLoading ? (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              {/* Loading Skeleton for Kanban Columns */}
+              {[1, 2, 3, 4, 5].map((col) => (
+                <div key={col} className="flex-shrink-0 w-full lg:w-auto flex flex-col min-h-[600px] p-4 rounded-lg bg-gray-50">
+                  {/* Column Header Skeleton */}
+                  <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 mb-3">
+                    <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                  </div>
+                  
+                  {/* Supplier Cards Skeleton */}
+                  <div className="space-y-3 flex-1">
+                    {[1, 2, 3].map((card) => (
+                      <div key={card} className="bg-white border border-gray-200 rounded-lg p-3">
+                        {/* Card Header */}
+                        <div className="flex items-start gap-2 mb-3">
+                          <div className="w-4 h-4 bg-gray-200 rounded animate-pulse mt-0.5 flex-shrink-0"></div>
+                          <div className="flex-1 min-w-0">
+                            <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="w-3 h-3 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Metrics Skeleton */}
+                        <div className="space-y-1.5 mb-2">
+                          <div className="flex items-center justify-between">
+                            <div className="h-3 bg-gray-200 rounded w-8 animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="h-3 bg-gray-200 rounded w-12 animate-pulse"></div>
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <div key={star} className="w-2.5 h-2.5 bg-gray-200 rounded animate-pulse"></div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded w-12 animate-pulse"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Tags Skeleton */}
+                        <div className="flex gap-1 mb-3">
+                          <div className="h-5 bg-gray-200 rounded w-12 animate-pulse"></div>
+                          <div className="h-5 bg-gray-200 rounded w-8 animate-pulse"></div>
+                        </div>
+                        
+                        {/* Footer Skeleton */}
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1">
+                            <div className="w-3 h-3 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                          </div>
+                          <div className="h-3 bg-gray-200 rounded w-8 animate-pulse"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : !selectedProject ? (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <div className="flex flex-col items-center justify-center py-12">
             <FolderOpen className="h-16 w-16 text-gray-400 mb-4" />
@@ -661,11 +766,6 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
           <div className="p-6">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-              </div>
-            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-x-auto">
               {pipelineStages.map((stage) => {
                 const stageSuppliers = filteredSuppliers.filter(s => s.stage === stage.id)
@@ -814,7 +914,6 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
               )
             })}
             </div>
-            )}
           </div>
         </div>
       )}
@@ -829,7 +928,33 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
         </div>
         
         <div className="p-6">
-          {recentActivities.length > 0 ? (
+          {loading ? (
+            <div className="flow-root">
+              <ul className="-mb-8">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <li key={i}>
+                    <div className="relative pb-8">
+                      {i !== 5 && (
+                        <span className="absolute left-5 top-5 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                      )}
+                      <div className="relative flex items-start space-x-3">
+                        <div className="relative px-1 bg-gray-200 rounded-full flex items-center justify-center h-10 w-10 animate-pulse">
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                          </div>
+                          <div className="h-4 bg-gray-200 rounded w-24 mt-1 animate-pulse"></div>
+                          <div className="h-3 bg-gray-200 rounded w-40 mt-1 animate-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : recentActivities.length > 0 ? (
             <div className="flow-root">
               <ul className="-mb-8">
                 {recentActivities.slice(0, 5).map((activity, index) => {

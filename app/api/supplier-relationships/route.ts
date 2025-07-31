@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
           supplierName: activity.supplier_relationships?.supplier_name || 'Unknown Supplier',
           timestamp: activity.created_at,
           relativeTime: getRelativeTime(activity.created_at)
-        }) || []
+        })) || []
 
       }
 

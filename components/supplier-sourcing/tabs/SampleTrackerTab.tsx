@@ -769,16 +769,24 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="relative project-selector">
-              <button
-                onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <FolderOpen className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-900">
-                  {selectedProject ? getProjectDisplayName(selectedProject) : 'Select Project'}
-                </span>
-                <ChevronDown className="h-4 w-4 text-gray-500" />
-              </button>
+              {projectsLoading ? (
+                <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg">
+                  <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                  <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <FolderOpen className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-900">
+                    {selectedProject ? getProjectDisplayName(selectedProject) : 'Select Project'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                </button>
+              )}
               
               {showProjectDropdown && (
                 <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
@@ -841,7 +849,12 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
               )}
             </div>
             
-            {selectedProject && (
+            {projectsLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-6 bg-gray-200 rounded-full w-24 animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+              </div>
+            ) : selectedProject && (
               <div className="flex items-center gap-2">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                   selectedProject.market_id
@@ -863,31 +876,8 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="space-y-1">
+        <div>
           <h3 className="text-lg font-semibold text-gray-900">Sample Tracker</h3>
-          <p className="text-sm text-gray-500">
-            {selectedProject ? (
-              <>Track {sampleStats.total} samples • ${sampleStats.totalCost.toFixed(2)} total invested</>
-            ) : (
-              <>Select a project to view samples</>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button 
-            disabled={!selectedProject}
-            onClick={() => {
-              setSelectedSupplier(null)
-              setShowSupplierDropdown(false)
-              setSelectedShippedDate('')
-              setShowDatePicker(false)
-              setShowAddSampleModal(true)
-            }}
-            className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Sample
-          </button>
         </div>
       </div>
 
@@ -921,16 +911,92 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
         </div>
       )}
 
-      {/* Loading State */}
+      {/* Loading Skeleton */}
       {selectedProject && loading && (
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-12">
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 text-gray-500">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
-              <span>Loading samples...</span>
+        <>
+          {/* Sample Pipeline Stats Skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-gray-200 rounded-full mx-auto mb-3 animate-pulse"></div>
+                  <div className="h-8 bg-gray-200 rounded mb-1 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-16 mx-auto animate-pulse"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Analytics Dashboard Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded mb-2 animate-pulse"></div>
+                    <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                    <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                  </div>
+                  <div className="pt-2 border-t border-gray-100">
+                    <div className="h-3 bg-gray-200 rounded w-20 mb-1 animate-pulse"></div>
+                    <div className="h-5 bg-gray-200 rounded w-12 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Sample Pipeline Board Skeleton */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="h-5 bg-gray-200 rounded w-32 animate-pulse"></div>
+                <div className="h-8 bg-gray-200 rounded w-20 animate-pulse"></div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="h-5 bg-gray-200 rounded w-48 animate-pulse"></div>
+                          <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm mb-2">
+                          <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                          <div className="h-4 bg-gray-200 rounded w-40 animate-pulse"></div>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                          <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                        <div className="h-3 bg-gray-200 rounded w-8 animate-pulse"></div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 animate-pulse"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Main Content - Only show when project selected and not loading */}
@@ -1048,11 +1114,25 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
                     </button>
                   )}
                   <button 
+                    disabled={!selectedProject}
+                    onClick={() => {
+                      setSelectedSupplier(null)
+                      setShowSupplierDropdown(false)
+                      setSelectedShippedDate('')
+                      setShowDatePicker(false)
+                      setShowAddSampleModal(true)
+                    }}
+                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Sample
+                  </button>
+                  <button 
                     onClick={() => setFilterStatus('all')}
-                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1 ${
                       filterStatus === 'all' 
                         ? 'bg-gray-900 text-white' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
                     }`}
                   >
                     All ({sampleStats.total})
