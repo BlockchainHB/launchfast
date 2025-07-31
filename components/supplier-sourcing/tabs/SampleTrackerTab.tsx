@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { Package, Plus, Clock, CheckCircle, Truck, Star, DollarSign, Calendar, CalendarDays, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, MapPin, Upload, Edit3, Camera, FileText, TrendingUp, AlertCircle, Target, X, ChevronDown, Database, Users, Search, FolderOpen, Trash2 } from 'lucide-react'
+import { toast } from "sonner"
+import { authHelpers } from '@/lib/auth'
 import type { SupplierSearchResult } from '@/types/supplier'
 
 interface SampleTrackerTabProps {
@@ -157,14 +159,19 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
   const loadProjects = async () => {
     setProjectsLoading(true)
     try {
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a' // TODO: Get from auth
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to manage samples')
+        return
+      }
       
       // Load market groups
-      const marketResponse = await fetch(`/api/supplier-relationships?userId=${userId}&groupBy=market`)
+      const marketResponse = await fetch(`/api/supplier-relationships?userId=${user.id}&groupBy=market`)
       const marketData = await marketResponse.json()
       
       // Load batch groups
-      const batchResponse = await fetch(`/api/supplier-relationships?userId=${userId}&groupBy=batch`)
+      const batchResponse = await fetch(`/api/supplier-relationships?userId=${user.id}&groupBy=batch`)
       const batchData = await batchResponse.json()
       
       const allProjects: ProjectGroup[] = []
@@ -218,11 +225,16 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
     setSuppliersLoading(true)
     
     try {
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a' // TODO: Get from auth
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to manage samples')
+        return
+      }
       
       // Build params for current project
       const params = new URLSearchParams({
-        userId,
+        userId: user.id,
         limit: '100'
       })
       
@@ -261,13 +273,18 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
     setIsCreatingSample(true)
     
     try {
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a' // TODO: Get from auth
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to manage samples')
+        return
+      }
       
       const sampleCost = parseFloat(formData.get('sampleCost') as string) || 0
       const dateShipped = selectedShippedDate || null
       
       const sampleData = {
-        userId,
+        userId: user.id,
         supplierRelationshipId: selectedSupplier?.id,
         productName: formData.get('productName') as string,
         sampleCost: sampleCost,
@@ -320,11 +337,16 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
     setError(null)
     
     try {
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a' // TODO: Get from auth
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to manage samples')
+        return
+      }
       
       // First get supplier relationships for this project
       const params = new URLSearchParams({
-        userId,
+        userId: user.id,
         limit: '100'
       })
       
@@ -352,7 +374,7 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
       }
       
       // Load sample requests for these suppliers
-      const samplesResponse = await fetch(`/api/sample-requests?userId=${userId}&limit=100`)
+      const samplesResponse = await fetch(`/api/sample-requests?userId=${user.id}&limit=100`)
       const samplesData = await samplesResponse.json()
       
       if (samplesData.success && samplesData.data.sampleRequests) {
@@ -481,7 +503,12 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
 
   const moveSampleToStage = async (sampleId: string, newStatus: string) => {
     try {
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a' // TODO: Get from auth
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to manage samples')
+        return
+      }
       
       const response = await fetch('/api/sample-requests', {
         method: 'PATCH',
@@ -490,7 +517,7 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
         },
         body: JSON.stringify({
           sampleRequestId: sampleId,
-          userId,
+          userId: user.id,
           requestStatus: newStatus
         })
       })
@@ -642,7 +669,12 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
     if (!selectedSampleForEvaluation) return
 
     try {
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a' // TODO: Get from auth
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to manage samples')
+        return
+      }
       
       // Calculate overall score from star ratings
       const totalRating = evaluation.buildQuality + evaluation.packagingQuality + evaluation.designQuality + evaluation.supplierCommunication
@@ -651,7 +683,7 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
       // Prepare evaluation data
       const evaluationData = {
         sampleId: selectedSampleForEvaluation.id,
-        userId,
+        userId: user.id,
         buildQuality: evaluation.buildQuality,
         packagingQuality: evaluation.packagingQuality,
         designQuality: evaluation.designQuality,
@@ -681,7 +713,7 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
         },
         body: JSON.stringify({
           sampleRequestId: selectedSampleForEvaluation.id,
-          userId,
+          userId: user.id,
           requestStatus: decision
         })
       })
@@ -725,7 +757,12 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
 
   const confirmDeleteSamples = async () => {
     try {
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a' // TODO: Get from auth
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to manage samples')
+        return
+      }
       
       // Close modal first
       setShowDeleteConfirmModal(false)
@@ -737,7 +774,7 @@ export function SampleTrackerTab({ data }: SampleTrackerTabProps) {
       
       // Delete from backend
       const deletePromises = bulkSelected.map(sampleId => 
-        fetch(`/api/sample-requests?sampleRequestId=${sampleId}&userId=${userId}`, { 
+        fetch(`/api/sample-requests?sampleRequestId=${sampleId}&userId=${user.id}`, { 
           method: 'DELETE' 
         })
       )

@@ -10,6 +10,8 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
+import { authHelpers } from "@/lib/auth"
 import type { KeywordResearchResult } from "@/lib/keyword-research"
 import { useTrialNotifications } from "@/hooks/use-trial-notifications"
 import { 
@@ -76,8 +78,12 @@ export default function Page() {
   const startKeywordResearch = async (asins: string[]) => {
     if (!asins.length) return
 
-    // TODO: Replace with user ID from auth
-    const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+    // Get current user
+    const user = await authHelpers.getCurrentUser()
+    if (!user) {
+      toast.error('Please sign in to start keyword research')
+      return
+    }
     const sessionName = `Research Session ${new Date().toLocaleDateString()}`
 
     try {
@@ -87,13 +93,13 @@ export default function Page() {
       setProgressInfo(null)
 
       // Try streaming API first
-      await tryStreamingAPI(asins, userId, sessionName)
+      await tryStreamingAPI(asins, user.id, sessionName)
     } catch (streamError) {
       console.warn('⚠️ Streaming API failed, falling back to regular API:', streamError)
       
       try {
         // Fallback to regular API
-        await tryRegularAPI(asins, userId, sessionName)
+        await tryRegularAPI(asins, user.id, sessionName)
       } catch (regularError) {
         console.error('❌ Both APIs failed:', regularError)
         setError(regularError instanceof Error ? regularError.message : 'Failed to complete keyword research')
@@ -171,9 +177,13 @@ export default function Page() {
 
   const fetchSessionResults = async (sessionId: string) => {
     try {
-      // TODO: Replace with user ID from auth
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
-      const response = await fetch(`/api/keywords/sessions/${sessionId}?userId=${userId}`)
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to fetch session results')
+        return
+      }
+      const response = await fetch(`/api/keywords/sessions/${sessionId}?userId=${user.id}`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch session results')
@@ -246,6 +256,24 @@ export default function Page() {
 
   // Add ASIN input state
   const [asinInput, setAsinInput] = useState('')
+  // User will be fetched when needed in functions
+
+  // Get current user on component mount
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const user = await authHelpers.getCurrentUser()
+        if (!user) {
+          console.error('No user found, redirecting to login')
+          toast.error('Authentication error. Please sign in again.')
+        }
+      } catch (error) {
+        console.error('Failed to get current user:', error)
+        toast.error('Authentication error. Please sign in again.')
+      }
+    }
+    getCurrentUser()
+  }, [])
 
   // Parse and validate ASINs from input
   const parseAsins = (input: string): string[] => {

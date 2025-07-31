@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Search, Filter, Bookmark, Eye, Star, ChevronDown, ChevronUp, MapPin, Calendar, Award, Shield, X, Plus, Tag, Heart, BookmarkCheck, BarChart3, Package } from 'lucide-react'
 import { toast } from "sonner"
+import { authHelpers } from '@/lib/auth'
 import type { SupplierSearchResult } from '@/types/supplier'
 
 interface MarketContext {
@@ -325,15 +326,17 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
     })
   }, [data?.suppliers, sortBy])
 
-  const handleSaveSupplier = (supplier: any) => {
-    setSupplierToSave(supplier)
-    setShowSaveModal(true)
-  }
-
-  const handleSaveComplete = async (savedSupplier: SavedSupplier) => {
+  const handleSaveSupplier = async (supplier: any) => {
+    // Save directly without modal
+    const loadingToast = toast.loading('Saving supplier...')
+    
     try {
-      // TODO: Get actual user ID from auth
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to save suppliers')
+        return
+      }
       
       // Use the same context system for individual saves
       const searchContext = {
@@ -355,7 +358,99 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
+          userId: user.id,
+          suppliers: [supplier],
+          searchContext,
+          existingBatchId: sessionBatchId, // Use session batch if available
+          batchName: sessionBatchId ? undefined : generateSessionBatchName(searchContext) // Only provide name for new batch
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save supplier')
+      }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save supplier')
+      }
+
+      console.log('✅ Individual save successful:', result.data)
+
+      // Store the batch ID for subsequent saves in this session (if not already set)
+      if (!sessionBatchId) {
+        setSessionBatchId(result.data.batchId)
+      }
+
+      // Update local state with default values (no modal input needed)
+      const savedSupplier = {
+        id: `saved_${supplier.id}_${Date.now()}`,
+        supplier,
+        tags: [],
+        notes: '',
+        category: 'prospects', // Default category
+        priority: 'medium' as const, // Default priority
+        savedAt: new Date().toISOString(),
+        isFavorite: false, // Default not favorite
+        batchId: result.data.batchId,
+        batchName: result.data.batchName
+      }
+
+      setSavedSuppliers(prev => [...prev, savedSupplier])
+
+      // Show success toast
+      const successMessage = searchContext.searchSource === 'market_research' 
+        ? `Saved ${supplier.companyName} from ${marketContext?.marketGrade} market research`
+        : `Saved ${supplier.companyName} from your search`
+      
+      toast.dismiss(loadingToast)
+      toast.success(successMessage, {
+        description: sessionBatchId 
+          ? `Added to existing "${result.data.batchName}" batch`
+          : `Added to "${result.data.batchName}" batch`
+      })
+
+    } catch (error) {
+      console.error('❌ Individual save failed:', error)
+      toast.dismiss(loadingToast)
+      toast.error('Failed to save supplier', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    }
+  }
+
+  const handleSaveComplete = async (savedSupplier: SavedSupplier) => {
+    try {
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to save suppliers')
+        return
+      }
+      
+      // Use the same context system for individual saves
+      const searchContext = {
+        searchQuery: data?.searchQuery || 'Unknown Search',
+        searchSource: marketContext ? 'market_research' as const : 'direct_search' as const,
+        marketId: marketContext?.marketId,
+        keyword: initialSearchTerm,
+        marketContext: marketContext ? {
+          marketGrade: marketContext.marketGrade,
+          estimatedProfit: marketContext.estimatedProfit,
+          competitionLevel: marketContext.competitionLevel
+        } : undefined
+      }
+
+      // Save single supplier using batch API (add to session batch if exists)
+      const response = await fetch('/api/supplier-relationships/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
           suppliers: [savedSupplier.supplier],
           searchContext,
           existingBatchId: sessionBatchId, // Use session batch if available
@@ -464,8 +559,12 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
     const loadingToast = toast.loading(`Saving ${suppliers.length} suppliers...`)
     
     try {
-      // TODO: Get actual user ID from auth
-      const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+      // Get current user
+      const user = await authHelpers.getCurrentUser()
+      if (!user) {
+        toast.error('Please sign in to save suppliers')
+        return
+      }
       
       // Determine search context based on how user arrived at this page
       const searchContext = {
@@ -493,7 +592,7 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
+          userId: user.id,
           suppliers,
           searchContext,
           existingBatchId: sessionBatchId // Use session batch if available
@@ -881,8 +980,7 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         })}
       </div>
 
-      
-      {/* Save Supplier Modal */}
+      {/* Save Supplier Modal - Keep for potential future use */}
       <SaveSupplierModal 
         supplier={supplierToSave}
         isOpen={showSaveModal}

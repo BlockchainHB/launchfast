@@ -9,8 +9,10 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
+import { toast } from "sonner"
+import { authHelpers } from "@/lib/auth"
 import type { SupplierSearchResult } from "@/types/supplier"
 import { useTrialNotifications } from "@/hooks/use-trial-notifications"
 
@@ -34,7 +36,7 @@ interface MarketContext {
   suggestedMOQ: number
 }
 
-export default function Page() {
+function SuppliersPageContent() {
   const searchParams = useSearchParams()
   const [supplierSearchData, setSupplierSearchData] = useState<SupplierSearchResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -136,8 +138,12 @@ export default function Page() {
   const startSupplierSearch = async (query: string) => {
     if (!query.trim()) return
 
-    // TODO: Replace with user ID from auth
-    const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+    // Get current user
+    const user = await authHelpers.getCurrentUser()
+    if (!user) {
+      toast.error('Please sign in to search suppliers')
+      return
+    }
 
     try {
       setIsSearching(true)
@@ -146,7 +152,7 @@ export default function Page() {
       setProgressInfo(null)
 
       // Use regular API (streaming is future enhancement)
-      await tryRegularSupplierAPI(query, userId)
+      await tryRegularSupplierAPI(query, user.id)
     } catch (error) {
       console.error('❌ Supplier search failed:', error)
       setError(error instanceof Error ? error.message : 'Failed to complete supplier search')
@@ -461,5 +467,13 @@ export default function Page() {
         onClose={() => setShowWelcomeModal(false)}
       />
     </SidebarProvider>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SuppliersPageContent />
+    </Suspense>
   )
 }

@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createServerClient } from '@supabase/ssr'
 
 // GET /api/templates/[id] - Fetch specific template
 export async function GET(
@@ -15,8 +9,28 @@ export async function GET(
   try {
     const { id } = params
     
-    // TODO: Get actual user ID from authentication
-    const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+    // Initialize Supabase client with SSR
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {}, // Empty for API routes
+          remove() {}, // Empty for API routes
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = user.id // This is the authenticated user's UUID
     
     const { data: template, error } = await supabase
       .from('communication_templates')
@@ -83,8 +97,28 @@ export async function PATCH(
       }, { status: 400 })
     }
 
-    // TODO: Get actual user ID from authentication
-    const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+    // Initialize Supabase client with SSR
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {}, // Empty for API routes
+          remove() {}, // Empty for API routes
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = user.id // This is the authenticated user's UUID
 
     const { data: template, error } = await supabase
       .from('communication_templates')
@@ -148,8 +182,28 @@ export async function DELETE(
   try {
     const { id } = params
     
-    // TODO: Get actual user ID from authentication
-    const userId = '29a94bda-39e2-4b57-8cc0-cd289274da5a'
+    // Initialize Supabase client with SSR
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {}, // Empty for API routes
+          remove() {}, // Empty for API routes
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const userId = user.id // This is the authenticated user's UUID
     
     const { error } = await supabase
       .from('communication_templates')
