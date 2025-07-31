@@ -391,39 +391,6 @@ function SuppliersPageContent() {
                       )}
                     </div>
 
-                    {/* Progress Display */}
-                    {progressInfo && (
-                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50 rounded-lg">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                              <span className="text-sm font-medium text-gray-900">
-                                {progressInfo.phase.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                              </span>
-                            </div>
-                            <span className="text-sm font-semibold text-gray-700">
-                              {progressInfo.progress}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                            <div 
-                              className="bg-gradient-to-r from-blue-500 to-indigo-500 h-1.5 rounded-full transition-all duration-300"
-                              style={{ width: `${progressInfo.progress}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-sm text-gray-600">
-                            {progressInfo.message}
-                          </p>
-                          {progressInfo.data && progressInfo.data.currentAsin && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1">
-                              <ArrowRight className="h-3 w-3" />
-                              Processing ASIN {progressInfo.data.currentAsin} of {progressInfo.data.totalAsins}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
 
                     {/* Active Filters Display */}
                     {(searchOptions.goldSupplierOnly || searchOptions.tradeAssuranceOnly) && (

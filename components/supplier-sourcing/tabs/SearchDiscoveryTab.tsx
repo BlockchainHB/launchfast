@@ -756,56 +756,6 @@ export function SearchDiscoveryTab({ data, marketContext, initialSearchTerm }: S
         </div>
       </div>
 
-      {/* Market Context Banner */}
-      {marketContext && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
-                <h4 className="font-semibold text-gray-900">Market Intelligence Active</h4>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  marketContext.marketGrade.startsWith('A') ? 'bg-green-100 text-green-700' :
-                  marketContext.marketGrade.startsWith('B') ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
-                }`}>
-                  Grade {marketContext.marketGrade}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="text-gray-600">Product</div>
-                  <div className="font-semibold text-gray-900">{marketContext.productName}</div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Profit Potential</div>
-                  <div className="font-semibold text-green-600">${marketContext.estimatedProfit.toLocaleString()}/mo</div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Competition</div>
-                  <div className={`font-semibold ${
-                    marketContext.competitionLevel === 'low' ? 'text-green-600' :
-                    marketContext.competitionLevel === 'high' ? 'text-red-600' :
-                    'text-yellow-600'
-                  }`}>
-                    {marketContext.competitionLevel.charAt(0).toUpperCase() + marketContext.competitionLevel.slice(1)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Suggested MOQ</div>
-                  <div className="font-semibold text-gray-900">{marketContext.suggestedMOQ} units</div>
-                </div>
-              </div>
-              <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <span className="font-medium">Smart Recommendations:</span> Suppliers are scored with market opportunity analysis. 
-                  Look for suppliers with high opportunity scores that match your market grade of {marketContext.marketGrade}.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
 
       {/* Supplier Cards Grid */}
