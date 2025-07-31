@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      // Prepare relationship data
+      // Prepare relationship data with full supplier intelligence
       const relationshipData = {
         user_id: userId,
         supplier_id: supplier.id,
@@ -136,9 +136,43 @@ export async function POST(request: NextRequest) {
         gold_supplier: supplier.trust?.goldSupplier || false,
         trade_assurance: supplier.trust?.tradeAssurance || supplier.metrics?.tradeAssurance || false,
         quality_score: supplier.qualityScore?.overall || supplier.qualityScore,
-        moq: supplier.moq || supplier.minOrderQuantity,
+        moq: supplier.moq || supplier.minOrderQuantity || supplier.metrics?.minOrderQuantity,
         tags: [],
         internal_notes: `Saved from ${searchContext.searchSource === 'market_research' ? 'market research' : 'direct search'}: "${searchContext.searchQuery}"`,
+        
+        // Pricing data
+        unit_price: supplier.pricing?.unitPrice || supplier.pricing?.priceRange?.min,
+        price_currency: supplier.pricing?.currency || 'USD',
+        price_min: supplier.pricing?.priceRange?.min,
+        price_max: supplier.pricing?.priceRange?.max,
+        payment_terms: supplier.pricing?.paymentTerms || [],
+        
+        // Alibaba ratings and performance
+        alibaba_rating: supplier.trust?.rating,
+        review_count: supplier.trust?.customerReviews,
+        response_rate: supplier.metrics?.responseRate,
+        on_time_delivery: supplier.metrics?.onTimeDelivery,
+        
+        // Additional supplier metrics
+        supplier_assessment: supplier.quality?.supplierAssessment,
+        transaction_level: supplier.metrics?.transactionLevel,
+        trade_assurance_amount: supplier.trust?.tradeAssuranceAmount,
+        main_products: supplier.products?.mainProducts || [],
+        total_products: supplier.products?.totalProducts,
+        certifications: supplier.quality?.certifications || [],
+        established_year: supplier.establishedYear,
+        employees_range: supplier.employees,
+        annual_revenue_range: supplier.annualRevenue,
+        export_percentage: supplier.exportPercentage,
+        
+        // Enhanced contact and business info
+        contact_email: supplier.contact?.email,
+        contact_phone: supplier.contact?.phone,
+        whatsapp: supplier.contact?.whatsapp,
+        trade_manager: supplier.contact?.tradeManager,
+        website_url: supplier.contact?.website,
+        company_profile: supplier.companyProfile,
+        average_lead_time: supplier.metrics?.averageLeadTime,
         
         // Market context fields
         market_id: searchContext.marketId || null,
@@ -165,19 +199,19 @@ export async function POST(request: NextRequest) {
       savedRelationships = insertedRelationships || []
       console.log(`✅ Saved ${savedRelationships.length} supplier relationships`)
 
-      // Create interaction logs for each saved supplier
-      const interactions = savedRelationships.map(relationship => ({
-        user_id: userId,
-        supplier_relationship_id: relationship.id,
-        interaction_type: 'note',
-        subject: 'Supplier Added via Batch Save',
-        content: `Added to prospects from ${searchContext.searchSource === 'market_research' ? 'market research' : 'direct search'} batch: "${finalBatchName}"`,
-        direction: 'internal'
-      }))
-
-      await supabase
-        .from('supplier_interactions')
-        .insert(interactions)
+      // Create a single batch interaction log instead of individual logs
+      if (savedRelationships.length > 0) {
+        await supabase
+          .from('supplier_interactions')
+          .insert({
+            user_id: userId,
+            supplier_relationship_id: savedRelationships[0].id, // Use first supplier as reference
+            interaction_type: 'note',
+            subject: 'Batch Save Completed',
+            content: `Saved ${savedRelationships.length} suppliers from ${searchContext.searchSource === 'market_research' ? 'market research' : 'direct search'} to batch: "${finalBatchName}"`,
+            direction: 'internal'
+          })
+      }
     }
 
     // Update batch with final count (increment if existing batch)

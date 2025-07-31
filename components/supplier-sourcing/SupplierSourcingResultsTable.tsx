@@ -181,82 +181,7 @@ export function SupplierSourcingResultsTable({
     )
   }
 
-  // No data state
-  if (!data) {
-    return (
-      <div className={cn('w-full', className)}>
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-          <div className="p-6">
-            {/* Tab previews */}
-            <div className="flex space-x-1 mb-6 p-1 bg-gray-100/50 rounded-lg">
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <Search className="h-4 w-4" />
-                <span>Search & Discovery</span>
-              </div>
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <Users className="h-4 w-4" />
-                <span>Supplier Manager</span>
-              </div>
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <Package className="h-4 w-4" />
-                <span>Sample Tracker</span>
-              </div>
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <BarChart3 className="h-4 w-4" />
-                <span>Market Intelligence</span>
-              </div>
-              <div className="px-3 py-2 text-sm font-medium text-gray-600 flex items-center space-x-2 opacity-50">
-                <MessageCircle className="h-4 w-4" />
-                <span>Communication Hub</span>
-              </div>
-            </div>
-          
-          {/* Empty Content Area */}
-            <div className="flex items-center justify-center py-16 border-2 border-dashed border-gray-200 rounded-lg">
-              <div className="text-center space-y-4 max-w-sm">
-                <div className="flex justify-center">
-                  <div className="relative">
-                    <Factory className="h-16 w-16 text-gray-400" />
-                    <div className="absolute -top-1 -right-1 h-6 w-6 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Search className="h-3 w-3 text-blue-600" />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-gray-900">Ready for Supplier Sourcing</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">
-                    Search for products above to find suppliers and access:
-                  </p>
-                </div>
-                <div className="space-y-2 text-xs text-gray-500">
-                  <div className="flex items-center justify-center space-x-2">
-                    <Search className="h-3 w-3 text-blue-600" />
-                    <span>Search & discover suppliers</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <Users className="h-3 w-3 text-green-600" />
-                    <span>Manage supplier relationships</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <Package className="h-3 w-3 text-purple-600" />
-                    <span>Track sample requests</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <BarChart3 className="h-3 w-3 text-orange-600" />
-                    <span>Market intelligence</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <MessageCircle className="h-3 w-3 text-red-600" />
-                    <span>Communication templates</span>
-                  </div>
-              </div>
-            </div>
-          </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Always show tabs, even without search data
 
   return (
     <div className={cn('w-full', className)}>
@@ -265,14 +190,20 @@ export function SupplierSourcingResultsTable({
           <div className="flex items-center justify-between mb-6">
           <div className="space-y-1">
               <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
-                <span>Supplier Search Results</span>
-                <Badge variant="outline" className="ml-3 text-xs px-2 py-0.5">
-                  <Factory className="mr-1 h-3 w-3" />
-                  {data.suppliers?.length || 0} suppliers
-                </Badge>
+                <span>{data ? 'Supplier Search Results' : 'Supplier Sourcing'}</span>
+                {data && (
+                  <Badge variant="outline" className="ml-3 text-xs px-2 py-0.5">
+                    <Factory className="mr-1 h-3 w-3" />
+                    {data.suppliers?.length || 0} suppliers
+                  </Badge>
+                )}
               </h2>
               <p className="text-sm text-gray-500">
-                Found suppliers for "{data.searchQuery}" • {data.qualityAnalysis?.goldSuppliers || 0} Gold Suppliers
+                {data ? (
+                  `Found suppliers for "${data.searchQuery}" • ${data.qualityAnalysis?.goldSuppliers || 0} Gold Suppliers`
+                ) : (
+                  'Search for suppliers and manage your supplier relationships'
+                )}
               </p>
           </div>
           </div>

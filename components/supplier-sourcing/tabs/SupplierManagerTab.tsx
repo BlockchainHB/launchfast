@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
-import { Users, Plus, Search, Filter, MoreHorizontal, GripVertical, Tag, Clock, MessageCircle, Star, Award, Shield, Calendar, ChevronRight, X, Edit3, Eye } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Users, Plus, Search, Filter, MoreHorizontal, GripVertical, Tag, Clock, MessageCircle, Star, Award, Shield, Calendar, ChevronRight, X, Edit3, Eye, FolderOpen, ChevronDown, Trash2, ExternalLink, ArrowRight, MessageSquare } from 'lucide-react'
+import { toast } from 'sonner'
 import type { SupplierSearchResult } from '@/types/supplier'
 
 interface SupplierManagerTabProps {
@@ -10,9 +11,9 @@ interface SupplierManagerTabProps {
 
 interface SupplierCard {
   id: string
+  supplierId: string
   companyName: string
   location: { city: string; country: string }
-  qualityScore: number
   yearsInBusiness: number
   trust: { goldSupplier: boolean; tradeAssurance: boolean }
   stage: string
@@ -21,99 +22,244 @@ interface SupplierCard {
   tags: string[]
   notes: string
   relationshipHealth: 'excellent' | 'good' | 'fair' | 'poor'
+  
+  // Actual supplier data (replacing arbitrary scores)
+  pricing?: {
+    unitPrice?: number
+    currency?: string
+    priceRange?: { min: number; max: number }
+  }
+  alibabaRating?: {
+    score: number // Out of 5
+    reviewCount: number
+    responseRate?: number // Percentage
+    onTimeDelivery?: number // Percentage
+  }
+  
+  // Enhanced context data
+  batch?: {
+    id: string
+    name: string
+    searchSource: 'market_research' | 'direct_search'
+    searchQuery: string
+    keyword?: string
+    marketContext?: any
+    totalSuppliers: number
+    createdAt: string
+  } | null
+  
+  market?: {
+    id: string
+    keyword: string
+    marketGrade: string
+    avgProfitPerUnit: number
+    riskClassification: string
+    avgMonthlyRevenue: number
+    opportunityScore: number
+  } | null
+  
+  profitProjection?: number
+  marketGrade?: string
+  sampleRequests?: number
+  recentInteractions?: any[]
+  contact?: {
+    email?: string
+    phone?: string
+    person?: string
+  }
+  alibabaUrl?: string
+  moq?: number
+  businessType?: string
+  opportunityScore?: number
+  priorityLevel?: string
+  createdAt: string
+  updatedAt: string
 }
 
-const mockSuppliers: SupplierCard[] = [
-  {
-    id: '1',
-    companyName: 'TechPro Manufacturing Ltd.',
-    location: { city: 'Shenzhen', country: 'China' },
-    qualityScore: 92,
-    yearsInBusiness: 8,
-    trust: { goldSupplier: true, tradeAssurance: true },
-    stage: 'prospects',
-    lastContact: '2024-01-20',
-    nextAction: 'Send initial inquiry',
-    tags: ['bluetooth', 'high-quality'],
-    notes: 'Excellent reviews, fast response time',
-    relationshipHealth: 'excellent'
-  },
-  {
-    id: '2',
-    companyName: 'Quality Electronics Co.',
-    location: { city: 'Guangzhou', country: 'China' },
-    qualityScore: 85,
-    yearsInBusiness: 12,
-    trust: { goldSupplier: false, tradeAssurance: true },
-    stage: 'contacted',
-    lastContact: '2024-01-18',
-    nextAction: 'Follow up on quote',
-    tags: ['electronics', 'reliable'],
-    notes: 'Responded within 24 hours, competitive pricing',
-    relationshipHealth: 'good'
-  },
-  {
-    id: '3',
-    companyName: 'Innovation Factory',
-    location: { city: 'Dongguan', country: 'China' },
-    qualityScore: 78,
-    yearsInBusiness: 6,
-    trust: { goldSupplier: true, tradeAssurance: false },
-    stage: 'sampling',
-    lastContact: '2024-01-15',
-    nextAction: 'Evaluate samples',
-    tags: ['samples-sent', 'innovative'],
-    notes: 'Samples received, quality testing in progress',
-    relationshipHealth: 'good'
-  },
-  {
-    id: '4',
-    companyName: 'Premium Components Ltd.',
-    location: { city: 'Hangzhou', country: 'China' },
-    qualityScore: 88,
-    yearsInBusiness: 15,
-    trust: { goldSupplier: true, tradeAssurance: true },
-    stage: 'negotiating',
-    lastContact: '2024-01-22',
-    nextAction: 'Finalize MOQ terms',
-    tags: ['premium', 'negotiating-moq'],
-    notes: 'Great samples, negotiating final terms',
-    relationshipHealth: 'excellent'
-  },
-  {
-    id: '5', 
-    companyName: 'Reliable Manufacturing Co.',
-    location: { city: 'Foshan', country: 'China' },
-    qualityScore: 94,
-    yearsInBusiness: 10,
-    trust: { goldSupplier: true, tradeAssurance: true },
-    stage: 'partners',
-    lastContact: '2024-01-19',
-    nextAction: 'Schedule monthly review',
-    tags: ['established-partner', 'top-performer'],
-    notes: 'Excellent ongoing partnership, consistent quality',
-    relationshipHealth: 'excellent'
+// Helper function to get user ID from Supabase auth
+const getUserId = async () => {
+  try {
+    const response = await fetch('/api/auth/user')
+    if (!response.ok) throw new Error('Failed to get user')
+    const { user } = await response.json()
+    return user?.id
+  } catch (error) {
+    console.error('❌ Failed to get user ID:', error)
+    return null
   }
-]
+}
 
 export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
-  const [suppliers, setSuppliers] = useState<SupplierCard[]>(mockSuppliers)
+  const [suppliers, setSuppliers] = useState<SupplierCard[]>([])
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierCard | null>(null)
   const [draggedSupplier, setDraggedSupplier] = useState<SupplierCard | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [bulkSelected, setBulkSelected] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    prospects: 0,
+    contacted: 0,
+    sampling: 0,
+    negotiating: 0,
+    partners: 0,
+    total: 0
+  })
+  const [recentActivities, setRecentActivities] = useState<any[]>([])
+
+  // Project Management State
+  const [projects, setProjects] = useState<Array<{
+    id: string
+    name: string
+    type: 'market' | 'batch'
+    keyword?: string
+    marketGrade?: string
+    supplierCount: number
+    lastActivity: string
+  }>>([])
+  const [selectedProject, setSelectedProject] = useState<string | null>(null)
+  const [showProjectSelector, setShowProjectSelector] = useState(false)
+
+  // Fetch suppliers on component mount and project change
+  useEffect(() => {
+    loadProjects()
+  }, [])
+
+  useEffect(() => {
+    if (selectedProject) {
+      loadSuppliers()
+    }
+  }, [selectedProject])
+
+  // Close project selector when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showProjectSelector) {
+        const target = event.target as HTMLElement
+        if (!target.closest('.project-selector')) {
+          setShowProjectSelector(false)
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showProjectSelector])
+
+  // Load available projects (markets and batches)
+  const loadProjects = async () => {
+    try {
+      const userId = await getUserId()
+      if (!userId) return
+
+      // Fetch both markets and batches that have suppliers
+      const [marketsResponse, batchesResponse] = await Promise.all([
+        fetch(`/api/supplier-relationships?userId=${userId}&groupBy=market`),
+        fetch(`/api/supplier-relationships?userId=${userId}&groupBy=batch`)
+      ])
+
+      const marketGroups = marketsResponse.ok ? await marketsResponse.json() : { data: { groups: [] } }
+      const batchGroups = batchesResponse.ok ? await batchesResponse.json() : { data: { groups: [] } }
+
+      const allProjects = [
+        ...(marketGroups.data?.groups || []).map((group: any) => ({
+          id: group.market_id,
+          name: `${group.keyword} Market`,
+          type: 'market' as const,
+          keyword: group.keyword,
+          marketGrade: group.market_grade,
+          supplierCount: group.supplier_count,
+          lastActivity: group.last_activity
+        })),
+        ...(batchGroups.data?.groups || []).map((group: any) => ({
+          id: group.batch_id,
+          name: group.batch_name,
+          type: 'batch' as const,
+          supplierCount: group.supplier_count,
+          lastActivity: group.last_activity
+        }))
+      ]
+
+      // Sort projects by most recent activity first
+      const sortedProjects = allProjects.sort((a, b) => 
+        new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
+      )
+
+      setProjects(sortedProjects)
+      
+      // Auto-select first project if none selected
+      if (!selectedProject && sortedProjects.length > 0) {
+        setSelectedProject(sortedProjects[0].id)
+      }
+    } catch (error) {
+      console.error('❌ Error loading projects:', error)
+      toast.error('Failed to load projects')
+    }
+  }
+
+  // Load suppliers from API filtered by selected project
+  const loadSuppliers = async () => {
+    try {
+      setLoading(true)
+      const userId = await getUserId()
+      if (!userId || !selectedProject) {
+        toast.error('Please log in and select a project')
+        return
+      }
+
+      const selectedProjectData = projects.find(p => p.id === selectedProject)
+      if (!selectedProjectData) return
+
+      // Build query parameters based on project type
+      const queryParams = new URLSearchParams({ userId })
+      
+      if (selectedProjectData.type === 'market') {
+        queryParams.append('marketId', selectedProject)
+      } else {
+        queryParams.append('batchId', selectedProject)
+      }
+
+      const response = await fetch(`/api/supplier-relationships?${queryParams}`)
+      if (!response.ok) throw new Error('Failed to fetch suppliers')
+
+      const result = await response.json()
+      if (result.success) {
+        const projectSuppliers = result.data.suppliers || []
+        setSuppliers(projectSuppliers)
+        
+        // Use stats, conversion metrics, and activities from API response
+        setStats(result.data.stats || {
+          prospects: 0,
+          contacted: 0,
+          sampling: 0,
+          negotiating: 0,
+          partners: 0,
+          total: 0
+        })
+        setRecentActivities(result.data.recentActivities || [])
+        
+        console.log(`✅ Loaded ${projectSuppliers.length} suppliers for project: ${selectedProjectData.name}`)
+      } else {
+        throw new Error(result.error || 'Failed to load suppliers')
+      }
+    } catch (error) {
+      console.error('❌ Error loading suppliers:', error)
+      toast.error('Failed to load supplier relationships')
+    } finally {
+      setLoading(false)
+    }
+  }
   
   // Calculate pipeline stages with actual counts
   const pipelineStages = [
     { id: 'prospects', name: 'Prospects', color: 'bg-blue-100 text-blue-700', icon: Users },
     { id: 'contacted', name: 'Contacted', color: 'bg-yellow-100 text-yellow-700', icon: MessageCircle },
-    { id: 'sampling', name: 'Sampling', color: 'bg-purple-100 text-purple-700', icon: Star },
     { id: 'negotiating', name: 'Negotiating', color: 'bg-orange-100 text-orange-700', icon: Edit3 },
+    { id: 'sampling', name: 'Sampling', color: 'bg-purple-100 text-purple-700', icon: Star },
     { id: 'partners', name: 'Partners', color: 'bg-green-100 text-green-700', icon: Award }
   ].map(stage => ({
     ...stage,
-    count: suppliers.filter(s => s.stage === stage.id).length
+    count: stats[stage.id as keyof typeof stats] || 0
   }))
   
   // Drag and drop handlers
@@ -130,17 +276,194 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
     setDragOverStage(null)
   }
   
-  const handleDrop = (e: React.DragEvent, newStage: string) => {
+  const handleDrop = async (e: React.DragEvent, newStage: string) => {
     e.preventDefault()
     if (draggedSupplier && draggedSupplier.stage !== newStage) {
-      setSuppliers(prev => prev.map(s => 
-        s.id === draggedSupplier.id 
-          ? { ...s, stage: newStage, lastContact: new Date().toISOString().split('T')[0] }
-          : s
-      ))
+      try {
+        const userId = await getUserId()
+        if (!userId) return
+
+        // Optimistically update UI
+        setSuppliers(prev => prev.map(s => 
+          s.id === draggedSupplier.id 
+            ? { ...s, stage: newStage, lastContact: new Date().toISOString().split('T')[0] }
+            : s
+        ))
+
+        // Update stats for project-specific counts
+        setStats(prev => ({
+          ...prev,
+          [draggedSupplier.stage]: Math.max(0, prev[draggedSupplier.stage as keyof typeof prev] - 1),
+          [newStage]: prev[newStage as keyof typeof prev] + 1
+        }))
+
+        // Update backend
+        const response = await fetch(`/api/supplier-relationships/${draggedSupplier.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pipelineStage: newStage,
+            lastContactDate: new Date().toISOString()
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to update supplier stage')
+        }
+
+        const result = await response.json()
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to update supplier')
+        }
+
+        toast.success(`Moved ${draggedSupplier.companyName} to ${newStage}`)
+      } catch (error) {
+        console.error('❌ Error updating supplier stage:', error)
+        toast.error('Failed to update supplier stage')
+        // Revert optimistic update
+        loadSuppliers()
+      }
     }
     setDraggedSupplier(null)
     setDragOverStage(null)
+  }
+
+  // Delete supplier function
+  const handleDeleteSupplier = async (supplier: SupplierCard) => {
+    if (!confirm(`Are you sure you want to remove ${supplier.companyName} from your pipeline? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const userId = await getUserId()
+      if (!userId) return
+
+      // Optimistically remove from UI
+      setSuppliers(prev => prev.filter(s => s.id !== supplier.id))
+      
+      // Update stats
+      setStats(prev => ({
+        ...prev,
+        [supplier.stage]: Math.max(0, prev[supplier.stage as keyof typeof prev] - 1),
+        total: Math.max(0, prev.total - 1)
+      }))
+
+      // Delete from backend
+      const response = await fetch(`/api/supplier-relationships/${supplier.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete supplier')
+      }
+
+      const result = await response.json()
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete supplier')
+      }
+
+      toast.success(`Removed ${supplier.companyName} from pipeline`)
+    } catch (error) {
+      console.error('❌ Error deleting supplier:', error)
+      toast.error('Failed to remove supplier')
+      // Revert optimistic update
+      loadSuppliers()
+    }
+  }
+
+  // Bulk delete selected suppliers
+  const handleBulkDelete = async () => {
+    if (bulkSelected.length === 0) return
+    
+    if (!confirm(`Are you sure you want to remove ${bulkSelected.length} suppliers from your pipeline? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const userId = await getUserId()
+      if (!userId) return
+
+      // Get supplier names for toast message
+      const selectedSuppliers = suppliers.filter(s => bulkSelected.includes(s.id))
+      
+      // Optimistically remove from UI
+      setSuppliers(prev => prev.filter(s => !bulkSelected.includes(s.id)))
+      setBulkSelected([])
+      
+      // Update stats
+      const stageCounts = selectedSuppliers.reduce((acc, supplier) => {
+        acc[supplier.stage] = (acc[supplier.stage] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      setStats(prev => ({
+        prospects: Math.max(0, prev.prospects - (stageCounts.prospects || 0)),
+        contacted: Math.max(0, prev.contacted - (stageCounts.contacted || 0)),
+        sampling: Math.max(0, prev.sampling - (stageCounts.sampling || 0)),
+        negotiating: Math.max(0, prev.negotiating - (stageCounts.negotiating || 0)),
+        partners: Math.max(0, prev.partners - (stageCounts.partners || 0)),
+        total: Math.max(0, prev.total - selectedSuppliers.length)
+      }))
+
+      // Delete from backend
+      const deletePromises = bulkSelected.map(id => 
+        fetch(`/api/supplier-relationships/${id}`, { method: 'DELETE' })
+      )
+
+      const responses = await Promise.all(deletePromises)
+      const failed = responses.filter(r => !r.ok)
+
+      if (failed.length > 0) {
+        throw new Error(`Failed to delete ${failed.length} suppliers`)
+      }
+
+      toast.success(`Removed ${selectedSuppliers.length} suppliers from pipeline`)
+    } catch (error) {
+      console.error('❌ Error bulk deleting suppliers:', error)
+      toast.error('Failed to remove some suppliers')
+      // Revert optimistic update
+      loadSuppliers()
+      setBulkSelected([])
+    }
+  }
+
+  // Delete entire project (market or batch)
+  const handleDeleteProject = async (project: typeof projects[0]) => {
+    if (!confirm(`Are you sure you want to delete the entire "${project.name}" project? This will remove all ${project.supplierCount} suppliers and cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const userId = await getUserId()
+      if (!userId) return
+
+      let endpoint = ''
+      if (project.type === 'market') {
+        endpoint = `/api/supplier-relationships/bulk-delete?userId=${userId}&marketId=${project.id}`
+      } else {
+        endpoint = `/api/supplier-relationships/bulk-delete?userId=${userId}&batchId=${project.id}`
+      }
+
+      const response = await fetch(endpoint, { method: 'DELETE' })
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete project')
+      }
+
+      const result = await response.json()
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete project')
+      }
+
+      toast.success(`Deleted project "${project.name}" and removed ${project.supplierCount} suppliers`)
+      
+      // Refresh projects and clear selection
+      setSelectedProject(null)
+      loadProjects()
+    } catch (error) {
+      console.error('❌ Error deleting project:', error)
+      toast.error('Failed to delete project')
+    }
   }
   
   const getRelationshipHealthColor = (health: string) => {
@@ -158,16 +481,124 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
     supplier.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
+  const selectedProjectData = projects.find(p => p.id === selectedProject)
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h3 className="text-lg font-semibold text-gray-900">Supplier Pipeline</h3>
-          <p className="text-sm text-gray-500">
-            Manage relationships across {pipelineStages.reduce((sum, stage) => sum + stage.count, 0)} suppliers
-          </p>
+      {/* Project Selector & Header */}
+      <div className="space-y-4">
+        {/* Project Selection */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative project-selector">
+              <button
+                onClick={() => setShowProjectSelector(!showProjectSelector)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <FolderOpen className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-900">
+                  {selectedProjectData ? selectedProjectData.name : 'Select Project'}
+                </span>
+                <ChevronDown className="h-4 w-4 text-gray-500" />
+              </button>
+              
+              {showProjectSelector && (
+                <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <div className="p-3 border-b border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-900">Active Projects</h4>
+                    <p className="text-xs text-gray-500">Choose a market or batch to manage</p>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {projects.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-gray-500">
+                        No projects with suppliers found
+                      </div>
+                    ) : (
+                      projects.map((project) => (
+                        <div
+                          key={project.id}
+                          className={`border-b border-gray-100 last:border-b-0 ${
+                            selectedProject === project.id ? 'bg-blue-50 border-blue-200' : ''
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            <button
+                              onClick={() => {
+                                setSelectedProject(project.id)
+                                setShowProjectSelector(false)
+                              }}
+                              className="flex-1 text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      project.type === 'market' 
+                                        ? 'bg-green-100 text-green-700' 
+                                        : 'bg-blue-100 text-blue-700'
+                                    }`}>
+                                      {project.type === 'market' ? '🎯 Market' : '📦 Batch'}
+                                    </span>
+                                    {project.marketGrade && (
+                                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                                        {project.marketGrade}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-sm font-medium text-gray-900 truncate">
+                                    {project.name}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {project.supplierCount} suppliers • {new Date(project.lastActivity).toLocaleDateString()}
+                                  </div>
+                                </div>
+                              </div>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteProject(project)
+                              }}
+                              className="px-3 py-3 text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+                              title="Delete entire project"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {selectedProjectData && (
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  selectedProjectData.type === 'market' 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {selectedProjectData.supplierCount} suppliers
+                </span>
+                {selectedProjectData.marketGrade && (
+                  <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
+                    Grade {selectedProjectData.marketGrade}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {selectedProjectData ? `${selectedProjectData.name} Pipeline` : 'Supplier Pipeline'}
+            </h3>
+          </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -176,25 +607,20 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
               placeholder="Search suppliers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent w-64"
             />
           </div>
-          <button className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </button>
           {bulkSelected.length > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-              <span className="text-sm text-blue-700">{bulkSelected.length} selected</span>
-              <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Move</button>
-              <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Tag</button>
-            </div>
+            <button
+              onClick={() => handleBulkDelete()}
+              className="px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 border border-red-200 hover:border-red-300"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete ({bulkSelected.length})
+            </button>
           )}
-          <button className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Supplier
-          </button>
         </div>
+      </div>
       </div>
 
       {/* Pipeline Stats */}
@@ -216,55 +642,88 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
       </div>
 
       {/* Interactive Kanban Board */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {pipelineStages.map((stage) => {
-              const stageSuppliers = filteredSuppliers.filter(s => s.stage === stage.id)
-              const Icon = stage.icon
-              
-              return (
-                <div 
-                  key={stage.id} 
-                  className={`space-y-3 min-h-[400px] p-4 rounded-lg transition-colors ${dragOverStage === stage.id ? 'bg-blue-50 border-2 border-blue-300 border-dashed' : 'bg-gray-50'}`}
-                  onDragOver={(e) => handleDragOver(e, stage.id)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, stage.id)}
-                >
-                  <div className="flex items-center justify-between sticky top-0 bg-white p-2 rounded-lg border border-gray-200">
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-gray-600" />
-                      <h4 className="font-medium text-gray-900">{stage.name}</h4>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${stage.color}`}>
-                      {stageSuppliers.length}
-                    </span>
+      {!selectedProject ? (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+          <div className="flex flex-col items-center justify-center py-12">
+            <FolderOpen className="h-16 w-16 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Project</h3>
+            <p className="text-sm text-gray-500 text-center max-w-md">
+              Choose a market or batch from the dropdown above to view and manage your supplier relationships for that specific project.
+            </p>
+            <button
+              onClick={() => setShowProjectSelector(true)}
+              className="mt-4 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              Choose Project
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+          <div className="p-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+              </div>
+            ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 overflow-x-auto">
+              {pipelineStages.map((stage) => {
+                const stageSuppliers = filteredSuppliers.filter(s => s.stage === stage.id)
+                const Icon = stage.icon
+                
+                return (
+                  <div 
+                    key={stage.id} 
+                    className={`flex-shrink-0 w-full lg:w-auto flex flex-col min-h-[600px] max-h-[calc(100vh-300px)] p-4 rounded-lg transition-colors ${dragOverStage === stage.id ? 'bg-blue-50 border-2 border-blue-300 border-dashed' : 'bg-gray-50'}`}
+                    onDragOver={(e) => handleDragOver(e, stage.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, stage.id)}
+                  >
+                  <div className="flex items-center gap-2 sticky top-0 bg-white p-2 rounded-lg border border-gray-200 mb-3">
+                    <Icon className={`h-4 w-4 ${stage.color.replace('bg-', 'text-').replace('-100', '-600')}`} />
+                    <h4 className="font-medium text-gray-900">{stage.name}</h4>
                   </div>
                   
                   {/* Supplier Cards */}
-                  <div className="space-y-3">
+                  <div className="space-y-3 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     {stageSuppliers.map((supplier) => (
                       <div 
                         key={supplier.id}
                         draggable
                         onDragStart={() => handleDragStart(supplier)}
-                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all cursor-move group"
+                        className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-gray-300 transition-all cursor-move group"
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start gap-2">
-                              <GripVertical className="h-4 w-4 text-gray-400 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              <div className="flex-1">
-                                <h5 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">
-                                  {supplier.companyName}
-                                </h5>
-                                <p className="text-xs text-gray-500">
-                                  {supplier.location.city}, {supplier.location.country}
-                                </p>
-                              </div>
-                            </div>
+                        <div className="flex items-start gap-2 mb-3">
+                          <GripVertical className="h-4 w-4 text-gray-400 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <h5 
+                              className="text-sm font-bold text-gray-900 leading-tight line-clamp-2 cursor-help"
+                              title={supplier.companyName}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.setAttribute('title', supplier.companyName)
+                              }}
+                            >
+                              {supplier.companyName}
+                            </h5>
+                            {supplier.location.city !== 'Unknown' && (
+                              <p className="text-xs text-gray-500 mt-1 truncate">
+                                {supplier.location.city}
+                              </p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {supplier.alibabaUrl && (
+                              <a
+                                href={supplier.alibabaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-gray-400 hover:text-orange-500 transition-colors p-1"
+                                title="View on Alibaba"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
                             <input
                               type="checkbox"
                               checked={bulkSelected.includes(supplier.id)}
@@ -275,43 +734,54 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
                                   setBulkSelected(prev => prev.filter(id => id !== supplier.id))
                                 }
                               }}
+                              onClick={(e) => e.stopPropagation()}
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
-                            <button 
-                              onClick={() => setSelectedSupplier(supplier)}
-                              className="text-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
                           </div>
                         </div>
                         
-                        {/* Quality Score & Trust Badges */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                              <Star className="h-3 w-3" />
-                              {supplier.qualityScore}
+                        {/* Supplier Metrics */}
+                        <div className="space-y-1.5 mb-2">
+                          {/* Pricing Information */}
+                          {supplier.pricing && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-600">Price</span>
+                              <span className="text-xs font-medium text-gray-900">
+                                {supplier.pricing.priceRange ? 
+                                  `$${supplier.pricing.priceRange.min}-${supplier.pricing.priceRange.max}` :
+                                  supplier.pricing.unitPrice ? 
+                                    `$${supplier.pricing.unitPrice}${supplier.pricing.currency ? ' ' + supplier.pricing.currency : ''}` :
+                                    'Contact for quote'
+                                }
+                              </span>
                             </div>
-                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${getRelationshipHealthColor(supplier.relationshipHealth)}`}>
-                              {supplier.relationshipHealth}
+                          )}
+                          
+                          
+                          {/* Alibaba Rating */}
+                          {supplier.alibabaRating && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-600">Rating</span>
+                              <div className="flex items-center gap-0.5">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} className={`h-2.5 w-2.5 ${
+                                    i < Math.floor(supplier.alibabaRating!.score) 
+                                      ? 'text-yellow-400 fill-current' 
+                                      : 'text-gray-300'
+                                  }`} />
+                                ))}
+                              </div>
                             </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">Experience</span>
+                            <span className="text-xs font-medium text-gray-900">
+                              {supplier.yearsInBusiness}+ years
+                            </span>
                           </div>
                         </div>
                         
-                        {/* Trust Credentials */}
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {supplier.trust.goldSupplier && (
-                            <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
-                              Gold
-                            </span>
-                          )}
-                          {supplier.trust.tradeAssurance && (
-                            <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
-                              TA
-                            </span>
-                          )}
-                        </div>
                         
                         {/* Tags */}
                         {supplier.tags.length > 0 && (
@@ -329,11 +799,6 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
                           </div>
                         )}
                         
-                        {/* Next Action */}
-                        <div className="text-xs text-gray-500 mb-2">
-                          <span className="font-medium">Next:</span> {supplier.nextAction}
-                        </div>
-                        
                         {/* Last Contact */}
                         <div className="flex items-center justify-between text-xs text-gray-400">
                           <div className="flex items-center gap-1">
@@ -344,205 +809,169 @@ export function SupplierManagerTab({ data }: SupplierManagerTabProps) {
                         </div>
                       </div>
                     ))}
-                    
-                    {/* Add Supplier to Stage */}
-                    <button className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors">
-                      <Plus className="h-4 w-4 mx-auto mb-1" />
-                      <div className="text-xs">Add Supplier</div>
-                    </button>
                   </div>
                 </div>
               )
             })}
-          </div>
-        </div>
-      </div>
-
-      {/* Pipeline Analytics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Conversion Metrics */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-          <h4 className="font-medium text-gray-900 mb-4">Pipeline Performance</h4>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Prospects → Contacted</span>
-              <span className="text-sm font-semibold text-green-600">75%</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Contacted → Sampling</span>
-              <span className="text-sm font-semibold text-blue-600">62%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Sampling → Partners</span>
-              <span className="text-sm font-semibold text-purple-600">40%</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Recent Activity */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-          <h4 className="font-medium text-gray-900 mb-4">Recent Activity</h4>
-          <div className="space-y-3">
-            {[
-              { action: 'Moved to Negotiating', supplier: 'TechPro Manufacturing', time: '2 hours ago', type: 'move' },
-              { action: 'Added note', supplier: 'Quality Electronics', time: '4 hours ago', type: 'note' },
-              { action: 'Tagged as high-priority', supplier: 'Innovation Factory', time: '1 day ago', type: 'tag' },
-              { action: 'Moved to Partners', supplier: 'Reliable Manufacturing', time: '2 days ago', type: 'move' }
-            ].map((activity, index) => (
-              <div key={index} className="flex items-start gap-3 py-2">
-                <div className={`w-2 h-2 rounded-full mt-2 ${activity.type === 'move' ? 'bg-blue-500' : activity.type === 'note' ? 'bg-green-500' : 'bg-purple-500'}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900">{activity.action}</p>
-                  <p className="text-xs text-gray-500">{activity.supplier}</p>
-                </div>
-                <span className="text-xs text-gray-400 whitespace-nowrap">{activity.time}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* Quick Actions */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-          <h4 className="font-medium text-gray-900 mb-4">Quick Actions</h4>
-          <div className="space-y-2">
-            <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-              📧 Send bulk follow-up emails
-            </button>
-            <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-              📊 Export pipeline report
-            </button>
-            <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-              🏷️ Bulk tag management
-            </button>
-            <button className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-              ⏰ Set follow-up reminders
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* Supplier Detail Modal */}
-      {selectedSupplier && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Modal Header */}
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex-1">
-                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">{selectedSupplier.companyName}</h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span>{selectedSupplier.location.city}, {selectedSupplier.location.country}</span>
-                    <span>{selectedSupplier.yearsInBusiness} years in business</span>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${getRelationshipHealthColor(selectedSupplier.relationshipHealth)}`}>
-                      {selectedSupplier.relationshipHealth} relationship
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setSelectedSupplier(null)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Info */}
-                <div className="lg:col-span-2 space-y-6">
-                  {/* Quality & Trust */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Quality & Trust</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Star className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium text-gray-900">Quality Score: {selectedSupplier.qualityScore}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedSupplier.trust.goldSupplier && (
-                            <span className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                              <Award className="h-3 w-3 mr-1" />
-                              Gold Supplier
-                            </span>
-                          )}
-                          {selectedSupplier.trust.tradeAssurance && (
-                            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                              <Shield className="h-3 w-3 mr-1" />
-                              Trade Assurance
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Notes */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-sm text-gray-700">{selectedSupplier.notes}</p>
-                    </div>
-                  </div>
-                  
-                  {/* Tags */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Tags</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedSupplier.tags.map((tag, index) => (
-                        <span key={index} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                          <Tag className="h-3 w-3 mr-1" />
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Actions & Timeline */}
-                <div className="space-y-4">
-                  {/* Actions */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Actions</h4>
-                    <div className="space-y-2">
-                      <button className="w-full px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors">
-                        Send Message
-                      </button>
-                      <button className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        Request Sample
-                      </button>
-                      <button className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        Add Note
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Timeline */}
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-3">Recent Activity</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-2">
-                        <Calendar className="h-4 w-4 text-gray-400 mt-0.5" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">Last Contact</div>
-                          <div className="text-xs text-gray-500">{new Date(selectedSupplier.lastContact).toLocaleDateString()}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <ChevronRight className="h-4 w-4 text-gray-400 mt-0.5" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">Next Action</div>
-                          <div className="text-xs text-gray-500">{selectedSupplier.nextAction}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
+
+      {/* Recent Activity Feed */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div>
+            <h4 className="text-lg font-semibold text-gray-900">Recent Activity</h4>
+            <p className="text-sm text-gray-500 mt-1">Latest 5 interactions and changes in your supplier pipeline</p>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          {recentActivities.length > 0 ? (
+            <div className="flow-root">
+              <ul className="-mb-8">
+                {recentActivities.slice(0, 5).map((activity, index) => {
+                  // Parse activity to extract stage information for color coding
+                  const getActivityDisplay = (activity: any) => {
+                    const content = activity.content?.toLowerCase() || ''
+                    const subject = activity.subject || ''
+                    
+                    if (activity.interactionType === 'status_change') {
+                      if (content.includes('prospects')) return { 
+                        action: 'Moved to Prospects', 
+                        color: 'bg-blue-600', 
+                        iconBg: 'bg-blue-100',
+                        iconColor: 'text-blue-600',
+                        icon: Users 
+                      }
+                      if (content.includes('contacted')) return { 
+                        action: 'Moved to Contacted', 
+                        color: 'bg-yellow-600', 
+                        iconBg: 'bg-yellow-100',
+                        iconColor: 'text-yellow-600',
+                        icon: MessageCircle 
+                      }
+                      if (content.includes('negotiating')) return { 
+                        action: 'Moved to Negotiating', 
+                        color: 'bg-orange-600', 
+                        iconBg: 'bg-orange-100',
+                        iconColor: 'text-orange-600',
+                        icon: Edit3 
+                      }
+                      if (content.includes('sampling')) return { 
+                        action: 'Moved to Sampling', 
+                        color: 'bg-purple-600', 
+                        iconBg: 'bg-purple-100',
+                        iconColor: 'text-purple-600',
+                        icon: Star 
+                      }
+                      if (content.includes('partners')) return { 
+                        action: 'Moved to Partners', 
+                        color: 'bg-green-600', 
+                        iconBg: 'bg-green-100',
+                        iconColor: 'text-green-600',
+                        icon: Award 
+                      }
+                      return { 
+                        action: 'Pipeline Updated', 
+                        color: 'bg-blue-600', 
+                        iconBg: 'bg-blue-100',
+                        iconColor: 'text-blue-600',
+                        icon: ArrowRight 
+                      }
+                    }
+                    
+                    if (activity.interactionType === 'note') {
+                      // Handle batch save activities specially
+                      if (subject.includes('Batch Save') || content.includes('batch')) {
+                        return { 
+                          action: 'Suppliers Saved For Market', 
+                          color: 'bg-blue-600', 
+                          iconBg: 'bg-blue-100',
+                          iconColor: 'text-blue-600',
+                          icon: Plus 
+                        }
+                      }
+                      return { 
+                        action: 'Added Note', 
+                        color: 'bg-green-600', 
+                        iconBg: 'bg-green-100',
+                        iconColor: 'text-green-600',
+                        icon: MessageSquare 
+                      }
+                    }
+                    if (subject.includes('Added')) return { 
+                      action: 'Suppliers Saved For Market', 
+                      color: 'bg-blue-600', 
+                      iconBg: 'bg-blue-100',
+                      iconColor: 'text-blue-600',
+                      icon: Plus 
+                    }
+                    if (subject.includes('Delete') || subject.includes('Removed')) return { 
+                      action: 'Supplier Removed', 
+                      color: 'bg-red-600', 
+                      iconBg: 'bg-red-100',
+                      iconColor: 'text-red-600',
+                      icon: Trash2 
+                    }
+                    
+                    return { 
+                      action: subject || 'Activity', 
+                      color: 'bg-gray-600', 
+                      iconBg: 'bg-gray-100',
+                      iconColor: 'text-gray-600',
+                      icon: Clock 
+                    }
+                  }
+                  
+                  const { action, iconBg, iconColor, icon: ActivityIcon } = getActivityDisplay(activity)
+                  const isLast = index === recentActivities.slice(0, 5).length - 1
+                  
+                  return (
+                    <li key={activity.id || index}>
+                      <div className="relative pb-8">
+                        {!isLast && (
+                          <span className="absolute left-5 top-5 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                        )}
+                        <div className="relative flex items-start space-x-3">
+                          <div className={`relative px-1 ${iconBg} rounded-full flex items-center justify-center h-10 w-10`}>
+                            <ActivityIcon className={`h-5 w-5 ${iconColor}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-gray-900">{action}</p>
+                              <div className="flex items-center space-x-2">
+                                <time className="text-xs text-gray-500">{activity.relativeTime}</time>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-0.5">{activity.supplierName}</p>
+                            {activity.content && activity.interactionType !== 'status_change' && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-1">{activity.content}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-sm font-medium text-gray-900 mb-2">No recent activity</h3>
+              <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                Start interacting with suppliers by moving them through the pipeline, adding notes, or making changes. 
+                All activity will be tracked here.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

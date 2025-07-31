@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createServerClient } from '@supabase/ssr'
 
 // GET - Get specific supplier relationship with full details
 export async function GET(request: NextRequest, context: { params: { id: string } }) {
   try {
-    const relationshipId = context.params.id
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
 
-    if (!userId) {
-      return NextResponse.json({
-        success: false,
-        error: 'User ID is required'
-      }, { status: 400 })
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const relationshipId = context.params.id
 
     // Get relationship with all related data
     const { data: relationship, error } = await supabase
@@ -60,7 +65,7 @@ export async function GET(request: NextRequest, context: { params: { id: string 
         )
       `)
       .eq('id', relationshipId)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .single()
 
     if (error) {
@@ -104,6 +109,177 @@ export async function GET(request: NextRequest, context: { params: { id: string 
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch supplier relationship details'
+    }, { status: 500 })
+  }
+}
+
+// PATCH - Update supplier relationship
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const params = await context.params
+    const relationshipId = params.id
+    const body = await request.json()
+    const {
+      pipelineStage,
+      relationshipHealthScore,
+      priorityLevel,
+      contactEmail,
+      contactPhone,
+      contactPerson,
+      lastContactDate,
+      nextFollowupDate,
+      internalNotes,
+      tags
+    } = body
+
+    console.log(`🔄 Updating supplier relationship ${relationshipId}`)
+
+    // Build update object with only provided fields
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    }
+
+    if (pipelineStage !== undefined) updateData.pipeline_stage = pipelineStage
+    if (relationshipHealthScore !== undefined) updateData.relationship_health_score = relationshipHealthScore
+    if (priorityLevel !== undefined) updateData.priority_level = priorityLevel
+    if (contactEmail !== undefined) updateData.contact_email = contactEmail
+    if (contactPhone !== undefined) updateData.contact_phone = contactPhone
+    if (contactPerson !== undefined) updateData.contact_person = contactPerson
+    if (lastContactDate !== undefined) updateData.last_contact_date = lastContactDate
+    if (nextFollowupDate !== undefined) updateData.next_followup_date = nextFollowupDate
+    if (internalNotes !== undefined) updateData.internal_notes = internalNotes
+    if (tags !== undefined) updateData.tags = tags
+
+    const { data: relationship, error } = await supabase
+      .from('supplier_relationships')
+      .update(updateData)
+      .eq('id', relationshipId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('❌ Database error:', error)
+      throw error
+    }
+
+    if (!relationship) {
+      return NextResponse.json({
+        success: false,
+        error: 'Supplier relationship not found'
+      }, { status: 404 })
+    }
+
+    // Log the update interaction
+    const interactionContent = []
+    if (pipelineStage) interactionContent.push(`Moved to ${pipelineStage} stage`)
+    if (tags) interactionContent.push(`Updated tags: ${tags.join(', ')}`)
+    if (internalNotes) interactionContent.push('Updated notes')
+    if (relationshipHealthScore) interactionContent.push(`Updated relationship health: ${relationshipHealthScore}`)
+
+    if (interactionContent.length > 0) {
+      await supabase
+        .from('supplier_interactions')
+        .insert({
+          user_id: user.id,
+          supplier_relationship_id: relationshipId,
+          interaction_type: pipelineStage ? 'status_change' : 'note',
+          subject: pipelineStage ? 'Pipeline Stage Updated' : 'Supplier Updated',
+          content: interactionContent.join('; '),
+          direction: 'internal'
+        })
+    }
+
+    console.log(`✅ Updated supplier relationship: ${relationshipId}`)
+
+    return NextResponse.json({
+      success: true,
+      data: relationship
+    })
+
+  } catch (error) {
+    console.error('❌ Update supplier relationship error:', error)
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to update supplier relationship'
+    }, { status: 500 })
+  }
+}
+
+// DELETE - Remove supplier relationship
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const relationshipId = params.id
+
+    console.log(`🔄 Deleting supplier relationship ${relationshipId}`)
+
+    const { error } = await supabase
+      .from('supplier_relationships')
+      .delete()
+      .eq('id', relationshipId)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('❌ Database error:', error)
+      throw error
+    }
+
+    console.log(`✅ Deleted supplier relationship: ${relationshipId}`)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Supplier relationship deleted successfully'
+    })
+
+  } catch (error) {
+    console.error('❌ Delete supplier relationship error:', error)
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to delete supplier relationship'
     }, { status: 500 })
   }
 }
