@@ -441,9 +441,23 @@ class AmazonInjector {
    */
   async handleAuthStatusRequest(sendResponse) {
     try {
-      console.log('📱 Content: Handling auth status request');
-      const authStatus = await LaunchFastSupabase.getAuthStatus();
-      sendResponse(authStatus);
+      console.log('📱 Content: Delegating auth check to background script');
+      
+      // Send message to background script to check auth (background bypasses CORS)
+      chrome.runtime.sendMessage({
+        type: 'CHECK_AUTH'
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Content: Failed to get auth status from background:', chrome.runtime.lastError);
+          sendResponse({
+            authenticated: false,
+            error: 'Could not check authentication'
+          });
+        } else {
+          console.log('📱 Content: Received auth status from background:', response.authenticated);
+          sendResponse(response);
+        }
+      });
     } catch (error) {
       console.error('Content: Auth status check failed:', error);
       sendResponse({

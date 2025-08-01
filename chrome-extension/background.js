@@ -285,39 +285,42 @@ function isCacheExpired(timestamp) {
 }
 
 /**
- * Authentication management - delegates to content script
+ * Authentication management - uses background script to bypass CORS
  */
 async function checkAuthenticationStatus(sendResponse) {
   try {
-    console.log('🔐 Background: Checking authentication status via content script');
+    console.log('🔐 Background: Checking authentication status directly');
     
-    // Send message to content script to check auth using API
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs.length === 0) {
-      sendResponse({
-        authenticated: false,
-        error: 'No active tab found'
-      });
-      return;
-    }
-    
-    // Send auth check request to content script
-    chrome.tabs.sendMessage(tabs[0].id, {
-      type: 'CHECK_AUTH_STATUS'
-    }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error('Failed to communicate with content script:', chrome.runtime.lastError);
-        sendResponse({
-          authenticated: false,
-          error: 'Could not check authentication status'
-        });
-      } else {
-        sendResponse(response);
+    // Background scripts can make cross-origin requests without CORS restrictions
+    const response = await fetch('https://launchfastlegacyx.com/api/auth/user', {
+      method: 'GET',
+      credentials: 'include', // Include HTTP-only cookies
+      headers: {
+        'Content-Type': 'application/json'
       }
     });
     
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Background: User authenticated:', data.user?.email);
+      
+      sendResponse({
+        authenticated: true,
+        user: data.user,
+        session: { authenticated: true, timestamp: Date.now() }
+      });
+    } else if (response.status === 401) {
+      console.log('❌ Background: User not authenticated');
+      sendResponse({
+        authenticated: false,
+        error: 'Not authenticated'
+      });
+    } else {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+    
   } catch (error) {
-    console.error('Auth check failed:', error);
+    console.error('❌ Background: Auth check failed:', error);
     sendResponse({
       authenticated: false,
       error: error.message
