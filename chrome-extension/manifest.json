@@ -1,0 +1,83 @@
+{
+  "manifest_version": 3,
+  "name": "LaunchFast - Amazon Product Intelligence",
+  "version": "1.0.0",
+  "description": "Transform Amazon product research with instant A10-F1 profit analysis, competition assessment, and opportunity identification for FBA sellers.",
+  
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "identity",
+    "tabs"
+  ],
+  
+  "host_permissions": [
+    "https://www.amazon.com/*",
+    "https://amazon.com/*",
+    "https://*.amazon.com/*",
+    "https://launchfastlegacyx.com/*",
+    "https://*.supabase.co/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.amazon.com/s*",
+        "https://amazon.com/s*",
+        "https://www.amazon.com/dp/*",
+        "https://amazon.com/dp/*",
+        "https://www.amazon.com/b*",
+        "https://amazon.com/b*",
+        "https://www.amazon.com/deals*",
+        "https://amazon.com/deals*"
+      ],
+      "js": [
+        "lib/supabase-bundle.js",
+        "lib/api-client.js",
+        "content/selectors.js",
+        "content/badge-creator.js",
+        "content/amazon-injector.js"
+      ],
+      "css": [
+        "styles/amazon-cards.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "LaunchFast - Amazon Product Intelligence",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*",
+        "styles/*"
+      ],
+      "matches": [
+        "https://www.amazon.com/*",
+        "https://amazon.com/*"
+      ]
+    }
+  ]
+}

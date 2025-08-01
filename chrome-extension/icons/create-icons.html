@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LaunchFast Icon Generator</title>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .icon-container {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        .icon-preview {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+        }
+        button {
+            background: #f97316;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #ea580c;
+        }
+        .instructions {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f97316;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <h2>🚀 LaunchFast Chrome Extension Icons</h2>
+        <p>Click the download buttons below to save each icon size. Save them as:</p>
+        <ul>
+            <li><strong>icon-16.png</strong> - 16x16 pixels</li>
+            <li><strong>icon-32.png</strong> - 32x32 pixels</li>
+            <li><strong>icon-48.png</strong> - 48x48 pixels</li>
+            <li><strong>icon-128.png</strong> - 128x128 pixels</li>
+        </ul>
+        <p>Save all icons to: <code>/chrome-extension/icons/</code></p>
+    </div>
+
+    <div class="icon-container">
+        <div class="icon-preview">
+            <canvas id="canvas16" width="16" height="16"></canvas>
+        </div>
+        <button onclick="downloadIcon('canvas16', 'icon-16.png')">Download 16x16</button>
+    </div>
+
+    <div class="icon-container">
+        <div class="icon-preview">
+            <canvas id="canvas32" width="32" height="32"></canvas>
+        </div>
+        <button onclick="downloadIcon('canvas32', 'icon-32.png')">Download 32x32</button>
+    </div>
+
+    <div class="icon-container">
+        <div class="icon-preview">
+            <canvas id="canvas48" width="48" height="48"></canvas>
+        </div>
+        <button onclick="downloadIcon('canvas48', 'icon-48.png')">Download 48x48</button>
+    </div>
+
+    <div class="icon-container">
+        <div class="icon-preview">
+            <canvas id="canvas128" width="128" height="128"></canvas>
+        </div>
+        <button onclick="downloadIcon('canvas128', 'icon-128.png')">Download 128x128</button>
+    </div>
+
+    <script>
+        // Create LaunchFast icon using Lucide icons
+        function createIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            const centerX = size / 2;
+            const centerY = size / 2;
+            
+            // Clear canvas
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#f97316');
+            gradient.addColorStop(1, '#ea580c');
+            
+            // Draw background circle
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, size * 0.45, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Create rocket icon (simplified)
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = Math.max(1, size * 0.05);
+            
+            // Rocket body
+            const rocketSize = size * 0.6;
+            const rocketX = centerX;
+            const rocketY = centerY - rocketSize * 0.1;
+            
+            ctx.beginPath();
+            // Rocket main body (elongated ellipse)
+            ctx.ellipse(rocketX, rocketY, rocketSize * 0.15, rocketSize * 0.35, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Rocket nose (triangle)
+            ctx.beginPath();
+            ctx.moveTo(rocketX, rocketY - rocketSize * 0.35);
+            ctx.lineTo(rocketX - rocketSize * 0.1, rocketY - rocketSize * 0.2);
+            ctx.lineTo(rocketX + rocketSize * 0.1, rocketY - rocketSize * 0.2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Rocket fins
+            ctx.beginPath();
+            ctx.moveTo(rocketX - rocketSize * 0.15, rocketY + rocketSize * 0.2);
+            ctx.lineTo(rocketX - rocketSize * 0.25, rocketY + rocketSize * 0.35);
+            ctx.lineTo(rocketX - rocketSize * 0.05, rocketY + rocketSize * 0.25);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(rocketX + rocketSize * 0.15, rocketY + rocketSize * 0.2);
+            ctx.lineTo(rocketX + rocketSize * 0.25, rocketY + rocketSize * 0.35);
+            ctx.lineTo(rocketX + rocketSize * 0.05, rocketY + rocketSize * 0.25);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Flame effect (optional for larger sizes)
+            if (size >= 32) {
+                const flameGradient = ctx.createLinearGradient(
+                    rocketX, rocketY + rocketSize * 0.35,
+                    rocketX, rocketY + rocketSize * 0.5
+                );
+                flameGradient.addColorStop(0, '#ffd814');
+                flameGradient.addColorStop(1, '#ff9900');
+                
+                ctx.fillStyle = flameGradient;
+                ctx.beginPath();
+                ctx.ellipse(rocketX, rocketY + rocketSize * 0.4, rocketSize * 0.08, rocketSize * 0.15, 0, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+        
+        // Generate all icon sizes
+        function generateIcons() {
+            createIcon(document.getElementById('canvas16'), 16);
+            createIcon(document.getElementById('canvas32'), 32);
+            createIcon(document.getElementById('canvas48'), 48);
+            createIcon(document.getElementById('canvas128'), 128);
+        }
+        
+        // Download icon function
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Generate icons when page loads
+        window.onload = generateIcons;
+        
+        // Regenerate icons every 100ms to ensure they render properly
+        setTimeout(generateIcons, 100);
+    </script>
+</body>
+</html>

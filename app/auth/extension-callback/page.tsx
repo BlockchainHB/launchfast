@@ -16,7 +16,7 @@ export default function ExtensionCallbackPage() {
           throw new Error('Supabase client not available')
         }
         
-        // Get the session from Supabase auth
+        // Check if user is already authenticated via normal LaunchFast login
         const { data: { session, user }, error } = await supabase.auth.getSession()
         
         if (error) {
@@ -27,9 +27,10 @@ export default function ExtensionCallbackPage() {
         }
 
         if (!session || !user) {
-          console.error('No session or user found')
-          setStatus('error')
-          setMessage('No valid session found. Please try logging in again.')
+          // No existing session - redirect to regular login with extension callback
+          console.log('No session found, redirecting to login')
+          const loginUrl = `/login?redirect_to=${encodeURIComponent(window.location.href)}`
+          window.location.href = loginUrl
           return
         }
 

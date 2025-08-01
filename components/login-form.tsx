@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,6 +21,7 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -46,8 +47,15 @@ export function LoginForm({
       }
 
       if (user) {
-        // Redirect to dashboard
-        router.push('/dashboard')
+        // Check for redirect parameter (for extension callback)
+        const redirectTo = searchParams.get('redirect_to')
+        if (redirectTo) {
+          // Redirect to the callback URL
+          window.location.href = decodeURIComponent(redirectTo)
+        } else {
+          // Default redirect to dashboard
+          router.push('/dashboard')
+        }
       }
     } catch (error) {
       setError('An unexpected error occurred')

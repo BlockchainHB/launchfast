@@ -1,0 +1,363 @@
+/**
+ * LaunchFast Amazon Cards Styling
+ * Amazon-native styling for seamless integration
+ */
+
+/* Main badge container */
+.launchfast-badge {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 8px 0;
+  padding: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #0f1111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1000;
+}
+
+/* Header section */
+.launchfast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e7e7e7;
+}
+
+.launchfast-logo {
+  font-weight: 600;
+  color: #f97316;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.launchfast-grade {
+  background: #f0f2f2;
+  border: 1px solid #d5d9d9;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-weight: 700;
+  font-size: 12px;
+  text-align: center;
+  min-width: 32px;
+}
+
+/* Grade-specific colors */
+.launchfast-grade[style*="background-color"] {
+  /* Inline styles will override for dynamic colors */
+}
+
+/* Metrics section */
+.launchfast-metrics {
+  margin-bottom: 10px;
+}
+
+.launchfast-metric-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  gap: 12px;
+}
+
+.launchfast-metric {
+  display: flex;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+}
+
+.launchfast-label {
+  color: #565959;
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.launchfast-value {
+  font-weight: 600;
+  color: #0f1111;
+  font-size: 12px;
+  text-align: right;
+}
+
+/* Tags section */
+.launchfast-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.launchfast-tag {
+  background: #f0f2f2;
+  color: #565959;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.launchfast-tag-sponsored {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.launchfast-tag-organic {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.launchfast-tag-risk {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.launchfast-tag-reviews {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+/* Actions section */
+.launchfast-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.launchfast-btn {
+  background: #ffd814;
+  border: 1px solid #fcd200;
+  border-radius: 3px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0f1111;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  transition: all 0.15s ease;
+  flex: 1;
+}
+
+.launchfast-btn:hover {
+  background: #f7ca00;
+  border-color: #f2c200;
+  text-decoration: none;
+}
+
+.launchfast-btn:active {
+  background: #febd69;
+  border-color: #fa8900;
+}
+
+.launchfast-btn:disabled {
+  background: #f7f8f8;
+  border-color: #d5d9d9;
+  color: #565959;
+  cursor: not-allowed;
+}
+
+/* Button variants */
+.launchfast-btn-primary {
+  background: #ff9900;
+  border-color: #e47911;
+  color: #ffffff;
+}
+
+.launchfast-btn-primary:hover {
+  background: #e47911;
+  border-color: #cc7a00;
+}
+
+.launchfast-btn-secondary {
+  background: #ffffff;
+  border-color: #d5d9d9;
+  color: #0f1111;
+}
+
+.launchfast-btn-secondary:hover {
+  background: #f7f8f8;
+  border-color: #adb1b8;
+}
+
+.launchfast-btn-success {
+  background: #067d68;
+  border-color: #067d68;
+  color: #ffffff;
+}
+
+.launchfast-btn-error {
+  background: #d13212;
+  border-color: #d13212;
+  color: #ffffff;
+}
+
+/* Loading state */
+.launchfast-loading {
+  background: #f7f8f8;
+  border-color: #d5d9d9;
+}
+
+.launchfast-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #d5d9d9;
+  border-top: 2px solid #f97316;
+  border-radius: 50%;
+  animation: launchfast-spin 1s linear infinite;
+}
+
+@keyframes launchfast-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.launchfast-loading-text {
+  text-align: center;
+  color: #565959;
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+/* Error state */
+.launchfast-error {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.launchfast-grade-error {
+  background: #fecaca;
+  border-color: #f87171;
+  color: #dc2626;
+}
+
+.launchfast-error-message {
+  color: #dc2626;
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .launchfast-badge {
+    margin: 6px 0;
+    padding: 10px;
+  }
+  
+  .launchfast-metric-row {
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .launchfast-metric {
+    justify-content: space-between;
+  }
+  
+  .launchfast-actions {
+    flex-direction: column;
+  }
+  
+  .launchfast-btn {
+    width: 100%;
+  }
+}
+
+/* Dark theme support (for Amazon's dark mode if/when available) */
+@media (prefers-color-scheme: dark) {
+  .launchfast-badge {
+    background: #232f3e;
+    border-color: #3a4553;
+    color: #ffffff;
+  }
+  
+  .launchfast-header {
+    border-bottom-color: #3a4553;
+  }
+  
+  .launchfast-label {
+    color: #cccccc;
+  }
+  
+  .launchfast-value {
+    color: #ffffff;
+  }
+  
+  .launchfast-tag {
+    background: #3a4553;
+    color: #cccccc;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .launchfast-badge {
+    border: 2px solid #000000;
+  }
+  
+  .launchfast-btn {
+    border: 2px solid #000000;
+    font-weight: 700;
+  }
+}
+
+/* Animation for badge appearance */
+.launchfast-badge {
+  animation: launchfast-fadeIn 0.3s ease-in-out;
+}
+
+@keyframes launchfast-fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Focus styles for accessibility */
+.launchfast-btn:focus {
+  outline: 2px solid #ff9900;
+  outline-offset: 2px;
+}
+
+/* Ensure proper stacking context */
+.launchfast-badge * {
+  box-sizing: border-box;
+}
+
+/* Prevent text selection on interactive elements */
+.launchfast-btn {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Ensure compatibility with Amazon's existing styles */
+.launchfast-badge,
+.launchfast-badge * {
+  font-family: inherit;
+  line-height: inherit;
+}
+
+/* Override any conflicting Amazon styles */
+.launchfast-badge {
+  all: initial;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  display: block;
+  position: relative;
+  box-sizing: border-box;
+}

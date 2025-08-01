@@ -1,4 +1,8 @@
-# CLAUDE.md - LaunchFast Amazon Product Intelligence Dashboard
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+# LaunchFast Amazon Product Intelligence Dashboard
 
 ## Project Overview
 
@@ -63,32 +67,42 @@
 └── hooks/                # React hooks
 ```
 
-## Core Features
+## Core Architecture Patterns
 
-### 1. Product Research System
-- **Keyword-based research**: Find products by search terms
-- **ASIN-based analysis**: Deep dive into specific products
-- **A10-F1 scoring**: Proprietary grading from A10 (goldmine) to F1 (avoid)
-- **Save functionality**: Store research results in database
+### 1. Streaming API Design
+**Critical Pattern:** Many APIs use streaming responses for real-time updates
+- `app/api/products/research/stream/route.ts`: Streaming product research
+- `app/api/keywords/research/stream/route.ts`: Streaming keyword research  
+- `app/api/suppliers/search/stream/route.ts`: Streaming supplier search
 
-### 2. Advanced Keyword Research
-- **Multi-tab interface**: Overview, Market Analysis, Gap Analysis, Opportunities, Product Comparison
-- **Real-time streaming**: Progressive data loading with WebSocket-like updates
-- **Session management**: Save and restore research sessions
-- **Decision tracking**: Record research decisions and outcomes
+**Implementation:** APIs use `ReadableStream` and `TextEncoder` to send progressive updates to the frontend, allowing real-time UI updates during long-running operations.
 
-### 3. Market Analysis Engine
-- **Calculation Engine** (`lib/calculation-engine.ts`): Industry-grade mathematical operations
-- **Safe number handling**: Robust validation and fallback systems
-- **Market metrics aggregation**: Calculate market-level insights from product data
-- **Risk assessment**: Product risk classification (Electric, Breakable, Medical, Safe)
+### 2. Calculation Engine Architecture
+**File:** `lib/calculation-engine.ts`
+**Pattern:** Industry-grade mathematical operations with comprehensive validation
+- **SafeNumber system**: All numbers wrapped with validation and fallback logic
+- **CalculationContext**: Tracks operation source (initial/override/recalculation)
+- **ValidationResult**: Comprehensive error and warning tracking
+- **Immutable calculations**: Operations return new objects, never mutate
 
-### 4. Scoring System
-- **Base grading**: Monthly profit determines base grade
-- **Penalty system**: Competition, costs, and risks reduce grade
-- **Boost system**: Low competition and high margins improve grade
-- **A10 gate**: Strict requirements for highest grade
-- **Disqualifiers**: Instant rejection criteria
+### 3. A10-F1 Scoring System Implementation
+**Files:** `lib/scoring.ts`, profit thresholds hard-coded
+- **Base grading**: Monthly profit determines initial grade (A10: $100k, F1: $0)
+- **Penalty system**: Deductions for high competition, risks, low margins
+- **Boost system**: Bonuses for exceptional metrics
+- **A10 gate**: Strict requirements prevent artificial A10 grades
+- **Disqualifiers**: Instant F1 for prohibited/dangerous products
+
+### 4. Database Patterns
+**Row Level Security (RLS):** All tables use RLS policies for data isolation
+**Soft deletes:** Most tables use `deleted_at` timestamp instead of hard deletes
+**Override system:** Products and markets can be manually overridden with audit trails
+**Session management:** Keyword research uses session-based state management
+
+### 5. State Management Architecture  
+**Frontend:** Zustand stores in `lib/stores/` for client state
+**Server state:** React Query (`@tanstack/react-query`) for API data
+**Real-time updates:** Custom hooks for streaming API consumption
 
 ## API Integration
 
@@ -163,24 +177,37 @@
 - **Parallel API calls** for data aggregation
 - **Streaming responses** for real-time updates
 
-## Key Files to Understand
+## Critical Files for Development
 
-### Core Business Logic
-- `lib/calculation-engine.ts`: Mathematical operations and validation engine
-- `lib/scoring.ts`: A10-F1 grading system implementation
-- `lib/keyword-research.ts`: Keyword research orchestration
-- `lib/supabase.ts`: Database client and type definitions
+### Core Business Logic (Start Here)
+- `lib/calculation-engine.ts`: Mathematical operations engine - **READ FIRST** for any calculation work
+- `lib/scoring.ts`: A10-F1 grading system with profit thresholds
+- `lib/keyword-research.ts`: Orchestrates complex keyword research workflows
+- `lib/supabase.ts`: Database client with comprehensive type definitions
 
-### API Routes
-- `app/api/products/research/route.ts`: Main product research endpoint
-- `app/api/keywords/research/route.ts`: Keyword research system
-- `app/api/keywords/research/stream/route.ts`: Real-time keyword updates
-- `app/api/stripe/webhooks/route.ts`: Payment processing
+### API Architecture 
+**Main Research Endpoints:**
+- `app/api/products/research/route.ts`: Primary product research endpoint
+- `app/api/products/research/stream/route.ts`: Streaming product research
+- `app/api/keywords/research/route.ts`: Keyword research orchestration
+- `app/api/keywords/research/stream/route.ts`: Real-time keyword streaming
 
-### Components
-- `components/keyword-research/KeywordResearchResultsTable.tsx`: Main results interface
-- `components/data-table.tsx`: Reusable data table component
-- `components/research-modal.tsx`: Product research modal
+**Authentication & Billing:**
+- `app/api/auth/signup/route.ts`: Invitation-based user registration
+- `app/api/stripe/webhooks/route.ts`: Stripe subscription webhook handling
+- `middleware.ts`: Route protection and authentication
+
+### Frontend Components
+**Primary Interfaces:**
+- `components/keyword-research/KeywordResearchResultsTable.tsx`: Main research interface
+- `components/supplier-sourcing/SupplierSourcingResultsTable.tsx`: Supplier management
+- `components/data-table.tsx`: Reusable table component with sorting/filtering
+- `app/dashboard/page.tsx`: Main dashboard layout
+
+### Configuration Files
+- `next.config.ts`: Security headers, build config (ignores TS/ESLint errors)
+- `tsconfig.json`: TypeScript configuration with path mapping
+- `middleware.ts`: Route protection and user authentication
 
 ## Environment Variables
 
@@ -208,16 +235,37 @@ NEXT_PUBLIC_APP_URL=
 
 ## Development Commands
 
-### Standard Commands
-- `npm run dev`: Start development server
-- `npm run build`: Build for production
+### Core Development
+- `npm run dev`: Start development server on localhost:3000
+- `npm run build`: Build for production (checks TypeScript and builds)
 - `npm run start`: Start production server
-- `npm run lint`: Run ESLint
+- `npm run lint`: Run ESLint with Next.js rules
 
-### Testing Commands
-- `node test-keyword-research.js`: Test keyword research flow
-- `node test-sellersprite-endpoints.js`: Test API integrations
-- `node test-enhanced-keyword-research-complete.js`: Full system test
+### System Testing Commands
+The following test scripts validate core functionality:
+
+**API Integration Tests:**
+- `node test-sellersprite-endpoints.js`: Test SellerSprite API integration
+- `node test-api-endpoint.js`: Test main product research endpoints
+- `node test-amazon-fees.js`: Test fee calculation system
+
+**Keyword Research Tests:**
+- `node test-keyword-research.js`: Basic keyword research flow
+- `node test-enhanced-keyword-research-complete.js`: Complete keyword research system
+- `node test-streaming-keyword-research.js`: Test streaming API endpoints
+- `node test-keyword-flow.js`: Test keyword processing pipeline
+
+**Supplier & CRM Tests:**
+- `node test-supplier-search.js`: Test supplier search functionality
+- `node test-supplier-crm-apis.js`: Test CRM API endpoints
+- `node test-supplier-search-streaming.js`: Test streaming supplier search
+
+**System Integration:**
+- `node test-enhanced-integration.js`: Full integration testing
+- `node test-workflow-trace.js`: Debug workflow tracing
+
+### Running Single Tests
+Use `node <test-file>` to run individual test scripts. Most test files are self-contained and will output detailed logs.
 
 ## Debugging & Monitoring
 
@@ -227,11 +275,30 @@ NEXT_PUBLIC_APP_URL=
 - **Performance monitoring** for API calls
 - **User activity tracking** for analytics
 
-### Common Issues
-1. **API rate limits**: Implement exponential backoff
-2. **Database connection limits**: Use connection pooling
-3. **Memory usage**: Monitor calculation engine operations
-4. **CORS issues**: Properly configured for frontend/backend communication
+### Common Issues & Debugging
+
+1. **API Rate Limits**: All external APIs (SellerSprite, Apify, OpenAI) have rate limits
+   - Use test scripts to verify API connectivity before debugging application issues
+   - Check API key validity in environment variables
+
+2. **Streaming API Issues**: 
+   - Frontend expects `data: {json}` format from streaming endpoints
+   - Use browser Network tab to inspect streaming responses
+   - Test streaming with `test-streaming-*.js` scripts
+
+3. **Calculation Engine Errors**:
+   - All calculations return `CalculationResult<T>` with validation info
+   - Check `validation.errors` array for mathematical operation failures
+   - SafeNumber fallbacks prevent crashes but may indicate data quality issues
+
+4. **Database Issues**:
+   - Use `supabase-migrations/` SQL files for schema changes
+   - RLS policies can cause "no data" issues - check user permissions
+   - Override system logs are in `product_overrides` and `market_overrides` tables
+
+5. **TypeScript Build Errors**: 
+   - `next.config.ts` ignores TS errors during builds (line 8)
+   - Fix type issues in development, don't rely on build-time bypasses
 
 ## Security Considerations
 
