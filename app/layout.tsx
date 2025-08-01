@@ -31,6 +31,9 @@ export default function RootLayout({
         <Toaster position="top-center" expand={true} richColors />
         <Analytics />
         <SpeedInsights />
+        
+        {/* Chrome Extension Authentication Bridge */}
+        <script src="/extension-auth-bridge.js" async />
       </body>
     </html>
   );
