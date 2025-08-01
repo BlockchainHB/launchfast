@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientSide } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
 
@@ -12,7 +12,9 @@ export default function ExtensionCallbackPage() {
   useEffect(() => {
     const handleExtensionCallback = async () => {
       try {
-        const supabase = createClientSide()
+        if (!supabase) {
+          throw new Error('Supabase client not available')
+        }
         
         // Get the session from Supabase auth
         const { data: { session, user }, error } = await supabase.auth.getSession()
