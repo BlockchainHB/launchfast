@@ -26,23 +26,46 @@ async function handleAuthRequest(requestId) {
   try {
     console.log('🔐 LaunchFast: Extension auth request received');
     
-    // Check if user is authenticated by looking for auth cookies/session storage
-    // This is a fallback method when Supabase client isn't directly accessible
+    // Debug: Log all localStorage keys to see what's actually stored
+    console.log('📊 LaunchFast: All localStorage keys:');
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      console.log(`  - ${key}`);
+    }
     
-    // Try to get session from localStorage (Supabase's default storage)
+    // Try multiple possible Supabase localStorage key formats
     const supabaseUrl = 'https://nodcoywsdlxgjtptpmnz.supabase.co'
-    const storageKey = `sb-${supabaseUrl.split('//')[1].replace(/\./g, '-')}-auth-token`
+    const possibleKeys = [
+      `sb-${supabaseUrl.split('//')[1].replace(/\./g, '-')}-auth-token`,
+      `sb-${supabaseUrl.split('//')[1]}-auth-token`,
+      `supabase-auth-token`,
+      'supabase.auth.token'
+    ];
     
-    const authData = localStorage.getItem(storageKey)
+    console.log('🔍 LaunchFast: Trying localStorage keys:', possibleKeys);
+    
+    let authData = null;
+    let usedKey = null;
+    
+    for (const key of possibleKeys) {
+      authData = localStorage.getItem(key);
+      if (authData) {
+        usedKey = key;
+        console.log(`✅ LaunchFast: Found auth data with key: ${key}`);
+        break;
+      }
+    }
     
     if (!authData) {
-      console.log('No auth data found in localStorage');
+      console.log('❌ LaunchFast: No auth data found in localStorage with any expected key');
       sendAuthResponse(requestId, {
         authenticated: false,
         error: 'No authentication data found'
       });
       return;
     }
+    
+    console.log('📄 LaunchFast: Auth data preview:', authData.substring(0, 100) + '...');
 
     const session = JSON.parse(authData)
     
