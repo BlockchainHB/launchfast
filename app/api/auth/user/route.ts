@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
+// CORS headers for Chrome extension access
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // Allow all origins for Chrome extensions
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Credentials': 'true'
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { 
+    status: 200, 
+    headers: corsHeaders 
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient(
@@ -20,7 +35,10 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { 
+        status: 401,
+        headers: corsHeaders 
+      })
     }
 
     return NextResponse.json({
@@ -29,6 +47,8 @@ export async function GET(request: NextRequest) {
         id: user.id,
         email: user.email
       }
+    }, {
+      headers: corsHeaders
     })
 
   } catch (error) {
@@ -36,6 +56,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: 'Failed to get user'
-    }, { status: 500 })
+    }, { 
+      status: 500,
+      headers: corsHeaders 
+    })
   }
 }
