@@ -3,6 +3,7 @@ import { LoginForm } from "@/components/login-form"
 import { Metadata } from "next"
 import { Particles } from '@/components/ui/particles'
 import { Spotlight } from '@/components/ui/spotlight'
+import { Suspense } from 'react'
 
 export const metadata: Metadata = {
   title: "Login - LaunchFast",
@@ -28,7 +29,9 @@ export default function LoginPage() {
             <span className="text-sm text-muted-foreground -mt-1">Built by <span className="text-primary">LegacyX FBA</span></span>
           </div>
         </Link>
-        <LoginForm />
+        <Suspense fallback={<div className="w-full h-64 animate-pulse bg-white/5 rounded-lg" />}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   )
