@@ -18,8 +18,8 @@ interface ProgressEvent {
 }
 
 const ASIN_REGEX = /^[A-Z0-9]{10}$/
-const TIMEOUT = 90000 // 90 seconds for multiple ASINs
-const MAX_ASINS = 10
+const TIMEOUT = 120000 // 120 seconds for multiple ASINs (increased for larger batches)
+const MAX_ASINS = 25 // Increased for Chrome extension batch processing
 
 /**
  * Generate intelligent market name for Multi-ASIN analysis
